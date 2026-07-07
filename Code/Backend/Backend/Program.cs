@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ==================== 数据库 ====================
+//数据库
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseOracle(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// ==================== Repository 层注册 ====================
+//注册之后在收到HTTP请求时，ASP.NET Core会自动创建这些实例，并将其注入到需要它们的Service或Controller中，从而实现依赖注入和解耦。   
+//Repository层注册
 builder.Services.AddScoped<IBaseUserRepository, BaseUserRepository>();
 builder.Services.AddScoped<INormUserRepository, NormUserRepository>();
 builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
@@ -28,12 +28,11 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
-
-// ==================== Service 层注册 ====================
+//Service层注册
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBaseUserService, BaseUserService>();
 
-// ==================== 基础服务 ====================
+//基础服务
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
