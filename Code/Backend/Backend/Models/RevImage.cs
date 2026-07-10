@@ -9,14 +9,10 @@ namespace Backend.Models;
 [Table("rev_image")]
 public class RevImage
 {
+    
     [Key]
-    [Column("img_id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long ImgId { get; set; }
-
-    [Column("img_url")]
-    [MaxLength(100)]
-    public string ImgUrl { get; set; } = string.Empty;
+    [Column("img_file_id")]
+    public string ImgFileId { get; set; } = string.Empty;
 
     /// <summary>
     /// 图片排序序号
@@ -30,4 +26,8 @@ public class RevImage
     // 导航属性
     [ForeignKey("ReviewId")]
     public Review? Review { get; set; }
+
+    [ForeignKey("ImgFileId")]
+    public File? ImgFile { get; set; }
+
 }

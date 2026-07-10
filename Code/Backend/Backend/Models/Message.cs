@@ -21,10 +21,13 @@ public class Message
     public int SenderId { get; set; }
 
     /// <summary>
-    /// 消息类型：0=文本，1=图片
+    /// 消息类型：0=文本，1=文件
     /// </summary>
     [Column("msg_type")]
     public int MsgType { get; set; }
+
+    [Column("file_id")]
+    public long? FileId { get; set; } = null;
 
     [Column("msg_content")]
     [MaxLength(1000)]
@@ -45,4 +48,8 @@ public class Message
 
     [ForeignKey("SenderId")]
     public NormUser? Sender { get; set; }
+
+    [ForeignKey("FileId")]
+    public File? File { get; set; }
+
 }

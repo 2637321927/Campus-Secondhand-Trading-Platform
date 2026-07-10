@@ -32,9 +32,8 @@ public class BaseUser
     [Column("user_type")]
     public int UserType { get; set; }
 
-    [Column("avatar_url")]
-    [MaxLength(255)]
-    public string? AvatarUrl { get; set; }
+    [Column("avatar_file_id")]
+    public long? AvatarFileId { get; set; }
 
     [Column("gender")]
     [MaxLength(10)]
@@ -55,4 +54,8 @@ public class BaseUser
     // 导航属性
     public NormUser? NormUser { get; set; }
     public AdminUser? AdminUser { get; set; }
+
+    [ForeignKey("AvatarFileId")]
+    public File? AvatarFile { get; set; }
+
 }

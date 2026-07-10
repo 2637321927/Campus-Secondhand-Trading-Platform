@@ -1,6 +1,7 @@
 using Backend.Data;
 using Backend.Repositories;
 using Backend.Services;
+using Backend.Utilities;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +32,7 @@ builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
 //Service层注册
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBaseUserService, BaseUserService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 //基础服务
 builder.Services.AddControllers();
@@ -47,6 +49,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
 
 app.UseAuthorization();
 
