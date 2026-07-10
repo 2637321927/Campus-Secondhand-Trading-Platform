@@ -4,8 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers;
 
+/// <summary>
+/// 用户信息查询（公开接口）
+/// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/users")]
 public class UserController : ControllerBase
 {
     private readonly IBaseUserService _userService;
@@ -16,24 +19,7 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// 用户注册（自动创建 base_user + norm_user）
-    /// </summary>
-    [HttpPost("register")]
-    public async Task<ActionResult<UserDto>> Register([FromBody] RegisterDto dto)
-    {
-        try
-        {
-            var user = await _userService.RegisterAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = user.UserId }, user);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// 根据 ID 获取用户信息
+    /// 根据 ID 获取用户公开信息
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<UserDto>> GetById(int id)

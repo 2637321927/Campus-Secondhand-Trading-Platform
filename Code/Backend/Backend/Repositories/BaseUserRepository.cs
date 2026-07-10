@@ -18,6 +18,9 @@ public class BaseUserRepository : IBaseUserRepository
     public async Task<BaseUser?> GetByEmailAsync(string email)
         => await _context.BaseUsers.FirstOrDefaultAsync(u => u.Email == email);
 
+    public async Task<BaseUser?> GetByPhoneAsync(string phone)
+        => await _context.BaseUsers.FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+
     public async Task AddAsync(BaseUser user)
         => await _context.BaseUsers.AddAsync(user);
 
