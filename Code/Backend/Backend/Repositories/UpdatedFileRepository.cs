@@ -10,8 +10,6 @@ public class UpdatedFileRepository : IUpdatedFileRepository
     private readonly AppDbContext _context;
     public UpdatedFileRepository(AppDbContext context) => _context = context;
 
-    // ==================== 基础查询 ====================
-
     public async Task<UpdatedFile?> GetByIdAsync(long updatedFileId)
         => await _context.UpdatedFiles.FindAsync(updatedFileId);
 
@@ -22,8 +20,6 @@ public class UpdatedFileRepository : IUpdatedFileRepository
 
     public async Task<List<UpdatedFile>> GetAllAsync()
         => await _context.UpdatedFiles.ToListAsync();
-
-    // ==================== 写操作 ====================
 
     public async Task AddAsync(UpdatedFile updatedFile)
         => await _context.UpdatedFiles.AddAsync(updatedFile);

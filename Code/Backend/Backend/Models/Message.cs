@@ -50,6 +50,6 @@ public class Message
     public NormUser? Sender { get; set; }
 
     [ForeignKey("FileId")]
-    public File? File { get; set; }
+    public UpdatedFile? AttachedFile { get; set; }
 
 }

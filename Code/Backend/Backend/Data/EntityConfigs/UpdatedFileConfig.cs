@@ -12,8 +12,6 @@ public class UpdatedFileConfig : IEntityTypeConfiguration<UpdatedFile>
 
         builder.Property(f => f.FileId).UseIdentityColumn();
 
-        builder.HasIndex(f => f.FileHash);
-
     }
 
 }

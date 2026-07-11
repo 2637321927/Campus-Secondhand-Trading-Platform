@@ -28,10 +28,6 @@ public class UpdatedFile
     [Column("file_size")]
     public long FileSize { get; set; }
 
-    [Column("file_hash")]
-    [MaxLength(64)]
-    public string FileHash { get; set; } = string.Empty;
-
     [Column("content_type")]
     public FileType ContentType { get; set; } = FileType.Other;
 
