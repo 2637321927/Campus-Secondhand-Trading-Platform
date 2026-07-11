@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<SysInfo> SysInfos => Set<SysInfo>();
+    public DbSet<UpdatedFile> UpdatedFiles => Set<UpdatedFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,5 +57,6 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EntityConfigs.WorkOrderConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.AnnouncementConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.SysInfoConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.UpdatedFileConfig());
     }
 }

@@ -12,7 +12,7 @@ public class RevImage
     
     [Key]
     [Column("img_file_id")]
-    public string ImgFileId { get; set; } = string.Empty;
+    public long ImgFileId { get; set; }
 
     /// <summary>
     /// 图片排序序号
@@ -28,6 +28,6 @@ public class RevImage
     public Review? Review { get; set; }
 
     [ForeignKey("ImgFileId")]
-    public File? ImgFile { get; set; }
+    public UpdatedFile? ImgFile { get; set; }
 
 }

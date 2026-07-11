@@ -7,6 +7,7 @@ public interface IBaseUserRepository
     Task<BaseUser?> GetByIdAsync(int userId);
     Task<List<BaseUser>> GetAllAsync();
     Task<BaseUser?> GetByEmailAsync(string email);
+    Task<BaseUser?> GetByPhoneAsync(string phone);
     Task AddAsync(BaseUser user);
     void Update(BaseUser user);
     void Delete(BaseUser user);

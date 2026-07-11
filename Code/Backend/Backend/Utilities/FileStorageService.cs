@@ -87,19 +87,4 @@ public class FileStorageService : IFileStorageService
 
     }
 
-    public async Task<string> GetFileMetadataAsync(string fileUrl)
-    {
-
-        if (File.Exists(fileUrl))
-        {
-
-            var fileInfo = new FileInfo(fileUrl);
-            return $"Name: {fileInfo.Name}, Size: {fileInfo.Length} bytes, Created: {fileInfo.CreationTime}";
-
-        }
-
-        throw new FileNotFoundException("File not found.", fileUrl);
-
-    }
-
 }

@@ -4,7 +4,7 @@ namespace Backend.Repositories;
 
 public interface IProdImageRepository
 {
-    Task<ProdImage?> GetByIdAsync(long imgId);
+    Task<ProdImage?> GetByIdAsync(long imgFileId);
     Task<List<ProdImage>> GetByProductIdAsync(long productId);
     Task AddAsync(ProdImage image);
     void Update(ProdImage image);

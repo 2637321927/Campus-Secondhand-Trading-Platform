@@ -22,7 +22,7 @@ public class ProductService : IProductService
     public async Task<ProductDto?> GetByIdAsync(long productId)
     {
         var product = await _productRepo.GetByIdAsync(productId);
-        return product == null ? null : ToDto(product);
+        return product == null ? null : ToDto(product); 
     }
 
     public async Task<List<ProductDto>> GetAvailableAsync()
@@ -89,8 +89,7 @@ public class ProductService : IProductService
         CategoryName = p.Category?.CategoryName,
         Images = p.Images?.Select(i => new ProductImageDto
         {
-            ImgId = i.ImgId,
-            ImgUrl = i.ImgUrl,
+            ImgFileId = i.ImgFileId,
             ImgIndex = i.ImgIndex
         }).ToList() ?? new()
     };

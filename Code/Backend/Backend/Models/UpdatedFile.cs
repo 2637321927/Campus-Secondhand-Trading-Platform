@@ -4,7 +4,8 @@ using Backend.Models.Enums;
 
 namespace Backend.Models;
 
-public class File
+[Table("files")]
+public class UpdatedFile
 {
 
     [Key]
@@ -40,13 +41,13 @@ public class File
     [Column("uploader_id")]
     public int UploaderId { get; set; }
 
-    [ForeignKey("UploaderId")]
-    public BaseUser Uploader { get; set; } = null!;
-
     [Column("is_deleted")]
     public bool IsDeleted { get; set; } = false;
 
     [Column("deleted_time")]
     public DateTime? DeletedTime { get; set; }
+
+    [ForeignKey("UploaderId")]
+    public BaseUser Uploader { get; set; } = null!;
 
 }

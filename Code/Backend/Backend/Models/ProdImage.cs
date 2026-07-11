@@ -12,8 +12,7 @@ public class ProdImage
 
     [Key]
     [Column("img_file_id")]
-    [MaxLength(100)]
-    public string ImgFileId { get; set; } = string.Empty;
+    public long ImgFileId { get; set; }
 
     /// <summary>
     /// 图片排序序号，允许多张图片
@@ -29,6 +28,6 @@ public class ProdImage
     public Product? Product { get; set; }
 
     [ForeignKey("ImgFileId")]
-    public File? ImgFile { get; set; }
+    public UpdatedFile? ImgFile { get; set; }
 
 }

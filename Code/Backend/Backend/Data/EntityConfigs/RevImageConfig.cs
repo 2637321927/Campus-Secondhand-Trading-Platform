@@ -8,8 +8,6 @@ public class RevImageConfig : IEntityTypeConfiguration<RevImage>
 {
     public void Configure(EntityTypeBuilder<RevImage> builder)
     {
-        builder.Property(r => r.ImgId).UseIdentityColumn();
-
         builder.HasOne(r => r.Review)
             .WithMany(r => r.Images)
             .HasForeignKey(r => r.ReviewId)
