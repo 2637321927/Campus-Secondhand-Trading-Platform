@@ -9,8 +9,8 @@ public class ProdImageRepository : IProdImageRepository
     private readonly AppDbContext _context;
     public ProdImageRepository(AppDbContext context) => _context = context;
 
-    public async Task<ProdImage?> GetByIdAsync(long imgId)
-        => await _context.ProdImages.FindAsync(imgId);
+    public async Task<ProdImage?> GetByIdAsync(long imgFileId)
+        => await _context.ProdImages.FindAsync(imgFileId);
 
     public async Task<List<ProdImage>> GetByProductIdAsync(long productId)
         => await _context.ProdImages.Where(p => p.ProductId == productId).ToListAsync();

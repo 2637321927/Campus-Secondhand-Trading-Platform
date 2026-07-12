@@ -33,7 +33,6 @@ public class ProductDto
 
 public class ProductImageDto
 {
-    public long ImgId { get; set; }
-    public string ImgUrl { get; set; } = string.Empty;
+    public long ImgFileId { get; set; }
     public int ImgIndex { get; set; }
 }

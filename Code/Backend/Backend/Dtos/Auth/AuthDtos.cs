@@ -32,7 +32,7 @@ public class MeResponseDto
     public string UserName { get; set; } = string.Empty;
     public int UserType { get; set; }
     public string Gender { get; set; } = string.Empty;
-    public string? AvatarUrl { get; set; }
+    public long? AvatarFileId { get; set; }
     public int IsBanned { get; set; }
     public DateTime? BannedUntil { get; set; }
 }

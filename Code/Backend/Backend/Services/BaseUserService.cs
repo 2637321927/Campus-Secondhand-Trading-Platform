@@ -150,7 +150,7 @@ public class BaseUserService : IBaseUserService
             UserName = userName,
             UserType = user.UserType,
             Gender = user.Gender,
-            AvatarUrl = user.AvatarUrl,
+            AvatarFileId = user.AvatarFileId,
             IsBanned = user.IsBanned,
             BannedUntil = user.BannedUntil
         };

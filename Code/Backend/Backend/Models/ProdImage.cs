@@ -9,14 +9,10 @@ namespace Backend.Models;
 [Table("prod_image")]
 public class ProdImage
 {
-    [Key]
-    [Column("img_id")]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public long ImgId { get; set; }
 
-    [Column("img_url")]
-    [MaxLength(100)]
-    public string ImgUrl { get; set; } = string.Empty;
+    [Key]
+    [Column("img_file_id")]
+    public long ImgFileId { get; set; }
 
     /// <summary>
     /// 图片排序序号，允许多张图片
@@ -30,4 +26,8 @@ public class ProdImage
     // 导航属性
     [ForeignKey("ProductId")]
     public Product? Product { get; set; }
+
+    [ForeignKey("ImgFileId")]
+    public UpdatedFile? ImgFile { get; set; }
+
 }

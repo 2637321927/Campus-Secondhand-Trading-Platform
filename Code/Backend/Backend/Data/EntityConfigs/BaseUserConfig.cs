@@ -23,5 +23,9 @@ public class BaseUserConfig : IEntityTypeConfiguration<BaseUser>
         builder.HasOne(b => b.AdminUser)
             .WithOne(a => a.BaseUser)
             .HasForeignKey<AdminUser>(a => a.UserId);
+
+        builder.HasOne(b => b.AvatarFile)
+            .WithMany()
+            .HasForeignKey(b => b.AvatarFileId);
     }
 }

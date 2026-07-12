@@ -2,6 +2,7 @@ using System.Text;
 using Backend.Data;
 using Backend.Repositories;
 using Backend.Services;
+using Backend.Utilities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -37,9 +38,12 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
+builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
 //Service层注册
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBaseUserService, BaseUserService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
+builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
 
 //JWT认证配置
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -103,7 +107,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseStaticFiles();
+
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();
