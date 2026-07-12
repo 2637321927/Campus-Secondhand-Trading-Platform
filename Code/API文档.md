@@ -191,7 +191,7 @@ HTTP/1.1 200 OK
   "userName": "小明",
   "userType": 0,
   "gender": "unknown",
-  "avatarUrl": null,
+  "avatarFileId": null,
   "isBanned": 0,
   "bannedUntil": null
 }
@@ -205,7 +205,7 @@ HTTP/1.1 200 OK
 | userName | string | 昵称 |
 | userType | int | 0=普通用户，1=管理员 |
 | gender | string | 性别 |
-| avatarUrl | string? | 头像地址 |
+| avatarFileId | long? | 头像文件ID（外键到UpdatedFile） |
 | isBanned | int | 0=正常，1=已封禁 |
 | bannedUntil | datetime? | 封禁截止时间 |
 

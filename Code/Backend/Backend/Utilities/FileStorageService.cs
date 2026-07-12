@@ -1,3 +1,5 @@
+using Backend.Models.Enums;
+
 namespace Backend.Utilities;
 
 public class FileStorageService : IFileStorageService
@@ -14,12 +16,12 @@ public class FileStorageService : IFileStorageService
 
     }
 
-    public async Task<string> UploadFileAsync(Stream fileStream, string fileName, string contentType)
+    public async Task<string> UploadFileAsync(Stream fileStream, string fileName, FileType fileType)
     {
 
         var contentPath = Path.Combine(
             _storagePath,
-            ContentTypeMapper.FromMimeType(contentType).ToFolderName(),
+            fileType.ToFolderName(),
             DateTime.Now.ToString("yyyy-MM-dd"));
 
         if (!Directory.Exists(contentPath)) Directory.CreateDirectory(contentPath);

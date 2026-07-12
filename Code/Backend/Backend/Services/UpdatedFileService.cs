@@ -1,6 +1,7 @@
 using Backend.Models;
 using Backend.Repositories;
 using Backend.Utilities;
+using Microsoft.Extensions.Configuration;
 
 namespace Backend.Services;
 
@@ -9,20 +10,37 @@ public class UpdatedFileService : IUpdatedFileService
 
     private readonly IUpdatedFileRepository _repo;
     private readonly IFileStorageService _storage;
+    private readonly IConfiguration _config;
 
-    public UpdatedFileService(IUpdatedFileRepository updatedFileRepository, IFileStorageService fileStorageService)
+    public UpdatedFileService(
+        IUpdatedFileRepository updatedFileRepository,
+        IFileStorageService fileStorageService,
+        IConfiguration configuration)
     {
-        
+
         _repo = updatedFileRepository;
         _storage = fileStorageService;
+        _config = configuration;
 
     }
 
     public async Task<UpdatedFile> UploadAsync(IFormFile file, long uploaderId)
     {
 
+        var fileType = ContentTypeMapper.FromMimeType(file.ContentType);
+        var sizeLimit = _config.GetValue<long>($"FileStorage:SizeLimits:{fileType}");
+        if (sizeLimit > 0 && file.Length > sizeLimit)
+        {
+
+            var sizeMb = file.Length / (1024.0 * 1024.0);
+            var limitMb = sizeLimit / (1024.0 * 1024.0);
+            throw new InvalidOperationException(
+                $"文件 \"{file.FileName}\" 大小 {sizeMb:F2} MB 超过 {fileType} 类型上限 {limitMb:F2} MB。");
+                
+        }
+
         using var stream = file.OpenReadStream();
-        var storagePath = await _storage.UploadFileAsync(stream, file.FileName, file.ContentType);
+        var storagePath = await _storage.UploadFileAsync(stream, file.FileName, fileType);
 
         var entity = new UpdatedFile
         {
@@ -31,7 +49,7 @@ public class UpdatedFileService : IUpdatedFileService
             StoragePath = storagePath,
             MimeType = file.ContentType,
             FileSize = file.Length,
-            ContentType = ContentTypeMapper.FromMimeType(file.ContentType),
+            ContentType = fileType,
             UploaderId = (int)uploaderId,
             UploadTime = DateTime.Now
             
