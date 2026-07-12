@@ -55,7 +55,6 @@ public class BaseUser
     public NormUser? NormUser { get; set; }
     public AdminUser? AdminUser { get; set; }
 
-    [ForeignKey("AvatarFileId")]
     public UpdatedFile? AvatarFile { get; set; }
 
 }

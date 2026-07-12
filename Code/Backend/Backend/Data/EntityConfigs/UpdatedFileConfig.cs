@@ -12,6 +12,10 @@ public class UpdatedFileConfig : IEntityTypeConfiguration<UpdatedFile>
 
         builder.Property(f => f.FileId).UseIdentityColumn();
 
+        builder.HasOne(f => f.Uploader)
+            .WithMany()
+            .HasForeignKey(f => f.UploaderId);
+
     }
 
 }

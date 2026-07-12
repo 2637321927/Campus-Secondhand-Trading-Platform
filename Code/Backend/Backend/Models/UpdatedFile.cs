@@ -43,7 +43,6 @@ public class UpdatedFile
     [Column("deleted_time")]
     public DateTime? DeletedTime { get; set; }
 
-    [ForeignKey("UploaderId")]
     public BaseUser Uploader { get; set; } = null!;
 
 }
