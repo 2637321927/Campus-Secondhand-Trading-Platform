@@ -17,10 +17,23 @@ public class ProductRepository : IProductRepository
             .Include(p => p.Seller)
             .FirstOrDefaultAsync(p => p.ProductId == productId);
 
-    public async Task<List<Product>> GetByCategoryAsync(long categoryId)
+    public async Task<List<Product>> GetAllAsync()
+        => await _context.Products
+            .Include(p => p.Images)
+            .Include(p => p.Category)
+            .ToListAsync();
+
+    public async Task<List<Product>> GetByCategoryAsync(int categoryId)
         => await _context.Products
             .Where(p => p.CategoryId == categoryId)
             .Include(p => p.Images)
+            .ToListAsync();
+
+    public async Task<List<Product>> GetAvailableAsync()
+        => await _context.Products
+            .Where(p => p.Status == ProductStatus.Available)
+            .Include(p => p.Images)
+            .Include(p => p.Category)
             .ToListAsync();
 
     public async Task<List<Product>> GetByUserIdAsync(int userId)

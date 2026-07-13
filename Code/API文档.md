@@ -528,7 +528,7 @@ POST /api/product
 | price | decimal | ✅ | — | 价格，如 2999.00 |
 | info | string | ❌ | 100 | 商品描述 |
 | userId | int | ✅ | — | 发布者用户ID |
-| categoryId | long | ✅ | — | 分类ID |
+| categoryId | int | ✅ | — | 分类ID |
 
 **请求示例：**
 

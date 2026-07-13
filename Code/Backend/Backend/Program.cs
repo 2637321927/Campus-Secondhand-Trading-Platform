@@ -40,6 +40,7 @@ builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
 builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
 //Service层注册
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBaseUserService, BaseUserService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
@@ -68,6 +69,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 //基础服务
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// CORS 跨域配置
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
+});
+
 builder.Services.AddSwaggerGen(options =>
 {
     // 在 Swagger 右上角添加 JWT Authorize 按钮
@@ -108,6 +120,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
+
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 

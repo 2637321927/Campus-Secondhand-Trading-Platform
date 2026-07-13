@@ -40,7 +40,7 @@ public class Product
     public int UserId { get; set; }
 
     [Column("category_id")]
-    public long CategoryId { get; set; }
+    public int CategoryId { get; set; }
 
     // 导航属性
     [ForeignKey("UserId")]

@@ -29,7 +29,13 @@ public class ProductService : IProductService
         return product == null ? null : ToDto(product); 
     }
 
-    public async Task<ProductDto> CreateAsync(CreateProductDto dto)
+    public async Task<List<ProductDto>> GetAvailableAsync()
+    {
+        var products = await _productRepo.GetAvailableAsync();
+        return products.Select(ToDto).ToList();
+    }
+
+    public async Task<ProductDto> CreateAsync(CreateProductDto dto, int userId)
     {
         var product = new Product
         {
@@ -37,7 +43,7 @@ public class ProductService : IProductService
             Price = dto.Price,
             Info = dto.Info,
             Status = ProductStatus.Available,
-            UserId = dto.UserId,
+            UserId = userId,
             CategoryId = dto.CategoryId,
             ReleaseDate = DateTime.Now
         };

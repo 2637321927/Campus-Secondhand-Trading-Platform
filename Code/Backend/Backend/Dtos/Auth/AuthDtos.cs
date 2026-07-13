@@ -1,6 +1,17 @@
 namespace Backend.Dtos.Auth;
 
 ///<summary>
+/// 注册请求
+///</summary>
+public class RegisterDto
+{
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
+}
+
+///<summary>
 /// 登录请求（邮箱和手机号二选一，优先用邮箱）
 /// </summary>
 public class LoginDto

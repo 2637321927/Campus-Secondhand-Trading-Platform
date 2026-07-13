@@ -1,11 +1,12 @@
 using Backend.Dtos.Product;
 using Backend.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/products")]
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
@@ -14,6 +15,7 @@ public class ProductController : ControllerBase
     {
         _productService = productService;
     }
+    
 
     /// <summary>
     /// 根据 ID 获取商品详情
@@ -29,10 +31,12 @@ public class ProductController : ControllerBase
     /// <summary>
     /// 发布商品
     /// </summary>
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto dto)
     {
-        var product = await _productService.CreateAsync(dto);
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var product = await _productService.CreateAsync(dto,userId);
         return CreatedAtAction(nameof(GetById), new { id = product.ProductId }, product);
     }
 

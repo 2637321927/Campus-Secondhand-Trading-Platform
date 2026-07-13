@@ -8,7 +8,7 @@ public class CreateProductDto
     public decimal Price { get; set; }
     public string? Info { get; set; }
     public int UserId { get; set; }
-    public long CategoryId { get; set; }
+    public int CategoryId { get; set; }
 }
 
 public class UpdateProductDto
