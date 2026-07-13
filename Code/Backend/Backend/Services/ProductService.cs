@@ -1,5 +1,6 @@
 using Backend.Dtos.Product;
 using Backend.Models;
+using Backend.Models.Enums;
 using Backend.Repositories;
 
 namespace Backend.Services;
@@ -38,7 +39,7 @@ public class ProductService : IProductService
             Name = dto.Name,
             Price = dto.Price,
             Info = dto.Info,
-            Status = "available",
+            Status = ProductStatus.Available,
             UserId = dto.UserId,
             CategoryId = dto.CategoryId,
             ReleaseDate = DateTime.Now
@@ -58,7 +59,7 @@ public class ProductService : IProductService
         if (dto.Name != null) product.Name = dto.Name;
         if (dto.Price.HasValue) product.Price = dto.Price.Value;
         if (dto.Info != null) product.Info = dto.Info;
-        if (dto.Status != null) product.Status = dto.Status;
+        if (dto.Status.HasValue) product.Status = dto.Status.Value;
 
         _productRepo.Update(product);
         await _productRepo.SaveAsync();
