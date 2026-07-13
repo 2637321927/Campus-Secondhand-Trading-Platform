@@ -2,6 +2,7 @@ using Backend.Dtos.Product;
 using Backend.Models;
 using Backend.Models.Enums;
 using Backend.Repositories;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Services;
 
@@ -13,23 +14,19 @@ public class ProductService : IProductService
     {
         _productRepo = productRepo;
     }
-
-    public async Task<List<ProductDto>> GetAllAsync()
+    
+    public async Task<bool> CreateProductAsync(CreateProductDto dto)
     {
-        var products = await _productRepo.GetAllAsync();
-        return products.Select(ToDto).ToList();
+
+
+        return true;
+
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId)
     {
         var product = await _productRepo.GetByIdAsync(productId);
         return product == null ? null : ToDto(product); 
-    }
-
-    public async Task<List<ProductDto>> GetAvailableAsync()
-    {
-        var products = await _productRepo.GetAvailableAsync();
-        return products.Select(ToDto).ToList();
     }
 
     public async Task<ProductDto> CreateAsync(CreateProductDto dto)

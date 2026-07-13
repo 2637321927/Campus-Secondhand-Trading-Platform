@@ -16,26 +16,6 @@ public class ProductController : ControllerBase
     }
 
     /// <summary>
-    /// 获取所有商品
-    /// </summary>
-    [HttpGet]
-    public async Task<ActionResult<List<ProductDto>>> GetAll()
-    {
-        var products = await _productService.GetAllAsync();
-        return Ok(products);
-    }
-
-    /// <summary>
-    /// 获取在售商品
-    /// </summary>
-    [HttpGet("available")]
-    public async Task<ActionResult<List<ProductDto>>> GetAvailable()
-    {
-        var products = await _productService.GetAvailableAsync();
-        return Ok(products);
-    }
-
-    /// <summary>
     /// 根据 ID 获取商品详情
     /// </summary>
     [HttpGet("{id}")]
