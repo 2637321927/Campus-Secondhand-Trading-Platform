@@ -38,3 +38,16 @@ public class ProductImageDto
     public long ImgFileId { get; set; }
     public int ImgIndex { get; set; }
 }
+
+///<summary>
+///商品卡片信息响应（用于主页展示）
+///</summary>
+public class ProductCardDto
+{
+    public long ProductId { get; set; }
+    public string Name { get; set; }= string.Empty;
+    public decimal Price { get; set; }
+    public string? CoverImageUrl { get; set; } 
+    public string SellerName { get; set; }= string.Empty;
+    public DateTime ReleaseDate { get; set; }
+}

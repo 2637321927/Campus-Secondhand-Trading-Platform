@@ -40,6 +40,7 @@ builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
 builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
 //Service层注册
+builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBaseUserService, BaseUserService>();
