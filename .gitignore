@@ -25,5 +25,5 @@ Code/Frontend/.env.development
 *.dump
 Code/Database/*.sqlbak
 .vscode/
-upload/
-**/upload/
+Uploads/
+**/Uploads/
