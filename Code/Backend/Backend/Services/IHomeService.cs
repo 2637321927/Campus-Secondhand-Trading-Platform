@@ -19,4 +19,5 @@ public interface IHomeService
     /// 获取热门商品列表（TODO：目前按发布时间排序）
     /// </summary>
     Task<List<ProductCardDto>> GetHotProductsAsync();
+
 }
