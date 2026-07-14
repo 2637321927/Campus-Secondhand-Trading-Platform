@@ -69,7 +69,8 @@ public class ProductController : ControllerBase
     }
 
 
-    /// <summary>    /// 删除商品
+    /// <summary>
+    /// /// 删除商品
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize]

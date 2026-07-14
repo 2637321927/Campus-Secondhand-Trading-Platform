@@ -22,6 +22,7 @@ public class ProductRepository : IProductRepository
         => await _context.Products
             .Include(p => p.Images)
             .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
 
     public async Task<List<Product>> GetByCategoryAsync(long categoryId)

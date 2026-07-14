@@ -10,8 +10,6 @@ public class ProductConfig : IEntityTypeConfiguration<Product>
     {
         builder.Property(p => p.ProductId).UseIdentityColumn();
 
-        builder.Property(p => p.Status).HasConversion<string>();
-
         // 卖家
         builder.HasOne(p => p.Seller)
             .WithMany(n => n.Products)
