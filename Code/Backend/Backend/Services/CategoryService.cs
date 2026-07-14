@@ -14,7 +14,7 @@ public class CategoryService : ICategoryService
         _categoryRepo = categoryRepo;
         _productRepo = productRepo;
     }
-    public async Task<CategoryDto?> GetByIdAsync(int categoryId)
+    public async Task<CategoryDto?> GetByIdAsync(long categoryId)
     {
         var category = await _categoryRepo.GetByIdAsync(categoryId);
         if (category == null) return null;
@@ -46,7 +46,7 @@ public class CategoryService : ICategoryService
         }).ToList();
     }
     
-    public async Task<List<CategoryDto>> GetChildrenAsync(int parentId)
+    public async Task<List<CategoryDto>> GetChildrenAsync(long parentId)
     {
         var children = await _categoryRepo.GetChildrenAsync(parentId);
         var parent = await _categoryRepo.GetByIdAsync(parentId);
@@ -73,7 +73,7 @@ public class CategoryService : ICategoryService
         return true;
     }
 
-    public async Task<bool> DeleteCategoryAsync(int categoryId)
+    public async Task<bool> DeleteCategoryAsync(long categoryId)
     {
         var category = await _categoryRepo.GetByIdAsync(categoryId);
         if (category == null) return false;
@@ -83,7 +83,7 @@ public class CategoryService : ICategoryService
         return true;
     }
 
-    public async Task<List<ProductDto>> GetProductsByCategoryAsync(int categoryId)
+    public async Task<List<ProductDto>> GetProductsByCategoryAsync(long categoryId)
     {
         var products = await _productRepo.GetByCategoryAsync(categoryId);
         return products.Select(p => new ProductDto

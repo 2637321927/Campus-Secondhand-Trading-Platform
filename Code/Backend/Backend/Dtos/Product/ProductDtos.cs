@@ -8,7 +8,7 @@ public class CreateProductDto
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string? Info { get; set; }
-    public int CategoryId { get; set; }
+    public long CategoryId { get; set; }
     public List<IFormFile>? Images { get; set; }
 
 }
@@ -32,6 +32,7 @@ public class ProductDto
     public int UserId { get; set; }
     public long CategoryId { get; set; }
     public string? CategoryName { get; set; }
+    public int ViewCount { get; set; }
     public List<ProductImageDto> Images { get; set; } = new();
 }
 
@@ -52,4 +53,5 @@ public class ProductCardDto
     public string? CoverImageUrl { get; set; } 
     public string SellerName { get; set; }= string.Empty;
     public DateTime ReleaseDate { get; set; }
+    public int ViewCount { get; set; }
 }

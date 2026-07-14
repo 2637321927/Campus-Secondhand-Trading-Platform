@@ -10,18 +10,33 @@ public class ProductService : IProductService
     private readonly IProductRepository _productRepo;
     private readonly IUpdatedFileService _updatedFile;
     private readonly ICategoryRepository _categoryRepo;
+    private readonly IProductViewRepository _productViewRepo;
 
-    public ProductService(IProductRepository productRepo, IUpdatedFileService updatedFileService, ICategoryRepository categoryRepo)
+    public ProductService(IProductRepository productRepo, IUpdatedFileService updatedFileService, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo)
     {
         _productRepo = productRepo;
         _updatedFile = updatedFileService;
         _categoryRepo = categoryRepo;
+        _productViewRepo = productViewRepo;
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId)
     {
         var product = await _productRepo.GetByIdAsync(productId);
-        return product == null ? null : ToDto(product); 
+        if (product == null) return null;
+        var viewCount = await _productViewRepo.GetViewCountAsync(productId);
+        return ToDto(product, viewCount); 
+    }
+
+    public async Task RecordViewAsync(long productId, int userId)
+    {
+        await _productViewRepo.AddAsync(new ProductView
+        {
+            ProductId = productId,
+            UserId = userId,
+            ViewTime = DateTime.Now
+        });
+        await _productViewRepo.SaveAsync();
     }
     public async Task<ProductDto> CreateAsync(int userId, CreateProductDto dto)
     {
@@ -175,7 +190,7 @@ public class ProductService : IProductService
 
     }
 
-    private static ProductDto ToDto(Product p) => new()
+    private static ProductDto ToDto(Product p, int viewCount = 0) => new()
     {
         ProductId = p.ProductId,
         Name = p.Name,
@@ -186,6 +201,7 @@ public class ProductService : IProductService
         UserId = p.UserId,
         CategoryId = p.CategoryId,
         CategoryName = p.Category?.CategoryName,
+        ViewCount = viewCount,
         Images = p.Images?.Select(i => new ProductImageDto
         {
             ImgFileId = i.ImgFileId,

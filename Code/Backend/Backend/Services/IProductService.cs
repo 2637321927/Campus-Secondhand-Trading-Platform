@@ -9,5 +9,6 @@ public interface IProductService
     Task<ProductDto> CreateAsync(int userId, CreateProductDto dto);
     Task<ProductDto?> UpdateAsync(long productId, UpdateProductDto dto);
     Task<bool> DeleteAsync(long productId, int userId);
+    Task RecordViewAsync(long productId, int userId);
 
 }

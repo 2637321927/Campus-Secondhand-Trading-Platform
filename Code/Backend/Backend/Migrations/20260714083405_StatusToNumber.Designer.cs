@@ -12,8 +12,8 @@ using Oracle.EntityFrameworkCore.Metadata;
 namespace Backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260713064705_Change Product Schema")]
-    partial class ChangeProductSchema
+    [Migration("20260714083405_StatusToNumber")]
+    partial class StatusToNumber
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -405,6 +405,36 @@ namespace Backend.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("product");
+                });
+
+            modelBuilder.Entity("Backend.Models.ProductView", b =>
+                {
+                    b.Property<long>("ViewId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("view_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ViewId"));
+
+                    b.Property<long>("ProductId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("product_id");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime>("ViewTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("view_time");
+
+                    b.HasKey("ViewId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("product_view");
                 });
 
             modelBuilder.Entity("Backend.Models.Purchase", b =>
@@ -925,6 +955,25 @@ namespace Backend.Migrations
                     b.Navigation("Seller");
                 });
 
+            modelBuilder.Entity("Backend.Models.ProductView", b =>
+                {
+                    b.HasOne("Backend.Models.Product", "Product")
+                        .WithMany("Views")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.NormUser", "User")
+                        .WithMany("Views")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Backend.Models.Purchase", b =>
                 {
                     b.HasOne("Backend.Models.Address", "Address")
@@ -1089,6 +1138,8 @@ namespace Backend.Migrations
                     b.Navigation("Collections");
 
                     b.Navigation("Products");
+
+                    b.Navigation("Views");
                 });
 
             modelBuilder.Entity("Backend.Models.Product", b =>
@@ -1096,6 +1147,8 @@ namespace Backend.Migrations
                     b.Navigation("Collections");
 
                     b.Navigation("Images");
+
+                    b.Navigation("Views");
                 });
 
             modelBuilder.Entity("Backend.Models.Purchase", b =>

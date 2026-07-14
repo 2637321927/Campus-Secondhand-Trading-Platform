@@ -28,6 +28,18 @@ public class ProductController : ControllerBase
     }
 
     /// <summary>
+    /// 记录商品浏览
+    /// </summary>
+    [Authorize]
+    [HttpPost("{id}/view-record")]
+    public async Task<ActionResult> RecordView(long id)
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        await _productService.RecordViewAsync(id, userId);
+        return NoContent();
+    }
+
+    /// <summary>
     /// 发布商品
     /// </summary>
     [Authorize]
@@ -53,8 +65,8 @@ public class ProductController : ControllerBase
         return Ok(product);
     }
 
-    /// <summary>
-    /// 删除商品
+
+    /// <summary>    /// 删除商品
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize]

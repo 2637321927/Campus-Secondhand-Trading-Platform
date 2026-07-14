@@ -33,7 +33,7 @@ public class CategoryController : ControllerBase
     ///获取单个分类信息
     ///</summary>
     [HttpGet("{categoryId}")]
-    public async Task<ActionResult<CategoryDto>> GetById(int categoryId)
+    public async Task<ActionResult<CategoryDto>> GetById(long categoryId)
     {
         var category = await _categoryService.GetByIdAsync(categoryId);
         if (category == null) return NotFound();
@@ -44,7 +44,7 @@ public class CategoryController : ControllerBase
     ///获取某个分类下的商品列表
     ///</summary>
     [HttpGet("{categoryId}/products")]
-    public async Task<ActionResult<List<ProductDto>>> GetProducts(int categoryId)
+    public async Task<ActionResult<List<ProductDto>>> GetProducts(long categoryId)
     {
         var category = await _categoryService.GetByIdAsync(categoryId);
         if (category == null) return NotFound(new { error = "分类不存在" });
@@ -57,7 +57,7 @@ public class CategoryController : ControllerBase
     ///获取某分类下的子分类列表
     ///</summary>
     [HttpGet("{categoryId}/children")]
-    public async Task<ActionResult<List<CategoryDto>>> GetChildren(int categoryId)
+    public async Task<ActionResult<List<CategoryDto>>> GetChildren(long categoryId)
     {
         var category = await _categoryService.GetByIdAsync(categoryId);
         if (category == null) return NotFound(new { error = "分类不存在" });
