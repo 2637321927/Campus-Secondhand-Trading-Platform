@@ -8,17 +8,22 @@ public class CreateProductDto
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string? Info { get; set; }
-    public int CategoryId { get; set; }
+    public long CategoryId { get; set; }
     public List<IFormFile>? Images { get; set; }
 
 }
 
 public class UpdateProductDto
 {
-    public string? Name { get; set; }
-    public decimal? Price { get; set; }
-    public string? Info { get; set; }
-    public ProductStatus? Status { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public string Info { get; set; } = string.Empty;
+    public ProductStatus Status { get; set; } = ProductStatus.Available;
+    public long CategoryId { get; set; }
+    public List<IFormFile>? newImages { get; set; }
+    public List<long>? toRemoveImageIds { get; set; } = new();
+
 }
 
 public class ProductDto

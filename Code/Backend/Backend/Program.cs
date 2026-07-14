@@ -46,6 +46,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBaseUserService, BaseUserService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
+builder.Services.AddScoped<IProdImageService, ProdImageService>();
 
 //JWT认证配置
 var jwtKey = builder.Configuration["Jwt:Key"]!;

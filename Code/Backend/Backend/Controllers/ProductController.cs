@@ -46,11 +46,14 @@ public class ProductController : ControllerBase
     /// </summary>
     [HttpPut("{id}")]
     [Authorize]
-    public async Task<ActionResult<ProductDto>> Update(long id, [FromBody] UpdateProductDto dto)
+    public async Task<ActionResult<ProductDto>> Update(long id, [FromForm] UpdateProductDto dto)
     {
-        var product = await _productService.UpdateAsync(id, dto);
+
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var product = await _productService.UpdateAsync(id, userId, dto);
         if (product == null) return NotFound();
         return Ok(product);
+
     }
 
     /// <summary>

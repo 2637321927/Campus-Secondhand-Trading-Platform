@@ -5,7 +5,7 @@ namespace Backend.Dtos.Category;
 public class CreateCategoryDto
 {
     public string Name { get; set; } = string.Empty;
-    public int? ParentId { get; set; }
+    public long? ParentId { get; set; }
 }
 
 ///<summary>
@@ -13,9 +13,9 @@ public class CreateCategoryDto
 ///</summary>
 public class CategoryDto
 {
-    public int CategoryId { get; set; } 
+    public long CategoryId { get; set; } 
     public string CategoryName { get; set; }= string.Empty;
-    public int? ParentId { get; set; }
+    public long? ParentId { get; set; }
     public string? ParentName { get; set; }
     //我觉得带上parentname算是合理的冗余
 }
