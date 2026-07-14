@@ -2,25 +2,20 @@ using Backend.Dtos.Product;
 using Backend.Models;
 using Backend.Models.Enums;
 using Backend.Repositories;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Services;
 
 public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepo;
+    private readonly IUpdatedFileService _updatedFile;
+    private readonly ICategoryRepository _categoryRepo;
 
-    public ProductService(IProductRepository productRepo)
+    public ProductService(IProductRepository productRepo, IUpdatedFileService updatedFileService, ICategoryRepository categoryRepo)
     {
         _productRepo = productRepo;
-    }
-    
-    public async Task<bool> CreateProductAsync(CreateProductDto dto)
-    {
-
-
-        return true;
-
+        _updatedFile = updatedFileService;
+        _categoryRepo = categoryRepo;
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId)
@@ -28,34 +23,117 @@ public class ProductService : IProductService
         var product = await _productRepo.GetByIdAsync(productId);
         return product == null ? null : ToDto(product); 
     }
-
-    public async Task<List<ProductDto>> GetAvailableAsync()
+    public async Task<ProductDto> CreateAsync(int userId, CreateProductDto dto)
     {
-        var products = await _productRepo.GetAvailableAsync();
-        return products.Select(ToDto).ToList();
-    }
 
-    public async Task<ProductDto> CreateAsync(CreateProductDto dto, int userId)
-    {
+        if (await _categoryRepo.GetByIdAsync(dto.CategoryId) == null)
+        {
+            
+            throw new ArgumentException("Category does not exist.");
+
+        }
+
+        if (dto.Images == null || dto.Images.Count == 0)
+        {
+            
+            throw new ArgumentException("At least one image is required to create a product.");
+
+        }
+
+        UploadMultipleResult result = await _updatedFile.UploadMultipleAsync(dto.Images, userId);
+
+        if (result.Failed.Count != 0)
+        {
+
+            if (result.Succeeded.Count > 0)
+            {
+                
+                foreach (var file in result.Succeeded)
+                {
+                    
+                    await _updatedFile.SoftDeleteAsync(file.FileId);
+
+                }
+
+            }
+
+            throw new InvalidOperationException("Failed to upload images.");
+
+        }
+
         var product = new Product
         {
+
             Name = dto.Name,
             Price = dto.Price,
             Info = dto.Info,
             Status = ProductStatus.Available,
             UserId = userId,
-            CategoryId = dto.CategoryId,
-            ReleaseDate = DateTime.Now
+            ReleaseDate = DateTime.Now,
+            CategoryId = dto.CategoryId
+            
         };
 
-        await _productRepo.AddAsync(product);
-        await _productRepo.SaveAsync();
+        try
+        {
+
+            await _productRepo.AddAsync(product);
+            await _productRepo.SaveAsync();
+
+        }
+        catch
+        {
+
+            foreach (var file in result.Succeeded)
+            {
+                
+                await _updatedFile.SoftDeleteAsync(file.FileId);
+
+            }
+
+            throw;
+
+        }
+
+        foreach (var file in result.Succeeded)
+        {
+
+            product.Images.Add(new ProdImage
+            {
+                ProductId = product.ProductId,
+                ImgFileId = file.FileId,
+                ImgIndex = product.Images.Count
+            });
+
+        }
+
+        try
+        {
+
+            await _productRepo.SaveAsync();
+
+        }
+        catch
+        {
+
+            foreach (var file in result.Succeeded)
+            {
+                
+                await _updatedFile.SoftDeleteAsync(file.FileId);
+
+            }
+
+            throw;
+
+        }
 
         return ToDto(product);
+
     }
 
     public async Task<ProductDto?> UpdateAsync(long productId, UpdateProductDto dto)
     {
+
         var product = await _productRepo.GetByIdAsync(productId);
         if (product == null) return null;
 
@@ -68,16 +146,33 @@ public class ProductService : IProductService
         await _productRepo.SaveAsync();
 
         return ToDto(product);
+
     }
 
-    public async Task<bool> DeleteAsync(long productId)
+    public async Task<bool> DeleteAsync(long productId, int userId)
     {
+
         var product = await _productRepo.GetByIdAsync(productId);
         if (product == null) return false;
+
+        if (product.UserId != userId)
+        {
+            
+            throw new UnauthorizedAccessException("You do not have permission to delete this product.");
+
+        }
+
+        foreach (var img in product.Images)
+        {
+            
+            await _updatedFile.SoftDeleteAsync(img.ImgFileId);
+
+        }
 
         _productRepo.Delete(product);
         await _productRepo.SaveAsync();
         return true;
+
     }
 
     private static ProductDto ToDto(Product p) => new()

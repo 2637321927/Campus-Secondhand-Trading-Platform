@@ -4,11 +4,13 @@ namespace Backend.Dtos.Product;
 
 public class CreateProductDto
 {
+
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string? Info { get; set; }
-    public int UserId { get; set; }
     public int CategoryId { get; set; }
+    public List<IFormFile>? Images { get; set; }
+
 }
 
 public class UpdateProductDto

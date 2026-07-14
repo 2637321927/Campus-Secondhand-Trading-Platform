@@ -16,7 +16,6 @@ public class ProductController : ControllerBase
         _productService = productService;
     }
     
-
     /// <summary>
     /// 根据 ID 获取商品详情
     /// </summary>
@@ -33,17 +32,20 @@ public class ProductController : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPost]
-    public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto dto)
+    public async Task<ActionResult<ProductDto>> Create([FromForm] CreateProductDto dto)
     {
+
         var userId = int.Parse(User.FindFirst("userId")!.Value);
-        var product = await _productService.CreateAsync(dto,userId);
+        var product = await _productService.CreateAsync(userId, dto);
         return CreatedAtAction(nameof(GetById), new { id = product.ProductId }, product);
+
     }
 
     /// <summary>
     /// 更新商品
     /// </summary>
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<ActionResult<ProductDto>> Update(long id, [FromBody] UpdateProductDto dto)
     {
         var product = await _productService.UpdateAsync(id, dto);
@@ -55,10 +57,15 @@ public class ProductController : ControllerBase
     /// 删除商品
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<ActionResult> Delete(long id)
     {
-        var result = await _productService.DeleteAsync(id);
+
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var result = await _productService.DeleteAsync(id, userId);
         if (!result) return NotFound();
         return NoContent();
+
     }
+
 }

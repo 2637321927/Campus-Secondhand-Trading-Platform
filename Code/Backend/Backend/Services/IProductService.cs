@@ -5,11 +5,9 @@ namespace Backend.Services;
 public interface IProductService
 {
 
-    Task<bool> CreateProductAsync(CreateProductDto dto);
     Task<ProductDto?> GetByIdAsync(long productId);
-    Task<List<ProductDto>> GetAvailableAsync();
-    Task<ProductDto> CreateAsync(CreateProductDto dto, int userId);
+    Task<ProductDto> CreateAsync(int userId, CreateProductDto dto);
     Task<ProductDto?> UpdateAsync(long productId, UpdateProductDto dto);
-    Task<bool> DeleteAsync(long productId);
+    Task<bool> DeleteAsync(long productId, int userId);
 
 }
