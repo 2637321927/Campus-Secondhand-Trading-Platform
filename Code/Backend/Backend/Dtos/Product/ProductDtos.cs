@@ -1,3 +1,5 @@
+using Backend.Models.Enums;
+
 namespace Backend.Dtos.Product;
 
 public class CreateProductDto
@@ -6,7 +8,7 @@ public class CreateProductDto
     public decimal Price { get; set; }
     public string? Info { get; set; }
     public int UserId { get; set; }
-    public long CategoryId { get; set; }
+    public int CategoryId { get; set; }
 }
 
 public class UpdateProductDto
@@ -14,7 +16,7 @@ public class UpdateProductDto
     public string? Name { get; set; }
     public decimal? Price { get; set; }
     public string? Info { get; set; }
-    public string? Status { get; set; }
+    public ProductStatus? Status { get; set; }
 }
 
 public class ProductDto
@@ -23,7 +25,7 @@ public class ProductDto
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string? Info { get; set; }
-    public string Status { get; set; } = string.Empty;
+    public ProductStatus Status { get; set; } = ProductStatus.Available;
     public DateTime ReleaseDate { get; set; }
     public int UserId { get; set; }
     public long CategoryId { get; set; }

@@ -9,13 +9,13 @@ public class CategoryRepository : ICategoryRepository
     private readonly AppDbContext _context;
     public CategoryRepository(AppDbContext context) => _context = context;
 
-    public async Task<Category?> GetByIdAsync(long categoryId)
+    public async Task<Category?> GetByIdAsync(int categoryId)
         => await _context.Categories.FindAsync(categoryId);
 
     public async Task<List<Category>> GetAllAsync()
         => await _context.Categories.ToListAsync();
 
-    public async Task<List<Category>> GetChildrenAsync(long parentId)
+    public async Task<List<Category>> GetChildrenAsync(int parentId)
         => await _context.Categories.Where(c => c.ParentId == parentId).ToListAsync();
 
     public async Task<List<Category>> GetRootCategoriesAsync()

@@ -24,3 +24,4 @@ Code/Frontend/.env.development
 *.dmp
 *.dump
 Code/Database/*.sqlbak
+.vscode/

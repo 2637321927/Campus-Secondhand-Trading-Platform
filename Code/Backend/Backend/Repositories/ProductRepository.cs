@@ -1,5 +1,6 @@
 using Backend.Data;
 using Backend.Models;
+using Backend.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Repositories;
@@ -22,23 +23,23 @@ public class ProductRepository : IProductRepository
             .Include(p => p.Category)
             .ToListAsync();
 
-    public async Task<List<Product>> GetByCategoryAsync(long categoryId)
+    public async Task<List<Product>> GetByCategoryAsync(int categoryId)
         => await _context.Products
             .Where(p => p.CategoryId == categoryId)
             .Include(p => p.Images)
+            .ToListAsync();
+
+    public async Task<List<Product>> GetAvailableAsync()
+        => await _context.Products
+            .Where(p => p.Status == ProductStatus.Available)
+            .Include(p => p.Images)
+            .Include(p => p.Category)
             .ToListAsync();
 
     public async Task<List<Product>> GetByUserIdAsync(int userId)
         => await _context.Products
             .Where(p => p.UserId == userId)
             .Include(p => p.Images)
-            .ToListAsync();
-
-    public async Task<List<Product>> GetAvailableAsync()
-        => await _context.Products
-            .Where(p => p.Status == "available")
-            .Include(p => p.Images)
-            .Include(p => p.Category)
             .ToListAsync();
 
     public async Task AddAsync(Product product)

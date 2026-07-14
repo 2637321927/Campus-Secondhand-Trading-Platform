@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Backend.Models.Enums;
 
 namespace Backend.Models;
 
@@ -15,14 +16,14 @@ public class Product
     public long ProductId { get; set; }
 
     [Column("name")]
-    [MaxLength(30)]
+    [MaxLength(100)]
     public string Name { get; set; } = string.Empty;
 
     [Column("price", TypeName = "decimal(10,2)")]
     public decimal Price { get; set; }
 
     [Column("info")]
-    [MaxLength(100)]
+    [MaxLength(1000)]
     public string? Info { get; set; }
 
     [Column("release_date")]
@@ -33,13 +34,13 @@ public class Product
     /// </summary>
     [Column("status")]
     [MaxLength(10)]
-    public string Status { get; set; } = "available";
+    public ProductStatus Status { get; set; } = ProductStatus.Available;
 
     [Column("user_id")]
     public int UserId { get; set; }
 
     [Column("category_id")]
-    public long CategoryId { get; set; }
+    public int CategoryId { get; set; }
 
     // 导航属性
     [ForeignKey("UserId")]
