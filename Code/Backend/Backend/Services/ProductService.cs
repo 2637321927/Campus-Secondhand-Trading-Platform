@@ -8,24 +8,25 @@ namespace Backend.Services;
 public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepo;
-    private readonly IUpdatedFileService _updatedFile;
     private readonly ICategoryRepository _categoryRepo;
     private readonly IProductViewRepository _productViewRepo;
+    private readonly IProdImageService _prodImage;
 
-    public ProductService(IProductRepository productRepo, IUpdatedFileService updatedFileService, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo)
+    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService)
     {
         _productRepo = productRepo;
-        _updatedFile = updatedFileService;
         _categoryRepo = categoryRepo;
         _productViewRepo = productViewRepo;
+        _prodImage = prodImageService;
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId)
     {
+
         var product = await _productRepo.GetByIdAsync(productId);
         if (product == null) return null;
         var viewCount = await _productViewRepo.GetViewCountAsync(productId);
-        return ToDto(product, viewCount); 
+        return ToDto(product, viewCount);
     }
 
     public async Task RecordViewAsync(long productId, int userId)
@@ -38,41 +39,14 @@ public class ProductService : IProductService
         });
         await _productViewRepo.SaveAsync();
     }
-    public async Task<ProductDto> CreateAsync(int userId, CreateProductDto dto)
+
+    public async Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto)
     {
 
         if (await _categoryRepo.GetByIdAsync(dto.CategoryId) == null)
         {
             
             throw new ArgumentException("Category does not exist.");
-
-        }
-
-        if (dto.Images == null || dto.Images.Count == 0)
-        {
-            
-            throw new ArgumentException("At least one image is required to create a product.");
-
-        }
-
-        UploadMultipleResult result = await _updatedFile.UploadMultipleAsync(dto.Images, userId);
-
-        if (result.Failed.Count != 0)
-        {
-
-            if (result.Succeeded.Count > 0)
-            {
-                
-                foreach (var file in result.Succeeded)
-                {
-                    
-                    await _updatedFile.SoftDeleteAsync(file.FileId);
-
-                }
-
-            }
-
-            throw new InvalidOperationException("Failed to upload images.");
 
         }
 
@@ -89,73 +63,63 @@ public class ProductService : IProductService
             
         };
 
-        try
+        await _productRepo.AddAsync(product);
+        await _productRepo.SaveAsync();
+
+        if (dto.Images != null && dto.Images.Count > 0)
         {
-
-            await _productRepo.AddAsync(product);
-            await _productRepo.SaveAsync();
-
-        }
-        catch
-        {
-
-            foreach (var file in result.Succeeded)
-            {
-                
-                await _updatedFile.SoftDeleteAsync(file.FileId);
-
-            }
-
-            throw;
-
-        }
-
-        foreach (var file in result.Succeeded)
-        {
-
-            product.Images.Add(new ProdImage
-            {
-                ProductId = product.ProductId,
-                ImgFileId = file.FileId,
-                ImgIndex = product.Images.Count
-            });
-
-        }
-
-        try
-        {
-
-            await _productRepo.SaveAsync();
-
-        }
-        catch
-        {
-
-            foreach (var file in result.Succeeded)
-            {
-                
-                await _updatedFile.SoftDeleteAsync(file.FileId);
-
-            }
-
-            throw;
-
+            await _prodImage.UploadProductImagesAsync(dto.Images, product.ProductId, userId);
         }
 
         return ToDto(product);
-
+        
     }
 
-    public async Task<ProductDto?> UpdateAsync(long productId, UpdateProductDto dto)
+    public async Task<ProductDto?> UpdateAsync(long productId, int userId, UpdateProductDto dto)
     {
 
         var product = await _productRepo.GetByIdAsync(productId);
         if (product == null) return null;
 
-        if (dto.Name != null) product.Name = dto.Name;
-        if (dto.Price.HasValue) product.Price = dto.Price.Value;
-        if (dto.Info != null) product.Info = dto.Info;
-        if (dto.Status.HasValue) product.Status = dto.Status.Value;
+        if (product.UserId != userId)
+        {
+
+            throw new UnauthorizedAccessException("You do not have permission to update this product.");
+
+        }
+
+        product.Name = dto.Name;
+        product.Price = dto.Price;
+        product.Info = dto.Info;
+        product.Status = dto.Status;
+        product.CategoryId = dto.CategoryId;
+
+        if (dto.toRemoveImageIds != null && dto.toRemoveImageIds.Count > 0)
+        {
+
+            await _prodImage.DeleteProductImagesAsync(dto.toRemoveImageIds);
+
+            foreach (var imgId in dto.toRemoveImageIds)
+            {
+                var img = product.Images.FirstOrDefault(i => i.ImgFileId == imgId);
+                if (img != null)
+                    product.Images.Remove(img);
+            }
+
+        }
+
+        if (dto.newImages != null && dto.newImages.Count > 0)
+        {
+
+            await _prodImage.UploadProductImagesAsync(dto.newImages, productId, product.UserId);
+
+        }
+
+        var index = 0;
+        foreach (var img in product.Images.OrderBy(i => i.ImgIndex))
+        {
+            img.ImgIndex = index++;
+        }
 
         _productRepo.Update(product);
         await _productRepo.SaveAsync();
@@ -177,12 +141,10 @@ public class ProductService : IProductService
 
         }
 
-        foreach (var img in product.Images)
-        {
-            
-            await _updatedFile.SoftDeleteAsync(img.ImgFileId);
-
-        }
+        var imageIds = product.Images.Select(i => i.ImgFileId).ToList();
+        if (imageIds.Count > 0)
+            await _prodImage.DeleteProductImagesAsync(imageIds);
+        product.Images.Clear();
 
         _productRepo.Delete(product);
         await _productRepo.SaveAsync();

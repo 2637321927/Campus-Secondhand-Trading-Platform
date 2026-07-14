@@ -10,6 +10,11 @@ public interface IUpdatedFileRepository
     Task<UpdatedFile?> GetByIdAsync(long updatedFileId);
 
     /// <summary>
+    /// 批量按ID查询，无论是否被软删除都返回
+    /// </summary>
+    Task<List<UpdatedFile>> GetByIdsAsync(IEnumerable<long> fileIds);
+
+    /// <summary>
     /// 按ID查询，仅返回未被软删除的文件
     /// </summary>
     Task<UpdatedFile?> GetActiveByIdAsync(long updatedFileId);

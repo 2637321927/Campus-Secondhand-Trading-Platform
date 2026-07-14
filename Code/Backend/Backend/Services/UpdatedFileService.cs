@@ -24,74 +24,68 @@ public class UpdatedFileService : IUpdatedFileService
 
     }
 
-    public async Task<UpdatedFile> UploadAsync(IFormFile file, long uploaderId)
+    public async Task<List<UpdatedFile>> UploadMultipleAsync(List<IFormFile> files, long uploaderId)
     {
 
-        var fileType = ContentTypeMapper.FromMimeType(file.ContentType);
-        var sizeLimit = _config.GetValue<long>($"FileStorage:SizeLimits:{fileType}");
-        if (sizeLimit > 0 && file.Length > sizeLimit)
-        {
+        if (files == null || files.Count == 0)
+            return new List<UpdatedFile>();
 
-            var sizeMb = file.Length / (1024.0 * 1024.0);
-            var limitMb = sizeLimit / (1024.0 * 1024.0);
-            throw new InvalidOperationException(
-                $"文件 \"{file.FileName}\" 大小 {sizeMb:F2} MB 超过 {fileType} 类型上限 {limitMb:F2} MB。");
-                
-        }
-
-        using var stream = file.OpenReadStream();
-        var storagePath = await _storage.UploadFileAsync(stream, file.FileName, fileType);
-
-        var entity = new UpdatedFile
-        {
-
-            FileName = file.FileName,
-            StoragePath = storagePath,
-            MimeType = file.ContentType,
-            FileSize = file.Length,
-            ContentType = fileType,
-            UploaderId = (int)uploaderId,
-            UploadTime = DateTime.Now
-            
-        };
+        var entities = new List<UpdatedFile>(files.Count);
+        var storagePaths = new List<string>(files.Count);
 
         try
         {
 
-            await _repo.AddAsync(entity);
+            foreach (var file in files)
+            {
+
+                var fileType = ContentTypeMapper.FromMimeType(file.ContentType);
+                var sizeLimit = _config.GetValue<long>($"FileStorage:SizeLimits:{fileType}");
+                if (sizeLimit > 0 && file.Length > sizeLimit)
+                {
+
+                    var sizeMb = file.Length / (1024.0 * 1024.0);
+                    var limitMb = sizeLimit / (1024.0 * 1024.0);
+                    throw new InvalidOperationException(
+                        $"文件 \"{file.FileName}\" 大小 {sizeMb:F2} MB 超过 {fileType} 类型上限 {limitMb:F2} MB。");
+
+                }
+
+                using var stream = file.OpenReadStream();
+                var storagePath = await _storage.UploadFileAsync(stream, file.FileName, fileType);
+                storagePaths.Add(storagePath);
+
+                var entity = new UpdatedFile
+                {
+
+                    FileName = file.FileName,
+                    StoragePath = storagePath,
+                    MimeType = file.ContentType,
+                    FileSize = file.Length,
+                    ContentType = fileType,
+                    UploaderId = (int)uploaderId,
+                    UploadTime = DateTime.Now
+
+                };
+
+                await _repo.AddAsync(entity);
+                entities.Add(entity);
+
+            }
+
             await _repo.SaveAsync();
-            return entity;
+            return entities;
 
         }
         catch
         {
 
-            await _storage.DeleteFileAsync(storagePath);
+            foreach (var path in storagePaths)
+                await _storage.DeleteFileAsync(path);
+
             throw;
 
         }
-
-    }
-
-    public async Task<UploadMultipleResult> UploadMultipleAsync(List<IFormFile> files, long uploaderId)
-    {
-
-        var succeeded = new List<UpdatedFile>(files.Count);
-        var failed = new List<(string FileName, string Error)>();
-
-        foreach (var file in files)
-        {
-            try
-            {
-                succeeded.Add(await UploadAsync(file, uploaderId));
-            }
-            catch (Exception ex)
-            {
-                failed.Add((file.FileName, ex.Message));
-            }
-        }
-
-        return new UploadMultipleResult(succeeded, failed);
 
     }
 
@@ -150,11 +144,36 @@ public class UpdatedFileService : IUpdatedFileService
         }
     }
 
-}
+    public async Task HardDeleteMultipleAsync(List<long> fileIds)
+    {
 
-/// <summary>
-/// 批量上传结果
-/// </summary>
-/// <param name="Succeeded">上传成功的文件列表</param>
-/// <param name="Failed">上传失败的文件及原因（FileName, Error）</param>
-public record UploadMultipleResult(List<UpdatedFile> Succeeded, List<(string FileName, string Error)> Failed);
+        if (fileIds == null || fileIds.Count == 0)
+            return;
+
+        var files = await _repo.GetByIdsAsync(fileIds);
+
+        if (files.Count == 0)
+            return;
+
+        foreach (var file in files)
+            await _storage.DeleteFileAsync(file.StoragePath);
+
+        try
+        {
+
+            _repo.DeleteRange(files);
+            await _repo.SaveAsync();
+
+        }
+        catch
+        {
+
+            foreach (var file in files)
+                await _repo.SoftDeleteAsync(file.FileId);
+            await _repo.SaveAsync();
+
+        }
+
+    }
+
+}

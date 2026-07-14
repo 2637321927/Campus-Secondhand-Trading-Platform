@@ -6,14 +6,9 @@ public interface IUpdatedFileService
 {
 
     /// <summary>
-    /// 上传文件
-    /// </summary>
-    Task<UpdatedFile> UploadAsync(IFormFile file, long uploaderId);
-
-    /// <summary>
     /// 批量上传文件
     /// </summary>
-    Task<UploadMultipleResult> UploadMultipleAsync(List<IFormFile> files, long uploaderId);
+    Task<List<UpdatedFile>> UploadMultipleAsync(List<IFormFile> files, long uploaderId);
 
     /// <summary>
     /// 获取文件无论是否被软删除
@@ -44,5 +39,10 @@ public interface IUpdatedFileService
     /// 物理删除
     /// </summary>
     Task HardDeleteAsync(long fileId);
+
+    /// <summary>
+    /// 批量物理删除
+    /// </summary>
+    Task HardDeleteMultipleAsync(List<long> fileIds);
     
 }

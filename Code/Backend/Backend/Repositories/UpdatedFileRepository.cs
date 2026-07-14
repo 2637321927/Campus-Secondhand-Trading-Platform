@@ -13,6 +13,11 @@ public class UpdatedFileRepository : IUpdatedFileRepository
     public async Task<UpdatedFile?> GetByIdAsync(long updatedFileId)
         => await _context.UpdatedFiles.FindAsync(updatedFileId);
 
+    public async Task<List<UpdatedFile>> GetByIdsAsync(IEnumerable<long> fileIds)
+        => await _context.UpdatedFiles
+            .Where(f => fileIds.Contains(f.FileId))
+            .ToListAsync();
+
     public async Task<UpdatedFile?> GetActiveByIdAsync(long updatedFileId)
         => await _context.UpdatedFiles
             .Where(f => f.FileId == updatedFileId && !f.IsDeleted)
