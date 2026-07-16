@@ -49,6 +49,9 @@ public class ProductRepository : IProductRepository
             .Include(p => p.Seller)
             .ToListAsync();
 
+    public IQueryable<Product> Query()
+        => _context.Products.AsQueryable();
+
     public async Task AddAsync(Product product)
         => await _context.Products.AddAsync(product);
 

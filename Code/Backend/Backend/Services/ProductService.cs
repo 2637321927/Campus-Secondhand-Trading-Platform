@@ -2,6 +2,7 @@ using Backend.Dtos.Product;
 using Backend.Models;
 using Backend.Models.Enums;
 using Backend.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Services;
 
@@ -20,13 +21,15 @@ public class ProductService : IProductService
         _prodImage = prodImageService;
     }
 
-    public async Task<ProductDto?> GetByIdAsync(long productId)
+    public async Task<ProductDto?> GetByIdAsync(long productId, int userId)
     {
 
         var product = await _productRepo.GetByIdAsync(productId);
         if (product == null) return null;
+        if (userId != -1 && product.UserId != userId) await RecordViewAsync(productId, userId);
         var viewCount = await _productViewRepo.GetViewCountAsync(productId);
         return ToDto(product, viewCount);
+
     }
 
     public async Task RecordViewAsync(long productId, int userId)
@@ -128,6 +131,36 @@ public class ProductService : IProductService
 
     }
 
+    public async Task<List<ProductCardDto>> QueryProductCardsAsync(
+        ProductFilter? filter,
+        ProductOrder? order,
+        int count)
+    {
+
+        IQueryable<Product> query = _productRepo.Query()
+            .Where(p => p.Status == ProductStatus.Available);
+
+        if (filter != null)
+            query = filter(query);
+
+        if (order != null)
+            query = order(query);
+
+        var products = await query
+            .Take(count)
+            .Include(p => p.Images)
+            .Include(p => p.Seller)
+            .ToListAsync();
+
+        var ids = products.Select(p => p.ProductId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
+
+        return products.Select(p =>
+            ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))
+        ).ToList();
+
+    }
+
     public async Task<bool> DeleteAsync(long productId, int userId)
     {
 
@@ -152,6 +185,13 @@ public class ProductService : IProductService
 
     }
 
+    public static readonly ProductOrder Latest = q =>
+        q.OrderByDescending(p => p.ReleaseDate);
+
+    public static readonly ProductOrder Hottest = q =>
+        q.OrderByDescending(p => p.Views.Count)
+         .ThenByDescending(p => p.ReleaseDate);
+
     private static ProductDto ToDto(Product p, int viewCount = 0) => new()
     {
         ProductId = p.ProductId,
@@ -170,4 +210,19 @@ public class ProductService : IProductService
             ImgIndex = i.ImgIndex
         }).ToList() ?? new()
     };
+
+    private static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
+    {
+        ProductId = p.ProductId,
+        Name = p.Name,
+        Price = p.Price,
+        CoverImageUrl = p.Images?
+            .OrderBy(i => i.ImgIndex)
+            .FirstOrDefault()?.ImgFileId is long fileId
+                ? $"/api/files/{fileId}" : null,
+        SellerName = p.Seller?.UserName ?? "",
+        ReleaseDate = p.ReleaseDate,
+        ViewCount = viewCount
+    };
+
 }
