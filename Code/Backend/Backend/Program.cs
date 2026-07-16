@@ -40,6 +40,7 @@ builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
 builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
 builder.Services.AddScoped<IProductViewRepository, ProductViewRepository>();
+builder.Services.AddScoped<IProductCommentRepository, ProductCommentRepository>();
 //Service层注册
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -48,6 +49,7 @@ builder.Services.AddScoped<IBaseUserService, BaseUserService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
 builder.Services.AddScoped<IProdImageService, ProdImageService>();
+builder.Services.AddScoped<IProductCommentService, ProductCommentService>();
 
 //JWT认证配置
 var jwtKey = builder.Configuration["Jwt:Key"]!;
