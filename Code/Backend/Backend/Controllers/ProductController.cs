@@ -22,9 +22,14 @@ public class ProductController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ProductDto>> GetById(long id)
     {
-        var product = await _productService.GetByIdAsync(id);
+        
+        var userIdClaim = User.FindFirst("userId");
+        var userId = -1;
+        if (userIdClaim != null) userId = int.Parse(userIdClaim.Value);
+        var product = await _productService.GetByIdAsync(id, userId);
         if (product == null) return NotFound();
         return Ok(product);
+
     }
 
     /// <summary>

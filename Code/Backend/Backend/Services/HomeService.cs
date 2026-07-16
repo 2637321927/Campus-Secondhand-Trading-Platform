@@ -1,24 +1,27 @@
 using Backend.Dtos.Home;
 using Backend.Dtos.Product;
-using Backend.Models;
-using Backend.Models.Enums;
 using Backend.Repositories;
 
 namespace Backend.Services;
 
 public class HomeService : IHomeService
 {
+    private readonly IProductService _productService;
     private readonly IProductRepository _productRepo;
     private readonly ICategoryService _categoryService;
     private readonly ICollectionRepository _collectionRepo;
-    private readonly IProductViewRepository _productViewRepo;
+
     //TODO：由于目前商品和收藏的模块还没完成，故只调用仓储层
-    public HomeService(IProductRepository productRepo, ICategoryService categoryService, ICollectionRepository collectionRepo, IProductViewRepository productViewRepo)
+    public HomeService(
+        IProductService productService,
+        IProductRepository productRepo,
+        ICategoryService categoryService,
+        ICollectionRepository collectionRepo)
     {
+        _productService = productService;
         _productRepo = productRepo;
         _categoryService = categoryService;
         _collectionRepo = collectionRepo;
-        _productViewRepo = productViewRepo;
     }
 
     public async Task<HomeResponseDto> GetHomeDataAsync(int? userId)
@@ -53,60 +56,9 @@ public class HomeService : IHomeService
     }
 
     public async Task<List<ProductCardDto>> GetRecommendedProductsAsync()
-        => await GetLatestProductsAsync(10);
+        => await _productService.QueryProductCardsAsync(null, ProductService.Latest, 10);
 
     public async Task<List<ProductCardDto>> GetHotProductsAsync()
-        => await GetMostViewedProductsAsync(20);
+        => await _productService.QueryProductCardsAsync(null, ProductService.Hottest, 20);
 
-    //以下为内部方法
-    ///<summary>
-    ///获取最新上架的count个在售商品（推荐）
-    ///</summary>
-    private async Task<List<ProductCardDto>> GetLatestProductsAsync(int count)
-    {
-        var products = await _productRepo.GetAllAsync();
-        var filtered = products
-            .Where(p => p.Status == ProductStatus.Available)
-            .OrderByDescending(p => p.ReleaseDate)
-            .Take(count)
-            .ToList();
-
-        var ids = filtered.Select(p => p.ProductId);
-        var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
-
-        return filtered.Select(p => ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
-    }
-
-    ///<summary>
-    ///获取浏览量最高的count个在售商品（热门）
-    ///</summary>
-    private async Task<List<ProductCardDto>> GetMostViewedProductsAsync(int count)
-    {
-        var products = await _productRepo.GetAllAsync();
-        var available = products.Where(p => p.Status == ProductStatus.Available).ToList();
-
-        var ids = available.Select(p => p.ProductId);
-        var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
-
-        return available
-            .OrderByDescending(p => viewCounts.GetValueOrDefault(p.ProductId, 0))
-            .ThenByDescending(p => p.ReleaseDate)
-            .Take(count)
-            .Select(p => ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
-            .ToList();
-    }
-
-    private static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
-    {
-        ProductId = p.ProductId,
-        Name = p.Name,
-        Price = p.Price,
-        CoverImageUrl = p.Images?
-            .OrderBy(i => i.ImgIndex)
-            .FirstOrDefault()?.ImgFileId is long fileId
-                ? $"/api/files/{fileId}" : null,
-        SellerName = p.Seller?.UserName ?? "",
-        ReleaseDate = p.ReleaseDate,
-        ViewCount = viewCount
-    };
 }
