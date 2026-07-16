@@ -29,6 +29,8 @@ public class ProductRepository : IProductRepository
         => await _context.Products
             .Where(p => p.CategoryId == categoryId)
             .Include(p => p.Images)
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
 
     public async Task<List<Product>> GetAvailableAsync()
@@ -36,12 +38,15 @@ public class ProductRepository : IProductRepository
             .Where(p => p.Status == ProductStatus.Available)
             .Include(p => p.Images)
             .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
 
     public async Task<List<Product>> GetByUserIdAsync(int userId)
         => await _context.Products
             .Where(p => p.UserId == userId)
             .Include(p => p.Images)
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
 
     public async Task AddAsync(Product product)

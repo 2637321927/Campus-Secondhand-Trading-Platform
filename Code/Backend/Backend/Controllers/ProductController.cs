@@ -49,7 +49,7 @@ public class ProductController : ControllerBase
 
         var userId = int.Parse(User.FindFirst("userId")!.Value);
         var product = await _productService.CreateAsync(userId, dto);
-        return CreatedAtAction(nameof(GetById), new { id = product.ProductId }, product);
+        return CreatedAtAction(nameof(GetById), new { id = product!.ProductId }, product);
 
     }
 

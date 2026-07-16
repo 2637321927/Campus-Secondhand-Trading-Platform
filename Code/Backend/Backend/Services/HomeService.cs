@@ -10,14 +10,14 @@ public class HomeService : IHomeService
 {
     private readonly IProductRepository _productRepo;
     private readonly ICategoryService _categoryService;
-    private readonly ICollectionRepository _collectionRepo;
+    private readonly ICollectionService _collectionService;
     private readonly IProductViewRepository _productViewRepo;
-    //TODO：由于目前商品和收藏的模块还没完成，故只调用仓储层
-    public HomeService(IProductRepository productRepo, ICategoryService categoryService, ICollectionRepository collectionRepo, IProductViewRepository productViewRepo)
+
+    public HomeService(IProductRepository productRepo, ICategoryService categoryService, ICollectionService collectionService, IProductViewRepository productViewRepo)
     {
         _productRepo = productRepo;
         _categoryService = categoryService;
-        _collectionRepo = collectionRepo;
+        _collectionService = collectionService;
         _productViewRepo = productViewRepo;
     }
 
@@ -33,12 +33,12 @@ public class HomeService : IHomeService
         //TODO：快捷入口数据需等待用户板块完成后再做调整
         if (userId != null)
         {
-            var favorites = await _collectionRepo.GetByUserIdAsync(userId.Value);
+            var favoriteCount = await _collectionService.GetCollectionCountAsync(userId.Value);
             var published = await _productRepo.GetByUserIdAsync(userId.Value);
 
             quickEntry = new UserQuickEntryDto
             {
-                FavoriteCount = favorites.Count,
+                FavoriteCount = favoriteCount,
                 PublishedProductCount = published.Count,
                 UnreadMessageCount = 0  // TODO：等消息模块做好后补上
             };
