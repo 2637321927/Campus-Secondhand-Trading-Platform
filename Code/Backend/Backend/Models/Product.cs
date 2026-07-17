@@ -40,7 +40,7 @@ public class Product
     public int UserId { get; set; }
 
     [Column("category_id")]
-    public int CategoryId { get; set; }
+    public long CategoryId { get; set; }
 
     // 导航属性
     [ForeignKey("UserId")]
@@ -51,4 +51,6 @@ public class Product
 
     public ICollection<ProdImage> Images { get; set; } = new List<ProdImage>();
     public ICollection<Collection> Collections { get; set; } = new List<Collection>();
+    public ICollection<ProductView> Views { get; set; } = new List<ProductView>();
+    public ICollection<ProductComment> Comments { get; set; } = new List<ProductComment>();
 }

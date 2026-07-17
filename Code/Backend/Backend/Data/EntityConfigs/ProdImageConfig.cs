@@ -8,6 +8,8 @@ public class ProdImageConfig : IEntityTypeConfiguration<ProdImage>
 {
     public void Configure(EntityTypeBuilder<ProdImage> builder)
     {
+        builder.Property(p => p.ImgFileId).ValueGeneratedNever();
+
         builder.HasOne(p => p.Product)
             .WithMany(p => p.Images)
             .HasForeignKey(p => p.ProductId)

@@ -12,7 +12,7 @@ public class Category
     [Key]
     [Column("category_id")]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int CategoryId { get; set; }
+    public long CategoryId { get; set; }
 
     [Column("category_name")]
     [MaxLength(20)]
@@ -22,7 +22,7 @@ public class Category
     /// 父分类ID，null=一级分类，非null=二级分类
     /// </summary>
     [Column("parent_id")]
-    public int? ParentId { get; set; }
+    public long? ParentId { get; set; }
 
     // 导航属性
     [ForeignKey("ParentId")]

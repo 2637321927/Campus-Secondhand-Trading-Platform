@@ -12,6 +12,7 @@ Code/Backend/**/bin/
 Code/Backend/**/obj/
 Code/Backend/**/appsettings.Development.json
 Code/Backend/**/appsettings.Local.json
+Code/Backend/**/Uploads/
 packages/
 *.nupkg
 Code/Frontend/node_modules/
@@ -25,3 +26,5 @@ Code/Frontend/.env.development
 *.dump
 Code/Database/*.sqlbak
 .vscode/
+Uploads/
+**/Uploads/

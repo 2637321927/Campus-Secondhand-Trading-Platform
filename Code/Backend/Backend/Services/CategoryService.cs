@@ -8,13 +8,15 @@ public class CategoryService : ICategoryService
 {
     private readonly ICategoryRepository _categoryRepo;
     private readonly IProductRepository _productRepo;
+    private readonly IProductViewRepository _productViewRepo;
 
-    public CategoryService(ICategoryRepository categoryRepo, IProductRepository productRepo)
+    public CategoryService(ICategoryRepository categoryRepo, IProductRepository productRepo, IProductViewRepository productViewRepo)
     {
         _categoryRepo = categoryRepo;
         _productRepo = productRepo;
+        _productViewRepo = productViewRepo;
     }
-    public async Task<CategoryDto?> GetByIdAsync(int categoryId)
+    public async Task<CategoryDto?> GetByIdAsync(long categoryId)
     {
         var category = await _categoryRepo.GetByIdAsync(categoryId);
         if (category == null) return null;
@@ -46,7 +48,7 @@ public class CategoryService : ICategoryService
         }).ToList();
     }
     
-    public async Task<List<CategoryDto>> GetChildrenAsync(int parentId)
+    public async Task<List<CategoryDto>> GetChildrenAsync(long parentId)
     {
         var children = await _categoryRepo.GetChildrenAsync(parentId);
         var parent = await _categoryRepo.GetByIdAsync(parentId);
@@ -73,7 +75,7 @@ public class CategoryService : ICategoryService
         return true;
     }
 
-    public async Task<bool> DeleteCategoryAsync(int categoryId)
+    public async Task<bool> DeleteCategoryAsync(long categoryId)
     {
         var category = await _categoryRepo.GetByIdAsync(categoryId);
         if (category == null) return false;
@@ -83,9 +85,11 @@ public class CategoryService : ICategoryService
         return true;
     }
 
-    public async Task<List<ProductDto>> GetProductsByCategoryAsync(int categoryId)
+    public async Task<List<ProductDto>> GetProductsByCategoryAsync(long categoryId)
     {
         var products = await _productRepo.GetByCategoryAsync(categoryId);
+        var ids = products.Select(p => p.ProductId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
         return products.Select(p => new ProductDto
         {
             ProductId = p.ProductId,
@@ -97,6 +101,7 @@ public class CategoryService : ICategoryService
             UserId = p.UserId,
             CategoryId = p.CategoryId,
             CategoryName = p.Category?.CategoryName,
+            ViewCount = viewCounts.GetValueOrDefault(p.ProductId, 0),
             Images = p.Images?.Select(i => new ProductImageDto
             {
                 ImgFileId = i.ImgFileId,

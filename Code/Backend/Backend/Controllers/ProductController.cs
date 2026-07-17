@@ -16,16 +16,32 @@ public class ProductController : ControllerBase
         _productService = productService;
     }
     
-
     /// <summary>
     /// 根据 ID 获取商品详情
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<ProductDto>> GetById(long id)
     {
-        var product = await _productService.GetByIdAsync(id);
+        
+        var userIdClaim = User.FindFirst("userId");
+        var userId = -1;
+        if (userIdClaim != null) userId = int.Parse(userIdClaim.Value);
+        var product = await _productService.GetByIdAsync(id, userId);
         if (product == null) return NotFound();
         return Ok(product);
+
+    }
+
+    /// <summary>
+    /// 记录商品浏览
+    /// </summary>
+    [Authorize]
+    [HttpPost("{id}/view-record")]
+    public async Task<ActionResult> RecordView(long id)
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        await _productService.RecordViewAsync(id, userId);
+        return NoContent();
     }
 
     /// <summary>
@@ -33,32 +49,44 @@ public class ProductController : ControllerBase
     /// </summary>
     [Authorize]
     [HttpPost]
-    public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductDto dto)
+    public async Task<ActionResult<ProductDto>> Create([FromForm] CreateProductDto dto)
     {
+
         var userId = int.Parse(User.FindFirst("userId")!.Value);
-        var product = await _productService.CreateAsync(dto,userId);
-        return CreatedAtAction(nameof(GetById), new { id = product.ProductId }, product);
+        var product = await _productService.CreateAsync(userId, dto);
+        return CreatedAtAction(nameof(GetById), new { id = product!.ProductId }, product);
+
     }
 
     /// <summary>
     /// 更新商品
     /// </summary>
     [HttpPut("{id}")]
-    public async Task<ActionResult<ProductDto>> Update(long id, [FromBody] UpdateProductDto dto)
+    [Authorize]
+    public async Task<ActionResult<ProductDto>> Update(long id, [FromForm] UpdateProductDto dto)
     {
-        var product = await _productService.UpdateAsync(id, dto);
+
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var product = await _productService.UpdateAsync(id, userId, dto);
         if (product == null) return NotFound();
         return Ok(product);
+
     }
 
+
     /// <summary>
-    /// 删除商品
+    /// /// 删除商品
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<ActionResult> Delete(long id)
     {
-        var result = await _productService.DeleteAsync(id);
+
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var result = await _productService.DeleteAsync(id, userId);
         if (!result) return NotFound();
         return NoContent();
+
     }
+
 }

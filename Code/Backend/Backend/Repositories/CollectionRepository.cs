@@ -16,6 +16,9 @@ public class CollectionRepository : ICollectionRepository
         => await _context.Collections
             .Where(c => c.UserId == userId)
             .Include(c => c.Product)
+                .ThenInclude(p => p.Images)
+            .Include(c => c.Product)
+                .ThenInclude(p => p.Seller)
             .ToListAsync();
 
     public async Task<bool> IsCollectedAsync(long productId, int userId)

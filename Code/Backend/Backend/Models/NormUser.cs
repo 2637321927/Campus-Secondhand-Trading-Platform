@@ -31,4 +31,5 @@ public class NormUser
     public ICollection<Address> Addresses { get; set; } = new List<Address>();
     public ICollection<Product> Products { get; set; } = new List<Product>();
     public ICollection<Collection> Collections { get; set; } = new List<Collection>();
+    public ICollection<ProductView> Views { get; set; } = new List<ProductView>();
 }

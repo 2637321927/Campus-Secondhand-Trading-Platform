@@ -30,6 +30,8 @@ public class AppDbContext : DbContext
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<SysInfo> SysInfos => Set<SysInfo>();
     public DbSet<UpdatedFile> UpdatedFiles => Set<UpdatedFile>();
+    public DbSet<ProductView> ProductViews => Set<ProductView>();
+    public DbSet<ProductComment> ProductComments => Set<ProductComment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -58,5 +60,7 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EntityConfigs.AnnouncementConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.SysInfoConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.UpdatedFileConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.ProductViewConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.ProductCommentConfig());
     }
 }

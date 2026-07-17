@@ -15,18 +15,22 @@ public class ProductRepository : IProductRepository
             .Include(p => p.Images)
             .Include(p => p.Category)
             .Include(p => p.Seller)
+            .Include(p => p.Views)
             .FirstOrDefaultAsync(p => p.ProductId == productId);
 
     public async Task<List<Product>> GetAllAsync()
         => await _context.Products
             .Include(p => p.Images)
             .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
 
-    public async Task<List<Product>> GetByCategoryAsync(int categoryId)
+    public async Task<List<Product>> GetByCategoryAsync(long categoryId)
         => await _context.Products
             .Where(p => p.CategoryId == categoryId)
             .Include(p => p.Images)
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
 
     public async Task<List<Product>> GetAvailableAsync()
@@ -34,13 +38,19 @@ public class ProductRepository : IProductRepository
             .Where(p => p.Status == ProductStatus.Available)
             .Include(p => p.Images)
             .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
 
     public async Task<List<Product>> GetByUserIdAsync(int userId)
         => await _context.Products
             .Where(p => p.UserId == userId)
             .Include(p => p.Images)
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
             .ToListAsync();
+
+    public IQueryable<Product> Query()
+        => _context.Products.AsQueryable();
 
     public async Task AddAsync(Product product)
         => await _context.Products.AddAsync(product);
