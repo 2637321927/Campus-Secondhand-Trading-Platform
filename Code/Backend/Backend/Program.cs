@@ -52,6 +52,11 @@ builder.Services.AddScoped<IProdImageService, ProdImageService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IProductCommentService, ProductCommentService>();
 
+// 搜索引擎 — 分词 + 词条图 + 搜索
+builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();
+builder.Services.AddSingleton<TermGraph>();
+builder.Services.AddScoped<ISearchService, SearchService>();
+
 //JWT认证配置
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
@@ -134,5 +139,29 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// ========== 搜索引擎初始化 ==========
+using (var scope = app.Services.CreateScope())
+{
+    var termGraph = scope.ServiceProvider.GetRequiredService<Backend.Utilities.TermGraph>();
+    await termGraph.InitializeAsync();
+
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (termGraph.NodeCount == 0)
+    {
+        logger.LogInformation("TermGraph is empty, starting full rebuild...");
+        var searchService = scope.ServiceProvider.GetRequiredService<ISearchService>();
+        await searchService.RebuildGraphAsync();
+        // RebuildGraphAsync 内部已调用 SaveToDatabaseAsync，无需重复
+        logger.LogInformation("TermGraph full rebuild done: {Nodes} nodes, {Edges} edges",
+            termGraph.NodeCount, termGraph.EdgeCount);
+    }
+    else
+    {
+        logger.LogInformation("TermGraph loaded from database: {Nodes} nodes, {Edges} edges",
+            termGraph.NodeCount, termGraph.EdgeCount);
+    }
+}
 
 app.Run();

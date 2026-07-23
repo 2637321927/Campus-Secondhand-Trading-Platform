@@ -8,17 +8,20 @@ namespace Backend.Services;
 
 public class ProductService : IProductService
 {
+    
     private readonly IProductRepository _productRepo;
     private readonly ICategoryRepository _categoryRepo;
     private readonly IProductViewRepository _productViewRepo;
     private readonly IProdImageService _prodImage;
+    private readonly ISearchService _searchService;
 
-    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService)
+    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService, ISearchService searchService)
     {
         _productRepo = productRepo;
         _categoryRepo = categoryRepo;
         _productViewRepo = productViewRepo;
         _prodImage = prodImageService;
+        _searchService = searchService;
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId, int userId)
@@ -68,6 +71,9 @@ public class ProductService : IProductService
 
         await _productRepo.AddAsync(product);
         await _productRepo.SaveAsync();
+
+        // 通知搜索引擎更新 TermGraph（fire-and-forget，不阻塞创建流程）
+        _ = _searchService.NotifyProductCreatedAsync(product.ProductId);
 
         if (dto.Images != null && dto.Images.Count > 0)
         {

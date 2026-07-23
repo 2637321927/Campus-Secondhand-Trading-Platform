@@ -15,7 +15,22 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Oracle.EntityFrameworkCore" Version="8.23.60" />
+    <PackageReference Include="jieba.NET" Version="0.42.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Utilities\Dictionaries\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <LinkBase>Dictionaries\</LinkBase>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="CopyJiebaResources" AfterTargets="Build">
+    <ItemGroup>
+      <JiebaResource Include="$(NuGetPackageRoot)jieba.net\0.42.2\Resources\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(JiebaResource)" DestinationFolder="$(OutputPath)Resources" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
