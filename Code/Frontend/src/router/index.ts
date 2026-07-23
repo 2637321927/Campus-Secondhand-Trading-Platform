@@ -14,14 +14,39 @@ const routes = [
         path:'/register',
         name:'register',
         component:()=>import('../views/auth/RegisterView.vue')
-    }
+    },
+        
+    {
+        path: '/',
+        component: () => import('../layouts/DefaultLayout.vue'),
+        children: [
+            {
+                path: '',
+                name: 'home',
+                component: () => import('../views/home/HomeView.vue')
+            },
 
-    // 在这里添加 /register
+            {
+                path: 'products/:productId',
+                name: 'product-detail',
+                component: () =>
+                    import('../views/product/ProductDetailView.vue')
+            },
+
+            {
+                path: 'products',
+                name: 'product-list',
+                component: () =>
+                    import('../views/product/ProductListView.vue')
+            }
+        ]
+    }
 ]
 
 const router = createRouter({
     history: createWebHistory(),
     routes
 })
+
 
 export default router

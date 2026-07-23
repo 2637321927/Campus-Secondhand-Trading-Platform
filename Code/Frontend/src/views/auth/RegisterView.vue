@@ -126,7 +126,6 @@ async function handleSubmit(): Promise<void> {
 
   try{
     await formRef.value.validate()
-    console.log('完整校验通过',form)
   }
   catch{
     return
