@@ -140,7 +140,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// ========== 搜索引擎初始化 ==========
 using (var scope = app.Services.CreateScope())
 {
     var termGraph = scope.ServiceProvider.GetRequiredService<Backend.Utilities.TermGraph>();

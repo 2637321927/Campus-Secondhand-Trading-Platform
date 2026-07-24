@@ -7,18 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Backend.Utilities;
 
 /// <summary>
-/// ItemRank 词条关联图 — 基于共现的词条图，用于搜索关键词扩展
-///
-/// 节点：每个独立词条（来自 TermExtractionService 输出）
-/// 边：加权无向边，权重表示两个词条的共现关联强度
-///
-/// 三层权重来源（由强到弱）：
-///   - 同商品共现 (+3.0)：商品自身的 Name+Info 中同时出现的词条
-///   - 同卖家共现 (+1.0)：同一卖家不同商品中的词条
-///   - 同分类共现 (+0.5)：同一分类下不同商品中的词条
-///
-/// 归一化：每行权重除以该行总和（行归一化）
-/// 查询扩展：对每个输入词条，选取归一化权重最高的 Top-K 个相关词条
+/// ItemRank词条关联图
+/// 节点：每个独立词条
+/// 边：加权无向边，权重表示两个词条的关联强度
 /// </summary>
 public class TermGraph
 {
@@ -43,8 +34,8 @@ public class TermGraph
     private readonly ConcurrentDictionary<string, bool> _dirtyTerms = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>脏边集合</summary>
-    private readonly ConcurrentDictionary<string, bool> _dirtyEdges = new(StringComparer.OrdinalIgnoreCase);
-    
+    private readonly ConcurrentDictionary<EdgeKey, byte> _dirtyEdges = new();
+
     private volatile bool _hasDirtyData;
 
     private readonly SemaphoreSlim _saveLock = new(1, 1);
@@ -90,7 +81,6 @@ public class TermGraph
                 AddToMemory(edge.Term1.TermText, edge.Term2.TermText, edge.Weight);
             }
 
-            // 从 DB 加载的数据不是脏数据，清除标记
             _dirtyTerms.Clear();
             _dirtyEdges.Clear();
             _hasDirtyData = false;
@@ -104,7 +94,7 @@ public class TermGraph
     }
 
     /// <summary>
-    /// 添加一条共现边（累加权重），双向写入
+    /// 添加一条共现边
     /// </summary>
     public void AddCoOccurrence(string term1, string term2, double weight)
     {
@@ -130,27 +120,8 @@ public class TermGraph
         // 标记脏数据
         _dirtyTerms[term1] = true;
         _dirtyTerms[term2] = true;
-        _dirtyEdges[GetEdgeKey(term1, term2)] = true;
+        _dirtyEdges[EdgeKey.Create(term1, term2)] = 0;
         _hasDirtyData = true;
-    }
-
-    /// <summary>
-    /// 规范化边 key：按字典序排列两个词条，保证 a &lt; b
-    /// </summary>
-    private static string GetEdgeKey(string t1, string t2)
-    {
-        if (string.Compare(t1, t2, StringComparison.OrdinalIgnoreCase) < 0)
-            return $"{t1}\x00{t2}";
-        return $"{t2}\x00{t1}";
-    }
-
-    /// <summary>
-    /// 解析边 key 回 (term1, term2) 元组
-    /// </summary>
-    private static (string t1, string t2) ParseEdgeKey(string key)
-    {
-        var parts = key.Split('\x00');
-        return (parts[0], parts[1]);
     }
 
     /// <summary>
@@ -181,7 +152,7 @@ public class TermGraph
     }
 
     /// <summary>
-    /// 查询扩展：对输入词条列表，为每个词条获取 Top-K 相关词条，合并去重返回
+    /// 为每个词条获取Top-K相关词条，合并去重返回
     /// </summary>
     public List<(string term, double weight)> ExpandQuery(List<string> terms, int? maxPerTerm = null, int? maxTotal = null)
     {
@@ -308,13 +279,12 @@ public class TermGraph
                 t => t.TermText, t => t.TermId, StringComparer.OrdinalIgnoreCase);
 
             var dirtyPairs = dirtyEdgeKeys
-                .Select(ParseEdgeKey)
-                .Where(p => termToId.ContainsKey(p.t1) && termToId.ContainsKey(p.t2))
+                .Where(p => termToId.ContainsKey(p.Term1) && termToId.ContainsKey(p.Term2))
                 .Select(p =>
                 {
-                    var id1 = Math.Min(termToId[p.t1], termToId[p.t2]);
-                    var id2 = Math.Max(termToId[p.t1], termToId[p.t2]);
-                    return (id1, id2, t1: p.t1, t2: p.t2);
+                    var id1 = Math.Min(termToId[p.Term1], termToId[p.Term2]);
+                    var id2 = Math.Max(termToId[p.Term1], termToId[p.Term2]);
+                    return (id1, id2, t1: p.Term1, t2: p.Term2);
                 })
                 .ToList();
 
@@ -366,5 +336,15 @@ public class TermGraph
         {
             _saveLock.Release();
         }
+    }
+}
+
+internal readonly record struct EdgeKey(string Term1, string Term2)
+{
+    public static EdgeKey Create(string t1, string t2)
+    {
+        return string.Compare(t1, t2, StringComparison.OrdinalIgnoreCase) < 0
+            ? new EdgeKey(t1, t2)
+            : new EdgeKey(t2, t1);
     }
 }
