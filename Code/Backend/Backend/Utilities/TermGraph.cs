@@ -30,14 +30,6 @@ public class TermGraph
     private volatile bool _isInitialized;
     private readonly SemaphoreSlim _initLock = new(1, 1);
 
-    /// <summary>脏词条集合</summary>
-    private readonly ConcurrentDictionary<string, bool> _dirtyTerms = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>脏边集合</summary>
-    private readonly ConcurrentDictionary<EdgeKey, byte> _dirtyEdges = new();
-
-    private volatile bool _hasDirtyData;
-
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     public double SameProductWeight { get; set; } = 3.0;
     public double SameSellerWeight { get; set; } = 1.0;
@@ -81,10 +73,6 @@ public class TermGraph
                 AddToMemory(edge.Term1.TermText, edge.Term2.TermText, edge.Weight);
             }
 
-            _dirtyTerms.Clear();
-            _dirtyEdges.Clear();
-            _hasDirtyData = false;
-
             _isInitialized = true;
         }
         finally
@@ -96,12 +84,15 @@ public class TermGraph
     /// <summary>
     /// 添加一条共现边
     /// </summary>
-    public void AddCoOccurrence(string term1, string term2, double weight)
+    public EdgeKey AddCoOccurrence(string term1, string term2, double weight)
     {
-        if (string.IsNullOrEmpty(term1) || string.IsNullOrEmpty(term2)) return;
-        if (term1.Equals(term2, StringComparison.OrdinalIgnoreCase)) return;
+        if (string.IsNullOrEmpty(term1) || string.IsNullOrEmpty(term2))
+            return default;
+        if (term1.Equals(term2, StringComparison.OrdinalIgnoreCase))
+            return default;
 
         AddToMemory(term1, term2, weight);
+        return EdgeKey.Create(term1, term2);
     }
 
     private void AddToMemory(string term1, string term2, double weight)
@@ -116,12 +107,6 @@ public class TermGraph
 
         _rowSums.AddOrUpdate(term1, weight, (_, old) => old + weight);
         _rowSums.AddOrUpdate(term2, weight, (_, old) => old + weight);
-
-        // 标记脏数据
-        _dirtyTerms[term1] = true;
-        _dirtyTerms[term2] = true;
-        _dirtyEdges[EdgeKey.Create(term1, term2)] = 0;
-        _hasDirtyData = true;
     }
 
     /// <summary>
@@ -186,14 +171,27 @@ public class TermGraph
     /// <summary>
     /// 处理新商品：对词条集合添加三层边
     /// </summary>
-    public void ProcessNewProduct(List<string> terms, int sellerId, long categoryId)
+    public (List<string> AffectedTerms, List<EdgeKey> AffectedEdges) ProcessNewProduct(
+        List<string> terms, int sellerId, long categoryId)
     {
-        if (terms.Count < 1) return;
+        var affectedEdges = new List<EdgeKey>();
+        var affectedTerms = new HashSet<string>(terms, StringComparer.OrdinalIgnoreCase);
 
+        if (terms.Count < 1)
+            return (new List<string>(), new List<EdgeKey>());
+
+        // 同商品词条间共现
         for (var i = 0; i < terms.Count; i++)
+        {
             for (var j = i + 1; j < terms.Count; j++)
-                AddCoOccurrence(terms[i], terms[j], SameProductWeight);
+            {
+                var edge = AddCoOccurrence(terms[i], terms[j], SameProductWeight);
+                if (!edge.Equals(default(EdgeKey)))
+                    affectedEdges.Add(edge);
+            }
+        }
 
+        // 同卖家词条关联
         var sellerSet = _sellerTerms.GetOrAdd(sellerId, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         var existingSellerTerms = sellerSet.ToList();
         foreach (var t in terms)
@@ -201,12 +199,18 @@ public class TermGraph
             foreach (var existingTerm in existingSellerTerms)
             {
                 if (!t.Equals(existingTerm, StringComparison.OrdinalIgnoreCase))
-                    AddCoOccurrence(t, existingTerm, SameSellerWeight);
+                {
+                    var edge = AddCoOccurrence(t, existingTerm, SameSellerWeight);
+                    affectedTerms.Add(existingTerm);
+                    if (!edge.Equals(default(EdgeKey)))
+                        affectedEdges.Add(edge);
+                }
             }
         }
         foreach (var t in terms)
             sellerSet.Add(t);
 
+        // 同分类词条关联
         var catSet = _categoryTerms.GetOrAdd(categoryId, _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
         var existingCatTerms = catSet.ToList();
         foreach (var t in terms)
@@ -214,33 +218,36 @@ public class TermGraph
             foreach (var existingTerm in existingCatTerms)
             {
                 if (!t.Equals(existingTerm, StringComparison.OrdinalIgnoreCase))
-                    AddCoOccurrence(t, existingTerm, SameCategoryWeight);
+                {
+                    var edge = AddCoOccurrence(t, existingTerm, SameCategoryWeight);
+                    affectedTerms.Add(existingTerm);
+                    if (!edge.Equals(default(EdgeKey)))
+                        affectedEdges.Add(edge);
+                }
             }
         }
         foreach (var t in terms)
             catSet.Add(t);
+
+        return (affectedTerms.ToList(), affectedEdges);
     }
 
     /// <summary>
-    /// 将内存中的脏数据增量持久化到数据库
+    /// 将指定的词条和边增量持久化到数据库
     /// </summary>
-    public async Task SaveToDatabaseAsync()
+    public async Task SaveIncrementalAsync(List<string> terms, List<EdgeKey> edges)
     {
-        if (!_hasDirtyData) return;
+        if (terms.Count == 0 && edges.Count == 0) return;
 
         await _saveLock.WaitAsync();
         try
         {
-            if (!_hasDirtyData) return;
-
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            var dirtyTermList = _dirtyTerms.Keys.ToList();
-            var dirtyEdgeKeys = _dirtyEdges.Keys.ToList();
-
+            // 持久化词条节点
             var existingTerms = await db.SearchTerms
-                .Where(t => dirtyTermList.Contains(t.TermText))
+                .Where(t => terms.Contains(t.TermText))
                 .AsTracking()
                 .ToListAsync();
 
@@ -248,7 +255,7 @@ public class TermGraph
                 t => t.TermText, t => t, StringComparer.OrdinalIgnoreCase);
 
             var newTerms = new List<SearchTerm>();
-            foreach (var termText in dirtyTermList)
+            foreach (var termText in terms)
             {
                 if (existingTermDict.TryGetValue(termText, out var entity))
                 {
@@ -268,17 +275,18 @@ public class TermGraph
 
             if (newTerms.Count > 0)
                 await db.SearchTerms.AddRangeAsync(newTerms);
-            await db.SaveChangesAsync(); 
+            await db.SaveChangesAsync();
 
+            // 持久化边
             var allDirtyTerms = await db.SearchTerms
-                .Where(t => dirtyTermList.Contains(t.TermText))
+                .Where(t => terms.Contains(t.TermText))
                 .AsNoTracking()
                 .ToListAsync();
 
             var termToId = allDirtyTerms.ToDictionary(
                 t => t.TermText, t => t.TermId, StringComparer.OrdinalIgnoreCase);
 
-            var dirtyPairs = dirtyEdgeKeys
+            var dirtyPairs = edges
                 .Where(p => termToId.ContainsKey(p.Term1) && termToId.ContainsKey(p.Term2))
                 .Select(p =>
                 {
@@ -327,10 +335,6 @@ public class TermGraph
             if (newEdges.Count > 0)
                 await db.SearchTermEdges.AddRangeAsync(newEdges);
             await db.SaveChangesAsync();
-
-            _dirtyTerms.Clear();
-            _dirtyEdges.Clear();
-            _hasDirtyData = false;
         }
         finally
         {
@@ -339,7 +343,7 @@ public class TermGraph
     }
 }
 
-internal readonly record struct EdgeKey(string Term1, string Term2)
+public readonly record struct EdgeKey(string Term1, string Term2)
 {
     public static EdgeKey Create(string t1, string t2)
     {

@@ -12,13 +12,14 @@ namespace Backend.Services;
 
 public class SearchService : ISearchService
 {
+
     private readonly AppDbContext _db;
     private readonly ITermExtractionService _termExtraction;
     private readonly TermGraph _termGraph;
     private readonly IProductViewRepository _productViewRepo;
     private readonly ILogger<SearchService> _logger;
-
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(15);
+    private const int MaxCacheCount = 200;
     private readonly ConcurrentDictionary<string, CachedSearch> _cache = new();
 
     private class CachedSearch
@@ -26,7 +27,7 @@ public class SearchService : ISearchService
         public ProductCardDto[] Items { get; init; } = [];
         public int TotalCount { get; init; }
         public List<string> ExpandedTerms { get; init; } = [];
-        public DateTime CreatedAt { get; init; }
+        public DateTime CreatedAt { get; set; }
     }
 
     public SearchService(
@@ -43,16 +44,16 @@ public class SearchService : ISearchService
         _logger = logger;
     }
 
-    public async Task<SearchResultDto> SearchAsync(SearchRequestDto request)
+    public async Task<SearchResultDto> SearchProductAsync(SearchRequestDto request)
     {
+        // 每次请求先清理全部过期缓存
+        PurgeExpiredCache();
+
         // 翻页请求直接切片返回
         if (!string.IsNullOrEmpty(request.SearchId) &&
             _cache.TryGetValue(request.SearchId, out var cached))
         {
-            if (DateTime.UtcNow - cached.CreatedAt > CacheTtl)
-                _cache.TryRemove(request.SearchId, out _);
-            else
-                return SliceFromCache(cached, request);
+            return SliceFromCache(cached, request);
         }
 
         // 分词
@@ -105,8 +106,8 @@ public class SearchService : ISearchService
 
         if (terms.Count == 0) return;
 
-        _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
-        await _termGraph.SaveToDatabaseAsync();
+        var (affectedTerms, affectedEdges) = _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
+        await _termGraph.SaveIncrementalAsync(affectedTerms, affectedEdges);
 
         _logger.LogDebug("Processed new product {ProductId} with {TermCount} terms", productId, terms.Count);
     }
@@ -121,19 +122,26 @@ public class SearchService : ISearchService
             .Select(p => new { p.ProductId, p.Name, p.Info, p.UserId, p.CategoryId })
             .ToListAsync();
 
+        var allTerms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var allEdges = new List<EdgeKey>();
+
         foreach (var product in products)
         {
             var text = $"{product.Name} {product.Info ?? ""}";
             var terms = _termExtraction.Extract(text);
 
             if (terms.Count > 0)
-                _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
+            {
+                var (affectedTerms, affectedEdges) = _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
+                allTerms.UnionWith(affectedTerms);
+                allEdges.AddRange(affectedEdges);
+            }
         }
 
         _logger.LogInformation("Full TermGraph rebuild completed: {Nodes} nodes, {Edges} edges",
             _termGraph.NodeCount, _termGraph.EdgeCount);
 
-        await _termGraph.SaveToDatabaseAsync();
+        await _termGraph.SaveIncrementalAsync(allTerms.ToList(), allEdges);
     }
 
     /// <summary>
@@ -145,6 +153,7 @@ public class SearchService : ISearchService
         List<string> termList,
         SearchRequestDto request)
     {
+
         var baseQuery = _db.Products
             .Where(p => p.Status == ProductStatus.Available);
 
@@ -162,15 +171,14 @@ public class SearchService : ISearchService
         var allItems = products
             .Select(p => new
             {
-                Card = ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)),
+                Card = ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)),
                 Score = ComputeRelevanceScore(p, expandedTerms)
             })
             .OrderByDescending(x => x.Score)
             .Select(x => x.Card)
             .ToArray();
 
-        // 缓存全量排序结果
-        PurgeExpiredCache();
+        // 缓存排序结果
         var searchId = Guid.NewGuid().ToString("N")[..12];
         _cache[searchId] = new CachedSearch
         {
@@ -194,6 +202,7 @@ public class SearchService : ISearchService
             PageSize = request.PageSize,
             ExpandedTerms = termList
         };
+
     }
 
     /// <summary>
@@ -224,7 +233,7 @@ public class SearchService : ISearchService
         var viewCounts = await _productViewRepo.GetViewCountsAsync(productIds);
 
         var items = products
-            .Select(p => ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .Select(p => ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
             .ToList();
 
         return new SearchResultDto
@@ -240,6 +249,9 @@ public class SearchService : ISearchService
 
     private SearchResultDto SliceFromCache(CachedSearch cached, SearchRequestDto request)
     {
+        // 每次访问刷新 TTL
+        cached.CreatedAt = DateTime.UtcNow;
+
         var items = cached.Items
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
@@ -264,6 +276,19 @@ public class SearchService : ISearchService
             if (_cache.TryGetValue(key, out var entry) && entry.CreatedAt < cutoff)
                 _cache.TryRemove(key, out _);
         }
+
+        // 超出数量上限时移除最旧的
+        if (_cache.Count > MaxCacheCount)
+        {
+            var toRemove = _cache
+                .OrderBy(kv => kv.Value.CreatedAt)
+                .Take(_cache.Count - MaxCacheCount)
+                .Select(kv => kv.Key)
+                .ToList();
+
+            foreach (var key in toRemove)
+                _cache.TryRemove(key, out _);
+        }
     }
 
     private static SearchResultDto NewEmptyResult(SearchRequestDto request) => new()
@@ -276,10 +301,7 @@ public class SearchService : ISearchService
     };
 
     /// <summary>
-    /// 构造关键词OR过滤表达式。
-    /// p => (p.Name.Contains(t1) || (p.Info != null && p.Info.Contains(t1)))
-    ///    || (p.Name.Contains(t2) || (p.Info != null && p.Info.Contains(t2)))
-    ///    || ...
+    /// 构造关键词
     /// </summary>
     private static Expression<Func<Product, bool>>? BuildKeywordFilter(List<string> terms)
     {
@@ -339,18 +361,4 @@ public class SearchService : ISearchService
 
         return (int)(score * 100);
     }
-
-    private static ProductCardDto ToProductCard(Product p, int viewCount) => new()
-    {
-        ProductId = p.ProductId,
-        Name = p.Name,
-        Price = p.Price,
-        CoverImageUrl = p.Images?
-            .OrderBy(i => i.ImgIndex)
-            .FirstOrDefault()?.ImgFileId is long fileId
-                ? $"/api/files/{fileId}" : null,
-        SellerName = p.Seller?.UserName ?? "",
-        ReleaseDate = p.ReleaseDate,
-        ViewCount = viewCount
-    };
 }

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Backend.Controllers;
 
 [ApiController]
-[Route("api/products")]
+[Route("api/search")]
 public class SearchController : ControllerBase
 {
     private readonly ISearchService _searchService;
@@ -23,8 +23,8 @@ public class SearchController : ControllerBase
     /// <param name="page">页码，从1开始</param>
     /// <param name="pageSize">每页条数，默认 20，最大 50</param>
     /// <param name="sortBy">排序方式：relevance(默认)/latest/price_asc/price_desc</param>
-    [HttpGet("search")]
-    public async Task<ActionResult<SearchResultDto>> Search(
+    [HttpGet("product")]
+    public async Task<ActionResult<SearchResultDto>> SearchProduct(
         [FromQuery] string? keyword = null,
         [FromQuery] string? searchId = null,
         [FromQuery] int page = 1,
@@ -47,14 +47,14 @@ public class SearchController : ControllerBase
             SortBy = sortBy
         };
 
-        var result = await _searchService.SearchAsync(request);
+        var result = await _searchService.SearchProductAsync(request);
         return Ok(result);
     }
 
     /// <summary>
     /// 全量重建TermGraph
     /// </summary>
-    [HttpPost("search/rebuild-graph")]
+    [HttpPost("rebuild-graph")]
     public async Task<ActionResult> RebuildGraph()
     {
         await _searchService.RebuildGraphAsync();

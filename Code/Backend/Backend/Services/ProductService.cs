@@ -72,7 +72,6 @@ public class ProductService : IProductService
         await _productRepo.AddAsync(product);
         await _productRepo.SaveAsync();
 
-        // 通知搜索引擎更新 TermGraph（fire-and-forget，不阻塞创建流程）
         _ = _searchService.NotifyProductCreatedAsync(product.ProductId);
 
         if (dto.Images != null && dto.Images.Count > 0)
@@ -217,7 +216,7 @@ public class ProductService : IProductService
         }).ToList() ?? new()
     };
 
-    private static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
+    public static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
     {
         ProductId = p.ProductId,
         Name = p.Name,
