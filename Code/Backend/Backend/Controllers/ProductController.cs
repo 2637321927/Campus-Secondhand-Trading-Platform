@@ -10,10 +10,12 @@ namespace Backend.Controllers;
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
+    private readonly IProdImageService _prodImageService;
 
-    public ProductController(IProductService productService)
+    public ProductController(IProductService productService, IProdImageService prodImageService)
     {
         _productService = productService;
+        _prodImageService = prodImageService;
     }
     
     /// <summary>
@@ -86,6 +88,21 @@ public class ProductController : ControllerBase
         var result = await _productService.DeleteAsync(id, userId);
         if (!result) return NotFound();
         return NoContent();
+
+    }
+
+    /// <summary>
+    /// 批量获取商品图片
+    /// </summary>
+    [HttpPost("images")]
+    public async Task<ActionResult<List<ProductImageDataDto>>> GetImages([FromBody] List<long> fileIds)
+    {
+
+        if (fileIds == null || fileIds.Count == 0)
+            return BadRequest("fileIds is required.");
+
+        var images = await _prodImageService.GetProductImagesAsync(fileIds);
+        return Ok(images);
 
     }
 

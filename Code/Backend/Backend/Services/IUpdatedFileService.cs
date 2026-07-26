@@ -21,6 +21,11 @@ public interface IUpdatedFileService
     Task<UpdatedFile?> GetActiveByIdAsync(long fileId);
 
     /// <summary>
+    /// 批量获取未被软删除的文件记录
+    /// </summary>
+    Task<List<UpdatedFile>> GetActiveByIdsAsync(List<long> fileIds);
+
+    /// <summary>
     /// 将文件内容写入outputStream
     /// </summary>
     Task GetFileContentAsync(long fileId, Stream outputStream);
@@ -44,5 +49,4 @@ public interface IUpdatedFileService
     /// 批量物理删除
     /// </summary>
     Task HardDeleteMultipleAsync(List<long> fileIds);
-    
 }

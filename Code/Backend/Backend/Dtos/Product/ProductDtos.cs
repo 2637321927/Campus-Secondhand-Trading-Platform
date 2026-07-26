@@ -56,6 +56,17 @@ public class ProductImageDto
     public int ImgIndex { get; set; }
 }
 
+/// <summary>
+/// 批量获取图片的返回 DTO
+/// </summary>
+public class ProductImageDataDto
+{
+    public long FileId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string MimeType { get; set; } = string.Empty;
+    public byte[] Content { get; set; } = Array.Empty<byte>();
+}
+
 ///<summary>
 ///商品卡片信息响应（用于主页展示）
 ///</summary>

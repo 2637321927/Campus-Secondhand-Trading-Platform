@@ -95,6 +95,14 @@ public class UpdatedFileService : IUpdatedFileService
     public async Task<UpdatedFile?> GetActiveByIdAsync(long fileId)
         => await _repo.GetActiveByIdAsync(fileId);
 
+    public async Task<List<UpdatedFile>> GetActiveByIdsAsync(List<long> fileIds)
+    {
+        if (fileIds == null || fileIds.Count == 0)
+            return new List<UpdatedFile>();
+
+        return await _repo.GetActiveByIdsAsync(fileIds);
+    }
+
     public async Task GetFileContentAsync(long fileId, Stream outputStream)
     {
 
