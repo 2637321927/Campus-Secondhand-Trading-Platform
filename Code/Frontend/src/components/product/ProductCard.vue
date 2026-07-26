@@ -18,6 +18,7 @@ const coverUrl = computed(() => {
 })
 
 const router=useRouter()
+
 function goToDetail():void{
     router.push(`/products/${props.product.productId}`)
 }

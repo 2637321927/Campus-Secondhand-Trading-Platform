@@ -35,8 +35,24 @@ function goToPublish(): void {
   ElMessage.info('发布商品功能正在开发中')
 }
 
-function goFavorites(): void {
-  ElMessage.info('收藏功能正在开发中')
+async function goFavorites():Promise <void> {
+  if(!authStore.isLoggedIn){
+    ElMessage.warning('请先登录')
+
+    await router.push({
+      name:'login',
+      query:{
+      redirect:'/user/favorites'
+      }
+    })
+
+    return
+
+  }
+
+  await router.push({
+    name:'my-favorites'
+  })
 }
 
 function goMessages(): void {

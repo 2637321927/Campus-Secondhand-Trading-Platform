@@ -70,6 +70,7 @@ export const useAuthStore=defineStore('auth',()=>{
         deleteToken()
         token.value=null
         currentUser.value=null
+        initialized.value=true
     }
 
     async function logoutAction():Promise<void> {
@@ -92,6 +93,7 @@ export const useAuthStore=defineStore('auth',()=>{
         isAdmin,
         loginAction,
         initializeAuth,
-        logoutAction
+        logoutAction,
+        clearAuthState
     }
 })

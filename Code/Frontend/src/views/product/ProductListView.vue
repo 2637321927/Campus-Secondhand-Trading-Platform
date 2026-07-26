@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref,watch } from 'vue'
+import { computed, onMounted,ref,watch,onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { getProducts } from '../../api/modules/product'
 import type { 
@@ -23,6 +23,8 @@ const selectedStatus = ref<'all' | ProductStatus>('all')
 const minPrice = ref<number | null>(null)
 const maxPrice = ref<number | null>(null)
 const sortOption = ref<SortOption>('default')
+
+let productListLoadVersion = 0
 
 const route=useRoute()
 
@@ -50,40 +52,74 @@ const priceRangeError = computed(() => {
   )
 })
 
-async function loadProducts():Promise<void> {
-    loading.value=true
-    errorMessage.value=''
-    products.value=[]
-
-    try{
-        if(categoryId.value){
-            const response=await getCategoryProducts(categoryId.value)
-            products.value = response.data
-        }
-        else{
-            const response=await getProducts()
-            products.value = response.data
-        }
-    }
-    catch(error){
-        errorMessage.value='商品列表加载失败'
-        console.error('商品列表加载失败：', error)
-    }
-    finally{
-        loading.value=false
-    }
+function isCurrentProductListLoad(
+  version: number,
+  requestedCategoryId: number | null
+): boolean {
+  return (
+    version === productListLoadVersion &&
+    categoryId.value === requestedCategoryId
+  )
 }
 
-onMounted(() => {
-  loadProducts()
-})
+async function loadProducts(): Promise<void> {
+  const requestedCategoryId = categoryId.value
+  const currentVersion = ++productListLoadVersion
 
-watch(
-  () => route.query.categoryId,
-  () => {
-    loadProducts()
+  loading.value = true
+  errorMessage.value = ''
+
+  try {
+    let nextProducts: ProductDto[] = []
+
+    if (requestedCategoryId !== null) {
+      const response = await getCategoryProducts(
+        requestedCategoryId
+      )
+
+      nextProducts = response.data ?? []
+    } else {
+      const response = await getProducts()
+
+      nextProducts = response.data ?? []
+    }
+
+    if (
+      !isCurrentProductListLoad(
+        currentVersion,
+        requestedCategoryId
+      )
+    ) {
+      return
+    }
+
+    products.value = nextProducts
+  } catch (error) {
+    if (
+      !isCurrentProductListLoad(
+        currentVersion,
+        requestedCategoryId
+      )
+    ) {
+      return
+    }
+
+    products.value = []
+    errorMessage.value =
+      '商品列表加载失败，请稍后重试'
+
+    console.error('商品列表加载失败：', error)
+  } finally {
+    if (
+      isCurrentProductListLoad(
+        currentVersion,
+        requestedCategoryId
+      )
+    ) {
+      loading.value = false
+    }
   }
-)
+}
 
 const keyword = computed(() => {
   const value = route.query.keyword
@@ -158,6 +194,22 @@ function resetFilters(): void {
   maxPrice.value = null
   sortOption.value = 'default'
 }
+
+
+onMounted(() => {
+  loadProducts()
+})
+
+watch(
+  () => route.query.categoryId,
+  () => {
+    loadProducts()
+  }
+)
+
+onBeforeUnmount(() => {
+  productListLoadVersion += 1
+})
 </script>
 
 <template>
