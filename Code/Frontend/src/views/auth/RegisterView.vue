@@ -126,7 +126,6 @@ async function handleSubmit(): Promise<void> {
 
   try{
     await formRef.value.validate()
-    console.log('完整校验通过',form)
   }
   catch{
     return
@@ -486,75 +485,5 @@ async function handleSubmit(): Promise<void> {
 .login-entry a:hover {
   text-decoration: underline;
   text-underline-offset: 4px;
-}
-
-@media (max-width: 819px) {
-  .register-page {
-    padding: 38px 20px 34px;
-  }
-
-  .register-header {
-    margin-bottom: 34px;
-  }
-
-  .register-header h1 {
-    font-size: clamp(38px, 9vw, 50px);
-  }
-
-  .register-subtitle {
-    font-size: 17px;
-  }
-
-  .register-form {
-    grid-template-columns: 1fr;
-  }
-
-  .full-row {
-    grid-column: auto;
-  }
-}
-
-@media (max-width: 519px) {
-  .register-page {
-    padding: 28px 16px 30px;
-  }
-
-  .register-eyebrow {
-    margin-bottom: 14px;
-    font-size: 16px;
-  }
-
-  .register-header h1 {
-    font-size: 38px;
-  }
-
-  .register-subtitle {
-    margin-top: 14px;
-    font-size: 15px;
-  }
-
-  .register-form :deep(.el-form-item__label) {
-    font-size: 16px;
-  }
-
-  .register-form :deep(.el-input__wrapper),
-  .register-form :deep(.el-input__inner),
-  .register-button {
-    min-height: 54px;
-    height: 54px;
-  }
-
-  .register-form :deep(.el-input__wrapper) {
-    padding: 0 18px;
-  }
-
-  .register-form :deep(.el-input__inner) {
-    font-size: 16px;
-  }
-
-  .agreement-row :deep(.el-checkbox__label),
-  .login-entry {
-    font-size: 15px;
-  }
 }
 </style>

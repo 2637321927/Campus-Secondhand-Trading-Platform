@@ -1,6 +1,6 @@
 import axios from 'axios'
 import {getToken,deleteToken} from '../utils/token'
-
+import {notifyUnauthorized} from '../utils/authEvents'
 const request=axios.create({
     baseURL:import.meta.env.VITE_API_BASE_URL,
     timeout:10000
@@ -26,7 +26,13 @@ request.interceptors.response.use(
         }
 
         if(error.response.status ===401){
+            const hadToken = Boolean(getToken())
+
             deleteToken()
+
+            if (hadToken) {
+                notifyUnauthorized()
+            }
         }
         return  Promise.reject(error)
     }
