@@ -43,7 +43,10 @@ function getStatusText(status:ProductStatus):string{
     else if(status===1){
         return '已售'
     }
-    return '已下架'
+    else if(status===2){
+        return '已下架'
+    }
+    return '草稿'
 }
 </script>
 

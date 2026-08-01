@@ -103,7 +103,11 @@ function getStatusText(status: ProductStatus): string {
     return '已售'
   }
 
-  return '已下架'
+  if (status === 2) {
+    return '已下架'
+  }
+
+  return '草稿'
 }
 
 function getStatusClass(status: ProductStatus): string {
@@ -115,7 +119,11 @@ function getStatusClass(status: ProductStatus): string {
     return 'status-sold'
   }
 
-  return 'status-removed'
+  if (status === 2) {
+    return 'status-removed'
+  }
+
+  return 'status-draft'
 }
 
 function selectImage(fileId: number): void {
@@ -1617,6 +1625,11 @@ onBeforeUnmount(() => {
 .status-removed {
   color: #69746f;
   background: #edf0ef;
+}
+
+.status-draft {
+  color: #9b681f;
+  background: #fff2d9;
 }
 
 .product-id {
