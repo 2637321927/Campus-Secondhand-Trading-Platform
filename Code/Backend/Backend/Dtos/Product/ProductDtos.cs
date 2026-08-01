@@ -10,6 +10,9 @@ public class CreateProductDto
     public string? Info { get; set; }
     public long CategoryId { get; set; }
     public List<IFormFile>? Images { get; set; }
+    public ShippingType ShippingType { get; set; } = ShippingType.Free;
+    public decimal? ShippingFee { get; set; }
+    public int AllowPickup { get; set; } = 0;
 
 }
 
@@ -21,6 +24,9 @@ public class UpdateProductDto
     public string Info { get; set; } = string.Empty;
     public ProductStatus Status { get; set; } = ProductStatus.Available;
     public long CategoryId { get; set; }
+    public ShippingType ShippingType { get; set; } = ShippingType.Free;
+    public decimal? ShippingFee { get; set; }
+    public int AllowPickup { get; set; } = 0;
     public List<IFormFile>? newImages { get; set; }
     public List<long>? toRemoveImageIds { get; set; } = new();
 
@@ -38,6 +44,9 @@ public class ProductDto
     public long CategoryId { get; set; }
     public string? CategoryName { get; set; }
     public int ViewCount { get; set; }
+    public ShippingType ShippingType { get; set; }
+    public decimal? ShippingFee { get; set; }
+    public int AllowPickup { get; set; }
     public List<ProductImageDto> Images { get; set; } = new();
 }
 
