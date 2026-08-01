@@ -28,3 +28,6 @@ Code/Database/*.sqlbak
 .vscode/
 Uploads/
 **/Uploads/
+Code/Backend/TermTest
+docs/
+.claude/

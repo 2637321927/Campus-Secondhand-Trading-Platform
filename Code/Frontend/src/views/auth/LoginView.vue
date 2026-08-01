@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import {
+  useRoute,
+  useRouter
+} from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import axios from 'axios'
@@ -18,6 +21,8 @@ interface LoginForm {
 }
 
 const router = useRouter()
+const route = useRoute()
+
 const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
@@ -53,6 +58,32 @@ const rules = reactive<FormRules<LoginForm>>({
   ]
 })
 
+function getSafeRedirect(): string {
+  const redirect = route.query.redirect
+
+  if (typeof redirect !== 'string') {
+    return '/'
+  }
+
+  // 只能跳转到站内路径
+  if (
+    !redirect.startsWith('/') ||
+    redirect.startsWith('//')
+  ) {
+    return '/'
+  }
+
+  // 防止登录后再次跳回认证页面
+  if (
+    redirect.startsWith('/login') ||
+    redirect.startsWith('/register')
+  ) {
+    return '/'
+  }
+
+  return redirect
+}
+
 async function handleLogin(): Promise<void> {
   if (!formRef.value) {
     return
@@ -72,8 +103,10 @@ async function handleLogin(): Promise<void> {
   try {
     await authStore.loginAction(requestData)
     ElMessage.success('登录成功')
-    await router.replace('/')
-  } catch (error) {
+    const redirectPath = getSafeRedirect()
+    await router.replace(redirectPath)
+  } 
+  catch (error) {
     console.error('登录失败', error)
 
     let errorMessage = '登录失败，请检查邮箱和密码'
@@ -349,52 +382,5 @@ async function handleLogin(): Promise<void> {
   font-size: 12px;
   line-height: 1.7;
   text-align: center;
-}
-
-@media (max-width: 768px) {
-  .auth-page {
-    align-items: flex-start;
-    padding: 24px 16px;
-  }
-
-  .auth-card {
-    padding: 36px 28px;
-  }
-
-  .card-header h2 {
-    font-size: 30px;
-  }
-}
-
-@media (max-width: 480px) {
-  .auth-page {
-    padding: 0;
-    background: #fff;
-  }
-
-  .auth-shell {
-    width: 100%;
-  }
-
-  .auth-card {
-    min-height: 100vh;
-    padding: 40px 22px 32px;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-  }
-
-  .card-header {
-    margin-bottom: 30px;
-  }
-
-  .card-header h2 {
-    font-size: 28px;
-  }
-
-  .form-options {
-    align-items: flex-start;
-    font-size: 13px;
-  }
 }
 </style>

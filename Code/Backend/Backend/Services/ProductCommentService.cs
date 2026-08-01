@@ -83,7 +83,10 @@ public class ProductCommentService : IProductCommentService
         var comment = await _commentRepo.GetByIdAsync(commentId);
         if (comment == null) return false;
 
-        if (comment.UserId != userId)
+        var product = await _productRepo.GetByIdAsync(comment.ProductId);
+        if (product == null) return false;
+
+        if (comment.UserId != userId && product.UserId != userId)
             throw new UnauthorizedAccessException("You do not have permission to delete this comment.");
 
         _commentRepo.Delete(comment);

@@ -65,7 +65,7 @@ public class CollectionService : ICollectionService
         var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
 
         //映射为ProductCardDto
-        return products.Select(p => ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
+        return products.Select(p => ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
     }
 
     public async Task<int> GetCollectionCountAsync(int userId)
@@ -85,7 +85,7 @@ public class CollectionService : ICollectionService
             .ToList();
         var ids = products.Select(p => p.ProductId);
         var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
-        return products.Select(p => ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
+        return products.Select(p => ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
     }
 
     public async Task<int> BatchDeleteAsync(int userId, List<long> productIds)
@@ -104,18 +104,4 @@ public class CollectionService : ICollectionService
             await _collectionRepo.SaveAsync();
         return deleted;
     }
-
-    private static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
-    {
-        ProductId = p.ProductId,
-        Name = p.Name,
-        Price = p.Price,
-        CoverImageUrl = p.Images?
-            .OrderBy(i => i.ImgIndex)
-            .FirstOrDefault()?.ImgFileId is long fileId
-                ? $"/api/files/{fileId}" : null,
-        SellerName = p.Seller?.UserName ?? "",
-        ReleaseDate = p.ReleaseDate,
-        ViewCount = viewCount
-    };
 }
