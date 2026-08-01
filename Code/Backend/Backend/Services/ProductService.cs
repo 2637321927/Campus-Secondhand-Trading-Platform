@@ -65,8 +65,11 @@ public class ProductService : IProductService
             Status = ProductStatus.Available,
             UserId = userId,
             ReleaseDate = DateTime.Now,
-            CategoryId = dto.CategoryId
-            
+            CategoryId = dto.CategoryId,
+            ShippingType = dto.ShippingType,
+            ShippingFee = dto.ShippingFee,
+            AllowPickup = dto.AllowPickup
+
         };
 
         await _productRepo.AddAsync(product);
@@ -101,6 +104,9 @@ public class ProductService : IProductService
         product.Info = dto.Info;
         product.Status = dto.Status;
         product.CategoryId = dto.CategoryId;
+        product.ShippingType = dto.ShippingType;
+        product.ShippingFee = dto.ShippingFee;
+        product.AllowPickup = dto.AllowPickup;
 
         if (dto.toRemoveImageIds != null && dto.toRemoveImageIds.Count > 0)
         {
@@ -209,6 +215,9 @@ public class ProductService : IProductService
         CategoryId = p.CategoryId,
         CategoryName = p.Category?.CategoryName,
         ViewCount = viewCount,
+        ShippingType = p.ShippingType,
+        ShippingFee = p.ShippingFee,
+        AllowPickup = p.AllowPickup,
         Images = p.Images?.Select(i => new ProductImageDto
         {
             ImgFileId = i.ImgFileId,

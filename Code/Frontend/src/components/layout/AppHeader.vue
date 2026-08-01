@@ -32,7 +32,15 @@ function goToRegister(): void {
 }
 
 function goToPublish(): void {
-  ElMessage.info('发布商品功能正在开发中')
+  router.push({
+    name: 'product-publish'
+  })
+}
+
+function goToMyProducts(): void {
+  router.push({
+    name: 'my-products'
+  })
 }
 
 async function goFavorites():Promise <void> {
@@ -126,9 +134,15 @@ function goMessages(): void {
         </el-button>
         </template>
 
-        <div v-else class="user-entry">
-        {{ authStore.currentUser?.userName }}
-        </div>
+        <template v-else>
+          <el-button text @click="goToMyProducts">
+            我的商品
+          </el-button>
+
+          <div class="user-entry">
+            {{ authStore.currentUser?.userName }}
+          </div>
+        </template>
 
       </nav>
     </div>

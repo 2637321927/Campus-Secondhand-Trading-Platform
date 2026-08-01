@@ -42,6 +42,24 @@ public class Product
     [Column("category_id")]
     public long CategoryId { get; set; }
 
+    /// <summary>
+    /// 发货方式：0=包邮，1=按距离，2=固定邮费，3=无需邮寄
+    /// </summary>
+    [Column("shipping_type")]
+    public ShippingType ShippingType { get; set; } = ShippingType.Free;
+
+    /// <summary>
+    /// 固定邮费金额（仅 ShippingType=Fixed 时有效）
+    /// </summary>
+    [Column("shipping_fee", TypeName = "decimal(5,2)")]
+    public decimal? ShippingFee { get; set; }
+
+    /// <summary>
+    /// 是否支持买家自提：0=不支持，1=支持
+    /// </summary>
+    [Column("allow_pickup")]
+    public int AllowPickup { get; set; } = 0;
+
     // 导航属性
     [ForeignKey("UserId")]
     public NormUser? Seller { get; set; }

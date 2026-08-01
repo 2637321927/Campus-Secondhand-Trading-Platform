@@ -280,6 +280,10 @@ onBeforeUnmount(() => {
               <el-radio-button :value="2">
                 已下架
               </el-radio-button>
+
+              <el-radio-button :value="3">
+                草稿
+              </el-radio-button>
             </el-radio-group>
           </div>
 

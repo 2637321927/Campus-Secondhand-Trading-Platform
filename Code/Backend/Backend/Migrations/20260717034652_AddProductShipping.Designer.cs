@@ -3,6 +3,7 @@ using System;
 using Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Oracle.EntityFrameworkCore.Metadata;
 
@@ -11,9 +12,11 @@ using Oracle.EntityFrameworkCore.Metadata;
 namespace Backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717034652_AddProductShipping")]
+    partial class AddProductShipping
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -687,72 +690,6 @@ namespace Backend.Migrations
                     b.ToTable("review");
                 });
 
-            modelBuilder.Entity("Backend.Models.SearchTerm", b =>
-                {
-                    b.Property<long>("TermId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("term_id");
-
-                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("TermId"));
-
-                    b.Property<double>("RowSum")
-                        .HasColumnType("BINARY_DOUBLE")
-                        .HasColumnName("row_sum");
-
-                    b.Property<string>("TermText")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("NVARCHAR2(100)")
-                        .HasColumnName("term_text");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TIMESTAMP(7)")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("TermId");
-
-                    b.HasIndex("TermText")
-                        .IsUnique();
-
-                    b.ToTable("search_term");
-                });
-
-            modelBuilder.Entity("Backend.Models.SearchTermEdge", b =>
-                {
-                    b.Property<long>("EdgeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("edge_id");
-
-                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("EdgeId"));
-
-                    b.Property<long>("Term1Id")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("term1_id");
-
-                    b.Property<long>("Term2Id")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("term2_id");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TIMESTAMP(7)")
-                        .HasColumnName("updated_at");
-
-                    b.Property<double>("Weight")
-                        .HasColumnType("BINARY_DOUBLE")
-                        .HasColumnName("weight");
-
-                    b.HasKey("EdgeId");
-
-                    b.HasIndex("Term2Id");
-
-                    b.HasIndex("Term1Id", "Term2Id")
-                        .IsUnique();
-
-                    b.ToTable("search_term_edge");
-                });
-
             modelBuilder.Entity("Backend.Models.SysInfo", b =>
                 {
                     b.Property<int>("SysInfoId")
@@ -1199,25 +1136,6 @@ namespace Backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Purchase");
-                });
-
-            modelBuilder.Entity("Backend.Models.SearchTermEdge", b =>
-                {
-                    b.HasOne("Backend.Models.SearchTerm", "Term1")
-                        .WithMany()
-                        .HasForeignKey("Term1Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Backend.Models.SearchTerm", "Term2")
-                        .WithMany()
-                        .HasForeignKey("Term2Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Term1");
-
-                    b.Navigation("Term2");
                 });
 
             modelBuilder.Entity("Backend.Models.SysInfo", b =>

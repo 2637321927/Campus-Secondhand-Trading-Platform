@@ -43,10 +43,50 @@ const routes = [
             },
 
             {
+                path: 'user/products',
+                name: 'my-products',
+                component: () =>
+                    import('../views/user/MyProductsView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
                 path: 'products',
                 name: 'product-list',
                 component: () =>
                     import('../views/product/ProductListView.vue')
+            },
+
+            {
+                path: 'products/publish',
+                name: 'product-publish',
+                component: () =>
+                    import('../views/product/ProductPublishView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'products/:productId/edit',
+                name: 'product-edit',
+                component: () =>
+                    import('../views/product/ProductEditView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'seller/products/:productId',
+                name: 'seller-product-detail',
+                component: () =>
+                    import('../views/seller/SellerProductDetailView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
             },
 
             {
