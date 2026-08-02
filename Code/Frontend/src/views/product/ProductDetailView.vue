@@ -18,7 +18,6 @@ import type {
   ProductDto,
   ProductStatus
 } from '../../types/api/product'
-import { resolveFileUrl } from '../../utils/image'
 import { getPublicUser } from '../../api/modules/user'
 import type { PublicUserDto } from '../../types/api/user'
 import {
@@ -36,6 +35,7 @@ import type {
   CreateProductCommentRequest
 } from '../../types/api/comment'
 import { formatDate } from '../../utils/format'
+import { useProductImages } from '../../composables/useProductImages'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,7 +43,15 @@ const router = useRouter()
 const loading = ref(false)
 const errorMessage = ref('')
 const product = ref<ProductDto | null>(null)
-const selectedImageUrl = ref('')
+const selectedImageFileId = ref<number | null>(null)
+const {
+  loadProductImages,
+  getProductImageUrl,
+  clearProductImages
+} = useProductImages()
+const selectedImageUrl = computed(() =>
+  getProductImageUrl(selectedImageFileId.value)
+)
 
 const authStore=useAuthStore()
 
@@ -90,6 +98,12 @@ const sortedImages = computed(() => {
   )
 })
 
+const previewImageUrls = computed(() =>
+  sortedImages.value
+    .map((image) => getProductImageUrl(image.imgFileId))
+    .filter(Boolean)
+)
+
 const seller = ref<PublicUserDto | null>(null)
 const sellerLoading = ref(false)
 const sellerErrorMessage = ref('')
@@ -107,7 +121,7 @@ function getStatusText(status: ProductStatus): string {
     return '已下架'
   }
 
-  return '草稿'
+  return '未知状态'
 }
 
 function getStatusClass(status: ProductStatus): string {
@@ -123,11 +137,16 @@ function getStatusClass(status: ProductStatus): string {
     return 'status-removed'
   }
 
-  return 'status-draft'
+  return 'status-removed'
+}
+
+function getShippingTypeText(shippingType: number): string {
+  const labels = ['包邮', '按距离计费', '固定邮费', '无需邮寄']
+  return labels[shippingType] ?? '未知'
 }
 
 function selectImage(fileId: number): void {
-  selectedImageUrl.value = resolveFileUrl(fileId)
+  selectedImageFileId.value = fileId
 }
 
 function handleBuy(): void {
@@ -363,7 +382,7 @@ async function handleDeleteComment(
     return
   }
 
-  if (comment.canDelete !== true) {
+  if (!canDeleteComment(comment)) {
     ElMessage.warning('你无权删除这条留言')
     return
   }
@@ -408,6 +427,18 @@ async function handleDeleteComment(
   finally {
     deletingCommentId.value = null
   }
+}
+
+function canDeleteComment(comment: ProductCommentDto): boolean {
+  const currentUserId = authStore.currentUser?.userId
+
+  return (
+    currentUserId !== undefined &&
+    (
+      currentUserId === comment.userId ||
+      currentUserId === product.value?.userId
+    )
+  )
 }
 
 function isCurrentDetailLoad(
@@ -530,7 +561,8 @@ async function loadProduct(): Promise<void> {
   product.value = null
   seller.value = null
   comments.value = []
-  selectedImageUrl.value = ''
+  selectedImageFileId.value = null
+  clearProductImages()
   isCollected.value = false
 
   replyingToComment.value = null
@@ -567,9 +599,23 @@ async function loadProduct(): Promise<void> {
 
     const firstImage = images[0]
 
-    selectedImageUrl.value = firstImage
-      ? resolveFileUrl(firstImage.imgFileId)
-      : ''
+    await loadProductImages(
+      images.map((image) => image.imgFileId)
+    ).catch((error) => {
+      console.error('商品图片加载失败：', error)
+    })
+
+    if (
+      !isCurrentDetailLoad(
+        currentVersion,
+        requestedProductId
+      )
+    ) {
+      return
+    }
+
+    selectedImageFileId.value =
+      firstImage?.imgFileId ?? null
 
     void loadSeller(
       response.data.userId,
@@ -694,11 +740,7 @@ onBeforeUnmount(() => {
               :alt="product.name"
               fit="contain"
               preview-teleported
-              :preview-src-list="
-                sortedImages.map((image) =>
-                  resolveFileUrl(image.imgFileId)
-                )
-              "
+              :preview-src-list="previewImageUrls"
             >
               <template #error>
                 <div class="image-placeholder">
@@ -734,14 +776,13 @@ onBeforeUnmount(() => {
               class="thumbnail-button"
               :class="{
                 active:
-                  selectedImageUrl ===
-                  resolveFileUrl(image.imgFileId)
+                  selectedImageFileId === image.imgFileId
               }"
               type="button"
               @click="selectImage(image.imgFileId)"
             >
               <el-image
-                :src="resolveFileUrl(image.imgFileId)"
+                :src="getProductImageUrl(image.imgFileId)"
                 :alt="`${product.name}商品图片`"
                 fit="cover"
               >
@@ -832,6 +873,30 @@ onBeforeUnmount(() => {
 
               <span class="meta-value">
                 {{ getStatusText(product.status) }}
+              </span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">配送方式</span>
+              <span class="meta-value">
+                {{ getShippingTypeText(product.shippingType) }}
+              </span>
+            </div>
+
+            <div
+              v-if="product.shippingType === 2"
+              class="meta-item"
+            >
+              <span class="meta-label">固定邮费</span>
+              <span class="meta-value">
+                ¥{{ Number(product.shippingFee ?? 0).toFixed(2) }}
+              </span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">校内自提</span>
+              <span class="meta-value">
+                {{ product.allowPickup === 1 ? '支持' : '不支持' }}
               </span>
             </div>
           </div>
@@ -1193,7 +1258,7 @@ onBeforeUnmount(() => {
                 </el-button>
 
                  <el-button
-                  v-if="comment.canDelete === true"
+                  v-if="canDeleteComment(comment)"
                   text
                   type="danger"
                   :loading="
@@ -1298,7 +1363,7 @@ onBeforeUnmount(() => {
                     </p>
 
                     <div
-                      v-if="reply.canDelete === true"
+                      v-if="canDeleteComment(reply)"
                       class="reply-actions"
                     >
                       <el-button

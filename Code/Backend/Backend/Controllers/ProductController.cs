@@ -17,6 +17,30 @@ public class ProductController : ControllerBase
         _productService = productService;
         _prodImageService = prodImageService;
     }
+
+    /// <summary>
+    /// 获取全部商品
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<List<ProductDto>>> GetAll()
+    {
+        return Ok(await _productService.GetAllAsync());
+    }
+
+    /// <summary>
+    /// 获取指定用户发布的全部商品 ID
+    /// </summary>
+    [HttpGet("user/{userId:int}")]
+    public async Task<ActionResult<List<long>>> GetProductIdsByUserId(int userId)
+    {
+        if (userId <= 0)
+            return BadRequest(new { error = "userId must be greater than zero." });
+
+        var productIds = await _productService
+            .GetProductIdsByUserIdAsync(userId);
+
+        return Ok(productIds);
+    }
     
     /// <summary>
     /// 根据 ID 获取商品详情
@@ -74,22 +98,6 @@ public class ProductController : ControllerBase
         return Ok(product);
 
     }
-
-    /// <summary>
-    /// 修改商品状态（在售/已售/下架）
-    /// </summary>
-    [HttpPatch("{id}/status")]
-    [Authorize]
-    public async Task<ActionResult<ProductDto>> UpdateStatus(long id, [FromBody] UpdateProductStatusDto dto)
-    {
-
-        var userId = int.Parse(User.FindFirst("userId")!.Value);
-        var product = await _productService.UpdateStatusAsync(id, userId, dto);
-        if (product == null) return NotFound();
-        return Ok(product);
-
-    }
-
 
     /// <summary>
     /// /// 删除商品

@@ -5,7 +5,6 @@ export interface ProductCommentDto {
     userName: string
     createTime: string
     responseToId: number | null
-    canDelete: boolean
     replies: ProductCommentDto[]
 }
 

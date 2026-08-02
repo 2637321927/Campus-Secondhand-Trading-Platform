@@ -5,24 +5,28 @@ import {
   ref
 } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSellerProducts } from '../../api/modules/seller'
+import { getProductDetail } from '../../api/modules/product'
+import { getUserProductIds } from '../../api/modules/user'
+import { useAuthStore } from '../../stores/auth'
 import type {
   ProductDto,
   ProductStatus
 } from '../../types/api/product'
-import type {
-  SellerProductQuery
-} from '../../types/api/seller'
-import { resolveFileUrl } from '../../utils/image'
 import { formatDate } from '../../utils/format'
 import SellerProductActions from '../../components/product/SellerProductActions.vue'
+import { useProductImages } from '../../composables/useProductImages'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const products = ref<ProductDto[]>([])
 const loading = ref(false)
 const errorMessage = ref('')
 const hasLoaded = ref(false)
+const {
+  loadProductImages,
+  getProductImageUrl
+} = useProductImages()
 
 const keyword = ref('')
 const selectedStatus = ref<'all' | ProductStatus>('all')
@@ -42,7 +46,7 @@ function getStatusText(status: ProductStatus): string {
     return '已下架'
   }
 
-  return '草稿'
+  return '未知状态'
 }
 
 function getStatusType(
@@ -76,7 +80,7 @@ function getCoverUrl(product: ProductDto): string {
     return ''
   }
 
-  return resolveFileUrl(firstImage.imgFileId)
+  return getProductImageUrl(firstImage.imgFileId)
 }
 
 function getReleaseDate(product: ProductDto): string {
@@ -87,19 +91,21 @@ function getReleaseDate(product: ProductDto): string {
   return formatDate(product.releaseDate)
 }
 
-function createQuery(): SellerProductQuery {
-  const query: SellerProductQuery = {}
+function filterProducts(items: ProductDto[]): ProductDto[] {
   const trimmedKeyword = keyword.value.trim()
 
-  if (trimmedKeyword) {
-    query.keyword = trimmedKeyword
-  }
+  return items.filter((product) => {
+    const matchesKeyword =
+      !trimmedKeyword ||
+      product.name.includes(trimmedKeyword) ||
+      (product.info?.includes(trimmedKeyword) ?? false)
 
-  if (selectedStatus.value !== 'all') {
-    query.status = selectedStatus.value
-  }
+    const matchesStatus =
+      selectedStatus.value === 'all' ||
+      product.status === selectedStatus.value
 
-  return query
+    return matchesKeyword && matchesStatus
+  })
 }
 
 async function loadProducts(): Promise<void> {
@@ -109,15 +115,35 @@ async function loadProducts(): Promise<void> {
   errorMessage.value = ''
 
   try {
-    const response = await getSellerProducts(
-      createQuery()
+    await authStore.initializeAuth()
+
+    const userId = authStore.currentUser?.userId
+
+    if (!userId) {
+      throw new Error('无法获取当前用户信息')
+    }
+
+    const idResponse = await getUserProductIds(userId)
+    const productDetails = await Promise.all(
+      (idResponse.data ?? []).map(async (productId) => {
+        const response = await getProductDetail(productId)
+        return response.data
+      })
     )
 
     if (currentVersion !== loadVersion) {
       return
     }
 
-    products.value = response.data ?? []
+    products.value = filterProducts(productDetails)
+
+    await loadProductImages(
+      products.value.flatMap((product) =>
+        (product.images ?? []).map((image) => image.imgFileId)
+      )
+    ).catch((error) => {
+      console.error('我的商品图片加载失败：', error)
+    })
   } catch (error) {
     if (currentVersion !== loadVersion) {
       return
@@ -192,7 +218,7 @@ onBeforeUnmount(() => {
       <header class="page-header">
         <div>
           <h1>我的商品</h1>
-          <p>管理已发布、已售、下架和草稿商品。</p>
+          <p>管理已发布、已售和已下架商品。</p>
         </div>
 
         <el-button
@@ -225,7 +251,6 @@ onBeforeUnmount(() => {
             <el-option label="在售" :value="0" />
             <el-option label="已售" :value="1" />
             <el-option label="已下架" :value="2" />
-            <el-option label="草稿" :value="3" />
           </el-select>
 
           <el-button

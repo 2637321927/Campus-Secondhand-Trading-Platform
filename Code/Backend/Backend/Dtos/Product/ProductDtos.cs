@@ -21,19 +21,15 @@ public class UpdateProductDto
 
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
-    public string Info { get; set; } = string.Empty;
+    public string? Info { get; set; }
     public long CategoryId { get; set; }
     public ShippingType ShippingType { get; set; } = ShippingType.Free;
     public decimal? ShippingFee { get; set; }
     public int AllowPickup { get; set; } = 0;
+    public ProductStatus Status { get; set; } = ProductStatus.Available;
     public List<IFormFile>? newImages { get; set; }
     public List<long>? toRemoveImageIds { get; set; } = new();
 
-}
-
-public class UpdateProductStatusDto
-{
-    public ProductStatus Status { get; set; }
 }
 
 public class ProductDto
@@ -79,7 +75,7 @@ public class ProductCardDto
     public long ProductId { get; set; }
     public string Name { get; set; }= string.Empty;
     public decimal Price { get; set; }
-    public string? CoverImageUrl { get; set; } 
+    public long? CoverImageFileId { get; set; }
     public string SellerName { get; set; }= string.Empty;
     public DateTime ReleaseDate { get; set; }
     public int ViewCount { get; set; }

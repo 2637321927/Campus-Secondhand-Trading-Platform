@@ -13,21 +13,19 @@ import {
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import {
-  getSellerProductComments,
-  getSellerProductDetail,
-  getSellerProductStats,
-  replySellerComment
-} from '../../api/modules/seller'
+  getProductDetail
+} from '../../api/modules/product'
+import {
+  createProductComment,
+  getProductComments
+} from '../../api/modules/comment'
 import type {
   ProductDto,
   ProductStatus
 } from '../../types/api/product'
-import type {
-  SellerProductCommentDto,
-  SellerProductStatsDto
-} from '../../types/api/seller'
-import { resolveFileUrl } from '../../utils/image'
+import type { ProductCommentDto } from '../../types/api/comment'
 import SellerProductActions from '../../components/product/SellerProductActions.vue'
+import { useProductImages } from '../../composables/useProductImages'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,12 +33,12 @@ const router = useRouter()
 const product = ref<ProductDto | null>(null)
 const productLoading = ref(false)
 const productErrorMessage = ref('')
+const {
+  loadProductImages,
+  getProductImageUrl
+} = useProductImages()
 
-const stats = ref<SellerProductStatsDto | null>(null)
-const statsLoading = ref(false)
-const statsErrorMessage = ref('')
-
-const comments = ref<SellerProductCommentDto[]>([])
+const comments = ref<ProductCommentDto[]>([])
 const commentsLoading = ref(false)
 const commentsErrorMessage = ref('')
 
@@ -75,6 +73,18 @@ const sortedImages = computed(() => {
   )
 })
 
+function countComments(items: ProductCommentDto[]): number {
+  return items.reduce(
+    (count, comment) =>
+      count + 1 + countComments(comment.replies ?? []),
+    0
+  )
+}
+
+const commentCount = computed(() =>
+  countComments(comments.value)
+)
+
 function getStatusText(status: ProductStatus): string {
   if (status === 0) {
     return '在售'
@@ -88,7 +98,7 @@ function getStatusText(status: ProductStatus): string {
     return '已下架'
   }
 
-  return '草稿'
+  return '未知状态'
 }
 
 function getStatusType(
@@ -109,27 +119,26 @@ function getStatusType(
   return 'warning'
 }
 
-function getShippingMethodLabel(
-  shippingMethodId: number | null | undefined
+function getShippingTypeLabel(
+  shippingType: number
 ): string {
-  if (shippingMethodId === 1) {
-    return '当面交易'
+  if (shippingType === 0) {
+    return '包邮'
   }
 
-  if (shippingMethodId === 2) {
-    return '快递交易'
+  if (shippingType === 1) {
+    return '按距离计费'
   }
 
-  if (shippingMethodId === 3) {
-    return '两者均可'
+  if (shippingType === 2) {
+    return '固定邮费'
   }
 
-  if (shippingMethodId === null ||
-      shippingMethodId === undefined) {
-    return '暂无'
+  if (shippingType === 3) {
+    return '无需邮寄'
   }
 
-  return `方式 ${shippingMethodId}`
+  return '未知'
 }
 
 function formatCommentTime(value: string): string {
@@ -184,7 +193,7 @@ async function loadProduct(
   productErrorMessage.value = ''
 
   try {
-    const response = await getSellerProductDetail(
+    const response = await getProductDetail(
       requestedProductId
     )
 
@@ -193,6 +202,14 @@ async function loadProduct(
     }
 
     product.value = response.data
+
+    await loadProductImages(
+      (response.data.images ?? []).map(
+        (image) => image.imgFileId
+      )
+    ).catch((error) => {
+      console.error('卖家商品图片加载失败：', error)
+    })
   } catch (error) {
     if (!isCurrentLoad(version, requestedProductId)) {
       return
@@ -209,43 +226,6 @@ async function loadProduct(
   }
 }
 
-async function loadStats(
-  requestedProductId: number,
-  version = loadVersion
-): Promise<void> {
-  if (!isCurrentLoad(version, requestedProductId)) {
-    return
-  }
-
-  statsLoading.value = true
-  statsErrorMessage.value = ''
-
-  try {
-    const response = await getSellerProductStats(
-      requestedProductId
-    )
-
-    if (!isCurrentLoad(version, requestedProductId)) {
-      return
-    }
-
-    stats.value = response.data
-  } catch (error) {
-    if (!isCurrentLoad(version, requestedProductId)) {
-      return
-    }
-
-    statsErrorMessage.value =
-      '统计数据加载失败，商品基本信息不受影响'
-
-    console.error('商品统计加载失败：', error)
-  } finally {
-    if (isCurrentLoad(version, requestedProductId)) {
-      statsLoading.value = false
-    }
-  }
-}
-
 async function loadComments(
   requestedProductId: number,
   version = loadVersion
@@ -258,7 +238,7 @@ async function loadComments(
   commentsErrorMessage.value = ''
 
   try {
-    const response = await getSellerProductComments(
+    const response = await getProductComments(
       requestedProductId
     )
 
@@ -294,14 +274,11 @@ function loadPage(): void {
   const currentVersion = ++loadVersion
 
   product.value = null
-  stats.value = null
   comments.value = []
   productLoading.value = false
-  statsLoading.value = false
   commentsLoading.value = false
 
   productErrorMessage.value = ''
-  statsErrorMessage.value = ''
   commentsErrorMessage.value = ''
 
   if (requestedProductId === null) {
@@ -314,11 +291,6 @@ function loadPage(): void {
     currentVersion
   )
 
-  void loadStats(
-    requestedProductId,
-    currentVersion
-  )
-
   void loadComments(
     requestedProductId,
     currentVersion
@@ -326,7 +298,7 @@ function loadPage(): void {
 }
 
 async function handleReply(
-  comment: SellerProductCommentDto
+  comment: ProductCommentDto
 ): Promise<void> {
   const requestedProductId = productId.value
   const currentVersion = loadVersion
@@ -351,11 +323,11 @@ async function handleReply(
   replyingCommentId.value = comment.commentId
 
   try {
-    await replySellerComment(
+    await createProductComment(
       requestedProductId,
-      comment.commentId,
       {
-        content
+        content,
+        responseToId: comment.commentId
       }
     )
 
@@ -530,8 +502,8 @@ onBeforeUnmount(() => {
           >
             <el-image
               v-for="image in sortedImages"
-              :key="image.imageId ?? image.imgFileId"
-              :src="resolveFileUrl(image.imgFileId)"
+              :key="image.imgFileId"
+              :src="getProductImageUrl(image.imgFileId)"
               :alt="product.name"
               fit="cover"
               class="product-image"
@@ -557,25 +529,31 @@ onBeforeUnmount(() => {
             </div>
 
             <div>
-              <dt>交易方式</dt>
+              <dt>配送方式</dt>
               <dd>
                 {{
-                  getShippingMethodLabel(
-                    product.shippingMethodId
+                  getShippingTypeLabel(
+                    product.shippingType
                   )
                 }}
               </dd>
             </div>
 
             <div>
-              <dt>交易地址</dt>
+              <dt>固定邮费</dt>
               <dd>
                 {{
-                  product.addressId === null ||
-                  product.addressId === undefined
-                    ? '暂无'
-                    : `地址 ${product.addressId}`
+                  product.shippingType === 2
+                    ? `¥${Number(product.shippingFee ?? 0).toFixed(2)}`
+                    : '不适用'
                 }}
+              </dd>
+            </div>
+
+            <div>
+              <dt>校内自提</dt>
+              <dd>
+                {{ product.allowPickup === 1 ? '支持' : '不支持' }}
               </dd>
             </div>
 
@@ -598,85 +576,21 @@ onBeforeUnmount(() => {
           <template #header>
             <div class="section-header">
               <h2>商品统计</h2>
-
-              <el-button
-                text
-                :loading="statsLoading"
-                @click="
-                  productId !== null &&
-                  loadStats(productId)
-                "
-              >
-                刷新
-              </el-button>
             </div>
           </template>
 
           <div
-            v-if="statsLoading && !stats"
-            class="section-loading"
-          >
-            <el-skeleton :rows="2" animated />
-          </div>
-
-          <el-alert
-            v-else-if="statsErrorMessage && !stats"
-            :title="statsErrorMessage"
-            type="error"
-            :closable="false"
-            show-icon
-          >
-            <template #default>
-              <el-button
-                link
-                type="primary"
-                @click="
-                  productId !== null &&
-                  loadStats(productId)
-                "
-              >
-                重新加载统计
-              </el-button>
-            </template>
-          </el-alert>
-
-          <el-alert
-            v-if="statsErrorMessage && stats"
-            :title="statsErrorMessage"
-            type="error"
-            :closable="false"
-            show-icon
-            class="section-alert"
-          />
-
-          <div
-            v-if="stats"
+            v-if="product"
             class="stats-grid"
           >
             <div class="stat-item">
-              <strong>{{ stats.viewCount }}</strong>
+              <strong>{{ product.viewCount }}</strong>
               <span>浏览量</span>
             </div>
 
             <div class="stat-item">
-              <strong>{{ stats.collectionCount }}</strong>
-              <span>收藏量</span>
-            </div>
-
-            <div class="stat-item">
-              <strong>{{ stats.commentCount }}</strong>
+              <strong>{{ commentCount }}</strong>
               <span>留言量</span>
-            </div>
-
-            <div class="stat-item">
-              <strong>
-                {{
-                  stats.shareCount === undefined
-                    ? '暂无'
-                    : stats.shareCount
-                }}
-              </strong>
-              <span>分享量</span>
             </div>
           </div>
         </el-card>
@@ -970,7 +884,7 @@ onBeforeUnmount(() => {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
