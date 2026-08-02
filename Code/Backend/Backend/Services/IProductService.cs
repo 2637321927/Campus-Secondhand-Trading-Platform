@@ -13,6 +13,7 @@ public interface IProductService
     Task<ProductDto?> GetByIdAsync(long productId, int userId);
     Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto);
     Task<ProductDto?> UpdateAsync(long productId, int userId, UpdateProductDto dto);
+    Task<ProductDto?> UpdateStatusAsync(long productId, int userId, UpdateProductStatusDto dto);
     Task<bool> DeleteAsync(long productId, int userId);
     Task RecordViewAsync(long productId, int userId);
     Task<List<ProductCardDto>> QueryProductCardsAsync(

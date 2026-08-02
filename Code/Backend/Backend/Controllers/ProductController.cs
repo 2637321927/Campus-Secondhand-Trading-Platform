@@ -75,6 +75,21 @@ public class ProductController : ControllerBase
 
     }
 
+    /// <summary>
+    /// 修改商品状态（在售/已售/下架）
+    /// </summary>
+    [HttpPatch("{id}/status")]
+    [Authorize]
+    public async Task<ActionResult<ProductDto>> UpdateStatus(long id, [FromBody] UpdateProductStatusDto dto)
+    {
+
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var product = await _productService.UpdateStatusAsync(id, userId, dto);
+        if (product == null) return NotFound();
+        return Ok(product);
+
+    }
+
 
     /// <summary>
     /// /// 删除商品

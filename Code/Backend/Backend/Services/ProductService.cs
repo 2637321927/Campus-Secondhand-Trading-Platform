@@ -102,7 +102,6 @@ public class ProductService : IProductService
         product.Name = dto.Name;
         product.Price = dto.Price;
         product.Info = dto.Info;
-        product.Status = dto.Status;
         product.CategoryId = dto.CategoryId;
         product.ShippingType = dto.ShippingType;
         product.ShippingFee = dto.ShippingFee;
@@ -134,6 +133,28 @@ public class ProductService : IProductService
         {
             img.ImgIndex = index++;
         }
+
+        _productRepo.Update(product);
+        await _productRepo.SaveAsync();
+
+        return ToDto(product);
+
+    }
+
+    public async Task<ProductDto?> UpdateStatusAsync(long productId, int userId, UpdateProductStatusDto dto)
+    {
+
+        var product = await _productRepo.GetByIdAsync(productId);
+        if (product == null) return null;
+
+        if (product.UserId != userId)
+        {
+
+            throw new UnauthorizedAccessException("You do not have permission to update this product.");
+
+        }
+
+        product.Status = dto.Status;
 
         _productRepo.Update(product);
         await _productRepo.SaveAsync();

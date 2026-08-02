@@ -22,7 +22,6 @@ public class UpdateProductDto
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string Info { get; set; } = string.Empty;
-    public ProductStatus Status { get; set; } = ProductStatus.Available;
     public long CategoryId { get; set; }
     public ShippingType ShippingType { get; set; } = ShippingType.Free;
     public decimal? ShippingFee { get; set; }
@@ -30,6 +29,11 @@ public class UpdateProductDto
     public List<IFormFile>? newImages { get; set; }
     public List<long>? toRemoveImageIds { get; set; } = new();
 
+}
+
+public class UpdateProductStatusDto
+{
+    public ProductStatus Status { get; set; }
 }
 
 public class ProductDto
