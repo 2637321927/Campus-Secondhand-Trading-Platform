@@ -24,9 +24,8 @@ import type {
   FormRules
 } from 'element-plus'
 import { getCategories } from '../../api/modules/category'
-import { getSellerProductDetail } from '../../api/modules/seller'
 import {
-  sortProductImages,
+  getProductDetail,
   updateProduct
 } from '../../api/modules/product'
 import type {
@@ -36,9 +35,10 @@ import type {
   ProductDto,
   ProductImageDto,
   ProductStatus,
+  ShippingType,
   UpdateProductRequest
 } from '../../types/api/product'
-import { resolveFileUrl } from '../../utils/image'
+import { useProductImages } from '../../composables/useProductImages'
 
 interface ProductEditForm {
   name: string
@@ -46,7 +46,9 @@ interface ProductEditForm {
   categoryId: number | null
   info: string
   status: ProductStatus
-  shippingMethodId: number | null
+  shippingType: ShippingType
+  shippingFee: number | null
+  allowPickup: boolean
 }
 
 interface NewImagePreview {
@@ -70,7 +72,9 @@ const form = reactive<ProductEditForm>({
   categoryId: null,
   info: '',
   status: 0,
-  shippingMethodId: null
+  shippingType: 0,
+  shippingFee: null,
+  allowPickup: false
 })
 
 const categories = ref<CategoryDto[]>([])
@@ -78,13 +82,14 @@ const categoriesLoading = ref(false)
 const categoriesErrorMessage = ref('')
 
 const existingImages = ref<ProductImageDto[]>([])
+const {
+  loadProductImages,
+  getProductImageUrl,
+  clearProductImages
+} = useProductImages()
 const newImagePreviews = ref<NewImagePreview[]>([])
 const failedNewImageIds = ref<string[]>([])
 const toRemoveImageIds = ref<number[]>([])
-const existingOrderChanged = ref(false)
-
-const loadedAddressId =
-  ref<number | null | undefined>(undefined)
 
 const loading = ref(false)
 const errorMessage = ref('')
@@ -116,19 +121,6 @@ const totalImageCount = computed(() => {
     existingImages.value.length +
     newImagePreviews.value.length
   )
-})
-
-const canManageExistingImages = computed(() => {
-  if (existingImages.value.length === 0) {
-    return true
-  }
-
-  return existingImages.value.every((image) => {
-    return (
-      Number.isInteger(image.imageId) &&
-      (image.imageId ?? 0) > 0
-    )
-  })
 })
 
 const rules: FormRules<ProductEditForm> = {
@@ -170,6 +162,12 @@ const rules: FormRules<ProductEditForm> = {
       message: '商品描述不能超过 100 个字符',
       trigger: 'blur'
     }
+  ],
+  shippingFee: [
+    {
+      validator: validateShippingFee,
+      trigger: 'change'
+    }
   ]
 }
 
@@ -180,6 +178,22 @@ function validateProductName(
 ): void {
   if (!value.trim()) {
     callback(new Error('请输入商品名称'))
+    return
+  }
+
+  callback()
+}
+
+function validateShippingFee(
+  _rule: unknown,
+  value: number | null,
+  callback: (error?: Error) => void
+): void {
+  if (
+    form.shippingType === 2 &&
+    (value === null || value <= 0)
+  ) {
+    callback(new Error('请输入大于 0 的固定邮费'))
     return
   }
 
@@ -205,9 +219,9 @@ function clearNewImagePreviews(): void {
 
 function resetImageEditor(): void {
   clearNewImagePreviews()
+  clearProductImages()
   existingImages.value = []
   toRemoveImageIds.value = []
-  existingOrderChanged.value = false
 }
 
 function applyProduct(product: ProductDto): void {
@@ -218,10 +232,9 @@ function applyProduct(product: ProductDto): void {
   form.categoryId = product.categoryId
   form.info = product.info ?? ''
   form.status = product.status
-  form.shippingMethodId =
-    product.shippingMethodId ?? null
-
-  loadedAddressId.value = product.addressId
+  form.shippingType = product.shippingType
+  form.shippingFee = product.shippingFee ?? null
+  form.allowPickup = product.allowPickup === 1
 
   clearNewImagePreviews()
   existingImages.value = [
@@ -231,11 +244,18 @@ function applyProduct(product: ProductDto): void {
   })
 
   toRemoveImageIds.value = []
-  existingOrderChanged.value = false
   hasUnsavedChanges.value = false
 
   void nextTick(() => {
     dirtyTrackingEnabled = true
+  })
+}
+
+async function loadExistingImages(): Promise<void> {
+  await loadProductImages(
+    existingImages.value.map((image) => image.imgFileId)
+  ).catch((error) => {
+    console.error('已有商品图片加载失败：', error)
   })
 }
 
@@ -277,7 +297,7 @@ async function loadProduct(): Promise<void> {
   }
 
   try {
-    const response = await getSellerProductDetail(
+    const response = await getProductDetail(
       requestedProductId
     )
 
@@ -289,6 +309,7 @@ async function loadProduct(): Promise<void> {
     }
 
     applyProduct(response.data)
+    await loadExistingImages()
   } catch (error) {
     if (currentVersion !== loadVersion) {
       return
@@ -497,63 +518,23 @@ function removeExistingImage(index: number): void {
 
   const image = existingImages.value[index]
 
-  if (
-    !image ||
-    !Number.isInteger(image.imageId) ||
-    (image.imageId ?? 0) <= 0
-  ) {
-    ElMessage.warning(
-      '后端未返回 imageId，不能安全删除该图片'
-    )
-    return
-  }
-
-  toRemoveImageIds.value.push(image.imageId as number)
-  existingImages.value.splice(index, 1)
-  existingOrderChanged.value = true
-  markAsChanged()
-}
-
-function moveExistingImage(
-  currentIndex: number,
-  targetIndex: number
-): void {
-  if (saving.value) {
-    return
-  }
-
-  if (!canManageExistingImages.value) {
-    ElMessage.warning(
-      '后端未返回完整 imageId，已有图片排序已禁用'
-    )
-    return
-  }
-
-  if (
-    targetIndex < 0 ||
-    targetIndex >= existingImages.value.length
-  ) {
-    return
-  }
-
-  const [image] = existingImages.value.splice(
-    currentIndex,
-    1
-  )
-
   if (!image) {
     return
   }
 
-  existingImages.value.splice(targetIndex, 0, image)
-  existingOrderChanged.value = true
+  toRemoveImageIds.value.push(image.imgFileId)
+  existingImages.value.splice(index, 1)
   markAsChanged()
 }
 
 function createUpdateRequest(): UpdateProductRequest | null {
   if (
     form.price === null ||
-    form.categoryId === null
+    form.categoryId === null ||
+    (
+      form.shippingType === 2 &&
+      (form.shippingFee === null || form.shippingFee <= 0)
+    )
   ) {
     return null
   }
@@ -564,6 +545,9 @@ function createUpdateRequest(): UpdateProductRequest | null {
     info: form.info.trim(),
     categoryId: form.categoryId,
     status: form.status,
+    shippingType: form.shippingType,
+    shippingFee: form.shippingFee,
+    allowPickup: form.allowPickup ? 1 : 0,
     newImages: newImagePreviews.value.map(
       (preview) => preview.file
     ),
@@ -572,139 +556,30 @@ function createUpdateRequest(): UpdateProductRequest | null {
     ]
   }
 
-  if (form.shippingMethodId !== null) {
-    requestData.shippingMethodId =
-      form.shippingMethodId
-  }
-
-  if (
-    loadedAddressId.value !== null &&
-    loadedAddressId.value !== undefined
-  ) {
-    requestData.addressId =
-      loadedAddressId.value
-  }
-
   return requestData
 }
 
 function productMatchesRequest(
   product: ProductDto,
   requestData: UpdateProductRequest,
-  expectedImageCount: number
+  expectedImageCount: number,
+  expectedStatus: ProductStatus
 ): boolean {
-  const shippingMethodMatches =
-    requestData.shippingMethodId === undefined ||
-    product.shippingMethodId ===
-      requestData.shippingMethodId
-
-  const addressMatches =
-    requestData.addressId === undefined ||
-    product.addressId === requestData.addressId
+  const shippingMatches =
+    product.shippingType === requestData.shippingType &&
+    (product.shippingFee ?? null) ===
+      (requestData.shippingFee ?? null) &&
+    product.allowPickup === requestData.allowPickup
 
   return (
     product.name === requestData.name &&
     Number(product.price) === requestData.price &&
     product.categoryId === requestData.categoryId &&
     (product.info ?? '') === (requestData.info ?? '') &&
-    product.status === requestData.status &&
-    shippingMethodMatches &&
-    addressMatches &&
+    product.status === expectedStatus &&
+    shippingMatches &&
     (product.images ?? []).length === expectedImageCount
   )
-}
-
-function getExistingImageOrder(): number[] | null {
-  const imageIds: number[] = []
-
-  for (const image of existingImages.value) {
-    if (
-      !Number.isInteger(image.imageId) ||
-      (image.imageId ?? 0) <= 0
-    ) {
-      return null
-    }
-
-    imageIds.push(image.imageId as number)
-  }
-
-  return imageIds
-}
-
-async function applyImageOrderIfPossible(
-  requestedProductId: number,
-  refreshedProduct: ProductDto,
-  requestedExistingOrder: number[] | null
-): Promise<ProductDto> {
-  if (
-    !existingOrderChanged.value ||
-    requestedExistingOrder === null
-  ) {
-    return refreshedProduct
-  }
-
-  const refreshedImages = [
-    ...(refreshedProduct.images ?? [])
-  ].sort((a, b) => {
-    return a.imgIndex - b.imgIndex
-  })
-
-  const allImageIdsAvailable =
-    refreshedImages.every((image) => {
-      return (
-        Number.isInteger(image.imageId) &&
-        (image.imageId ?? 0) > 0
-      )
-    })
-
-  if (!allImageIdsAvailable) {
-    ElMessage.warning(
-      '商品已保存，但后端未返回 imageId，无法提交图片排序'
-    )
-    return refreshedProduct
-  }
-
-  const existingIdSet = new Set(
-    requestedExistingOrder
-  )
-
-  const newImageIds = refreshedImages
-    .map((image) => image.imageId as number)
-    .filter((imageId) => {
-      return !existingIdSet.has(imageId)
-    })
-
-  const refreshedIdSet = new Set(
-    refreshedImages.map(
-      (image) => image.imageId as number
-    )
-  )
-
-  const imageIds = requestedExistingOrder.filter(
-    (imageId) => refreshedIdSet.has(imageId)
-  )
-
-  imageIds.push(...newImageIds)
-
-  if (imageIds.length !== refreshedImages.length) {
-    ElMessage.warning(
-      '商品已保存，但图片标识发生变化，未提交排序'
-    )
-    return refreshedProduct
-  }
-
-  await sortProductImages(
-    requestedProductId,
-    {
-      imageIds
-    }
-  )
-
-  const finalResponse = await getSellerProductDetail(
-    requestedProductId
-  )
-
-  return finalResponse.data
 }
 
 async function saveProduct(): Promise<void> {
@@ -736,9 +611,8 @@ async function saveProduct(): Promise<void> {
     return
   }
 
-  const requestedExistingOrder =
-    getExistingImageOrder()
   const expectedImageCount = totalImageCount.value
+  const requestedStatus = form.status
 
   saving.value = true
   let updateSucceeded = false
@@ -751,11 +625,13 @@ async function saveProduct(): Promise<void> {
 
     updateSucceeded = true
 
+    const savedProduct = updateResponse.data
+
     let refreshedProduct: ProductDto
 
     try {
       const refreshedResponse =
-        await getSellerProductDetail(
+        await getProductDetail(
           requestedProductId
         )
 
@@ -763,7 +639,8 @@ async function saveProduct(): Promise<void> {
     } catch (error) {
       console.error('保存后重新读取商品失败：', error)
 
-      applyProduct(updateResponse.data)
+      applyProduct(savedProduct)
+      await loadExistingImages()
 
       ElMessage.warning(
         '保存请求已成功，但重新读取验证失败，请稍后刷新确认'
@@ -771,38 +648,18 @@ async function saveProduct(): Promise<void> {
       return
     }
 
-    let imageOrderFailed = false
-
-    try {
-      refreshedProduct =
-        await applyImageOrderIfPossible(
-          requestedProductId,
-          refreshedProduct,
-          requestedExistingOrder
-        )
-    } catch (error) {
-      imageOrderFailed = true
-
-      console.error(
-        '商品已保存，但图片排序或排序验证失败：',
-        error
-      )
-    }
-
     const persisted =
       productMatchesRequest(
         refreshedProduct,
         requestData,
-        expectedImageCount
+        expectedImageCount,
+        requestedStatus
       )
 
     applyProduct(refreshedProduct)
+    await loadExistingImages()
 
-    if (imageOrderFailed) {
-      ElMessage.warning(
-        '商品内容已保存，但图片排序未完成，请稍后刷新确认'
-      )
-    } else if (persisted) {
+    if (persisted) {
       ElMessage.success('商品修改已保存')
     } else {
       ElMessage.warning(
@@ -893,13 +750,24 @@ async function confirmLeaveEditPage(): Promise<boolean> {
 }
 
 watch(
+  () => form.shippingType,
+  (shippingType) => {
+    if (shippingType !== 2) {
+      form.shippingFee = null
+    }
+  }
+)
+
+watch(
   [
     () => form.name,
     () => form.price,
     () => form.categoryId,
     () => form.info,
     () => form.status,
-    () => form.shippingMethodId
+    () => form.shippingType,
+    () => form.shippingFee,
+    () => form.allowPickup
   ],
   () => {
     markAsChanged()
@@ -1085,27 +953,44 @@ onBeforeRouteLeave(async () => {
                 <el-option label="在售" :value="0" />
                 <el-option label="已售" :value="1" />
                 <el-option label="已下架" :value="2" />
-                <el-option
-                  label="草稿（待后端确认）"
-                  :value="3"
-                />
               </el-select>
             </el-form-item>
 
             <el-form-item
-              label="交易方式"
-              prop="shippingMethodId"
+              label="配送方式"
+              prop="shippingType"
             >
               <el-select
-                v-model="form.shippingMethodId"
-                clearable
-                placeholder="后端未返回时可不选择"
+                v-model="form.shippingType"
                 class="full-control"
               >
-                <el-option label="当面交易" :value="1" />
-                <el-option label="快递交易" :value="2" />
-                <el-option label="两者均可" :value="3" />
+                <el-option label="包邮" :value="0" />
+                <el-option label="按距离计费" :value="1" />
+                <el-option label="固定邮费" :value="2" />
+                <el-option label="无需邮寄" :value="3" />
               </el-select>
+            </el-form-item>
+
+            <el-form-item
+              v-if="form.shippingType === 2"
+              label="固定邮费"
+              prop="shippingFee"
+            >
+              <el-input-number
+                v-model="form.shippingFee"
+                :min="0.01"
+                :max="999.99"
+                :precision="2"
+                class="full-control"
+              />
+            </el-form-item>
+
+            <el-form-item label="校内自提">
+              <el-switch
+                v-model="form.allowPickup"
+                active-text="支持自提"
+                inactive-text="不支持自提"
+              />
             </el-form-item>
           </div>
 
@@ -1123,15 +1008,6 @@ onBeforeRouteLeave(async () => {
             />
           </el-form-item>
 
-          <el-alert
-            title="地址接口尚未明确"
-            type="info"
-            :closable="false"
-            show-icon
-          >
-            当前页面不会虚构地址列表。若详情响应包含 addressId，
-            保存时会原样保留；否则不会发送地址字段。
-          </el-alert>
         </el-card>
 
         <el-card
@@ -1172,32 +1048,17 @@ onBeforeRouteLeave(async () => {
             @change="handleImageChange"
           >
 
-          <el-alert
-            v-if="
-              existingImages.length > 0 &&
-              !canManageExistingImages
-            "
-            title="后端未返回 imageId"
-            type="warning"
-            :closable="false"
-            show-icon
-            class="image-alert"
-          >
-            为避免把 imgFileId 当成 imageId，
-            已有图片的删除和排序操作已禁用。
-          </el-alert>
-
           <section v-if="existingImages.length > 0">
             <h3>已有图片</h3>
 
             <div class="image-grid">
               <article
                 v-for="(image, index) in existingImages"
-                :key="image.imageId ?? image.imgFileId"
+                :key="image.imgFileId"
                 class="image-card"
               >
                 <el-image
-                  :src="resolveFileUrl(image.imgFileId)"
+                  :src="getProductImageUrl(image.imgFileId)"
                   alt="已有商品图片"
                   fit="cover"
                   class="image-preview"
@@ -1219,34 +1080,8 @@ onBeforeRouteLeave(async () => {
                 <div class="image-actions">
                   <el-button
                     link
-                    :disabled="
-                      !canManageExistingImages ||
-                      index === 0
-                    "
-                    @click="
-                      moveExistingImage(index, index - 1)
-                    "
-                  >
-                    上移
-                  </el-button>
-
-                  <el-button
-                    link
-                    :disabled="
-                      !canManageExistingImages ||
-                      index === existingImages.length - 1
-                    "
-                    @click="
-                      moveExistingImage(index, index + 1)
-                    "
-                  >
-                    下移
-                  </el-button>
-
-                  <el-button
-                    link
                     type="danger"
-                    :disabled="!canManageExistingImages"
+                    :disabled="saving"
                     @click="removeExistingImage(index)"
                   >
                     删除
@@ -1263,7 +1098,7 @@ onBeforeRouteLeave(async () => {
               v-if="existingImages.length > 0"
               class="section-tip"
             >
-              新图片将在已有图片之后上传；当前契约无法在上传前为新图片取得 imageId。
+              新图片将在已有图片之后上传。
             </p>
 
             <div class="image-grid">

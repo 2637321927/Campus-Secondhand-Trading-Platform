@@ -35,6 +35,20 @@ public class ProductService : IProductService
 
     }
 
+    public async Task<List<ProductDto>> GetAllAsync()
+    {
+        var products = await _productRepo.GetAllAsync();
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(product => product.ProductId));
+
+        return products
+            .OrderByDescending(product => product.ReleaseDate)
+            .Select(product => ToDto(
+                product,
+                viewCounts.GetValueOrDefault(product.ProductId, 0)))
+            .ToList();
+    }
+
     public async Task RecordViewAsync(long productId, int userId)
     {
         await _productViewRepo.AddAsync(new ProductView
@@ -44,6 +58,16 @@ public class ProductService : IProductService
             ViewTime = DateTime.Now
         });
         await _productViewRepo.SaveAsync();
+    }
+
+    public async Task<List<long>> GetProductIdsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetByUserIdAsync(userId);
+
+        return products
+            .OrderByDescending(product => product.ReleaseDate)
+            .Select(product => product.ProductId)
+            .ToList();
     }
 
     public async Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto)
@@ -106,6 +130,7 @@ public class ProductService : IProductService
         product.ShippingType = dto.ShippingType;
         product.ShippingFee = dto.ShippingFee;
         product.AllowPickup = dto.AllowPickup;
+        product.Status = dto.Status;
 
         if (dto.toRemoveImageIds != null && dto.toRemoveImageIds.Count > 0)
         {
@@ -133,28 +158,6 @@ public class ProductService : IProductService
         {
             img.ImgIndex = index++;
         }
-
-        _productRepo.Update(product);
-        await _productRepo.SaveAsync();
-
-        return ToDto(product);
-
-    }
-
-    public async Task<ProductDto?> UpdateStatusAsync(long productId, int userId, UpdateProductStatusDto dto)
-    {
-
-        var product = await _productRepo.GetByIdAsync(productId);
-        if (product == null) return null;
-
-        if (product.UserId != userId)
-        {
-
-            throw new UnauthorizedAccessException("You do not have permission to update this product.");
-
-        }
-
-        product.Status = dto.Status;
 
         _productRepo.Update(product);
         await _productRepo.SaveAsync();
@@ -251,10 +254,9 @@ public class ProductService : IProductService
         ProductId = p.ProductId,
         Name = p.Name,
         Price = p.Price,
-        CoverImageUrl = p.Images?
+        CoverImageFileId = p.Images?
             .OrderBy(i => i.ImgIndex)
-            .FirstOrDefault()?.ImgFileId is long fileId
-                ? $"/api/files/{fileId}" : null,
+            .FirstOrDefault()?.ImgFileId,
         SellerName = p.Seller?.UserName ?? "",
         ReleaseDate = p.ReleaseDate,
         ViewCount = viewCount

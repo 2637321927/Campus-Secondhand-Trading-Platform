@@ -6,12 +6,9 @@ import {
 } from 'element-plus'
 import {
   deleteProduct,
-  updateProductStatus
+  getProductDetail,
+  updateProduct
 } from '../../api/modules/product'
-import {
-  markSellerProductSold,
-  relistSellerProduct
-} from '../../api/modules/seller'
 import type {
   ProductStatus
 } from '../../types/api/product'
@@ -32,12 +29,28 @@ type ActionName =
   | 'sold'
   | 'relist'
   | 'offline'
-  | 'publish'
 
 const actionLoading = ref<ActionName | null>(null)
 
 function isActionLoading(action: ActionName): boolean {
   return actionLoading.value === action
+}
+
+async function updateStatus(status: ProductStatus): Promise<void> {
+  const product = (await getProductDetail(props.productId)).data
+
+  await updateProduct(props.productId, {
+    name: product.name,
+    price: product.price,
+    info: product.info ?? '',
+    categoryId: product.categoryId,
+    status,
+    newImages: [],
+    toRemoveImageIds: [],
+    shippingType: product.shippingType,
+    shippingFee: product.shippingFee ?? null,
+    allowPickup: product.allowPickup
+  })
 }
 
 async function confirmAction(
@@ -104,7 +117,7 @@ async function handleMarkSold(): Promise<void> {
   }
 
   try {
-    await markSellerProductSold(props.productId)
+    await updateStatus(1)
     ElMessage.success('商品已标记为已售')
     emit('changed')
   } catch (error) {
@@ -127,7 +140,7 @@ async function handleRelist(): Promise<void> {
   }
 
   try {
-    await relistSellerProduct(props.productId)
+    await updateStatus(0)
     ElMessage.success('商品已重新上架')
     emit('changed')
   } catch (error) {
@@ -139,7 +152,7 @@ async function handleRelist(): Promise<void> {
 }
 
 async function changeStatus(
-  action: 'offline' | 'publish',
+  action: 'offline',
   status: ProductStatus,
   message: string,
   title: string,
@@ -156,12 +169,7 @@ async function changeStatus(
   }
 
   try {
-    await updateProductStatus(
-      props.productId,
-      {
-        status
-      }
-    )
+    await updateStatus(status)
 
     ElMessage.success(successMessage)
     emit('changed')
@@ -183,15 +191,6 @@ async function handleOffline(): Promise<void> {
   )
 }
 
-async function handlePublishDraft(): Promise<void> {
-  await changeStatus(
-    'publish',
-    0,
-    '状态 3 仍需与后端确认。确定尝试将该草稿上架吗？',
-    '发布草稿',
-    '草稿已上架'
-  )
-}
 </script>
 
 <template>
@@ -226,17 +225,6 @@ async function handlePublishDraft(): Promise<void> {
       @click="handleRelist"
     >
       重新上架
-    </el-button>
-
-    <el-button
-      v-if="status === 3"
-      type="primary"
-      plain
-      :loading="isActionLoading('publish')"
-      :disabled="disabled || actionLoading !== null"
-      @click="handlePublishDraft"
-    >
-      发布上架
     </el-button>
 
     <el-button

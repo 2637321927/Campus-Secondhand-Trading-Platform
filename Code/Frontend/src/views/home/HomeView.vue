@@ -8,11 +8,16 @@ import type { HomeResponseDto } from '../../types/api/home'
 import type { ProductCardDto } from '../../types/api/product'
 import ProductCard from '../../components/product/ProductCard.vue'
 import {useRouter} from 'vue-router'
+import { useProductImages } from '../../composables/useProductImages'
 
 const loading = ref(false)
 const errorMessage = ref('')
 const homeData = ref<HomeResponseDto | null>(null)
 const hotProducts=ref<ProductCardDto[]>([])
+const {
+  loadProductImages,
+  getProductImageUrl
+} = useProductImages()
 
 async function loadHomeData():Promise<void> {
     loading.value=true
@@ -23,6 +28,17 @@ async function loadHomeData():Promise<void> {
 
         const hotResponse=await getHotProducts()
         hotProducts.value=hotResponse.data
+
+        const products = [
+          ...(homeData.value?.recommendedProducts ?? []),
+          ...hotProducts.value
+        ]
+
+        await loadProductImages(
+          products.map((product) => product.coverImageFileId)
+        ).catch((error) => {
+          console.error('商品图片加载失败：', error)
+        })
     }
     catch(error){
         errorMessage.value = '首页数据加载失败，请稍后重试'
@@ -130,6 +146,7 @@ onMounted(() => {
             v-for="product in homeData.recommendedProducts"
             :key="product.productId"
             :product="product"
+            :image-url="getProductImageUrl(product.coverImageFileId)"
           />
         </div>
 
@@ -160,6 +177,7 @@ onMounted(() => {
             v-for="product in hotProducts"
             :key="product.productId"
             :product="product"
+            :image-url="getProductImageUrl(product.coverImageFileId)"
           />
         </div>
 

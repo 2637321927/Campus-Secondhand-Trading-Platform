@@ -1,32 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { resolveFileUrl } from '../../utils/image'
-import type { ProductDto } from '../../types/api/product';
-import type { ProductStatus } from '../../types/api/product';
+import type {
+  ProductListItemDto,
+  ProductStatus
+} from '../../types/api/product'
 
 const props = defineProps<{
-  product: ProductDto
+  product: ProductListItemDto
+  imageUrl?: string
 }>()
-
-const coverUrl=computed(()=>{
-    const images = [...(props.product.images ?? [])]
-
-    images.sort((a,b)=>{
-        return a.imgIndex-b.imgIndex
-    })
-
-    const firstImage=images[0]
-
-    if(!firstImage){
-      return ''
-    }
-
-    if(images[0].imgFileId)
-        return resolveFileUrl(images[0].imgFileId)
-    else
-        return resolveFileUrl(null)
-})
 
 const router=useRouter()
 
@@ -46,7 +28,7 @@ function getStatusText(status:ProductStatus):string{
     else if(status===2){
         return '已下架'
     }
-    return '草稿'
+    return '未知状态'
 }
 </script>
 
@@ -59,8 +41,8 @@ function getStatusText(status:ProductStatus):string{
   >
     <div class="product-cover">
       <el-image
-        v-if="coverUrl"
-        :src="coverUrl"
+        v-if="imageUrl"
+        :src="imageUrl"
         fit="cover"
       />
 
@@ -75,7 +57,10 @@ function getStatusText(status:ProductStatus):string{
           {{ product.name }}
         </h3>
 
-        <span class="product-status">
+        <span
+          v-if="product.status !== undefined"
+          class="product-status"
+        >
           {{ getStatusText(product.status) }}
         </span>
       </div>

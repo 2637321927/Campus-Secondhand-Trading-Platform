@@ -3,12 +3,26 @@ import type {
     ProductDto,
     CreateProductRequest,
     UpdateProductRequest,
-    UpdateProductStatusRequest,
-    UploadProductImagesRequest,
-    SortProductImagesRequest
+    ProductImageDataDto,
+    SearchProductParams,
+    SearchProductResultDto
 } from "../../types/api/product";
 
 const PRODUCT_UPLOAD_TIMEOUT = 60000
+
+export function searchProducts(params: SearchProductParams) {
+    return request.get<SearchProductResultDto>(
+        '/api/search/product',
+        { params }
+    )
+}
+
+export function getProductImages(fileIds: number[]) {
+    return request.post<ProductImageDataDto[]>(
+        '/api/products/images',
+        fileIds
+    )
+}
 
 export function getProducts(){
     return request.get<ProductDto[]>(
@@ -37,16 +51,11 @@ export function createProduct(data: CreateProductRequest) {
         formData.append('images', file)
     })
 
-    if (data.shippingMethodId!==undefined) {
-        formData.append('shippingMethodId', String(data.shippingMethodId))
-    }
+    formData.append('shippingType', String(data.shippingType))
+    formData.append('allowPickup', String(data.allowPickup))
 
-    if (data.addressId!==undefined) {
-        formData.append('addressId', String(data.addressId))
-    }
-
-    if(data.saveAsDraft!==undefined){
-        formData.append('saveAsDraft',String(data.saveAsDraft))
+    if (data.shippingFee !== undefined && data.shippingFee !== null) {
+        formData.append('shippingFee', String(data.shippingFee))
     }
 
     return request.post<ProductDto>(
@@ -67,7 +76,7 @@ export function updateProduct(
     formData.append('name', data.name)
     formData.append('price', String(data.price))
     formData.append('categoryId', String(data.categoryId))
-    formData.append('status',String(data.status))
+    formData.append('status', String(data.status))
 
     if (data.info !== undefined) {
         formData.append('info', data.info)
@@ -77,16 +86,15 @@ export function updateProduct(
         formData.append('newImages', file)
     })
 
-    data.toRemoveImageIds.forEach((imageId) => {
-        formData.append('toRemoveImageIds', String(imageId))
+    data.toRemoveImageIds.forEach((imgFileId) => {
+        formData.append('toRemoveImageIds', String(imgFileId))
     })
 
-    if(data.shippingMethodId!==undefined){
-        formData.append('shippingMethodId',String(data.shippingMethodId))
-    }
+    formData.append('shippingType', String(data.shippingType))
+    formData.append('allowPickup', String(data.allowPickup))
 
-    if(data.addressId!==undefined){
-        formData.append('addressId',String(data.addressId))
+    if (data.shippingFee !== undefined && data.shippingFee !== null) {
+        formData.append('shippingFee', String(data.shippingFee))
     }
 
     return request.put<ProductDto>(
@@ -101,53 +109,5 @@ export function updateProduct(
 export function deleteProduct(productId:number){
     return request.delete<void>(
         `/api/products/${productId}`
-    )
-}
-
-export function updateProductStatus(
-    productId:number,
-    data:UpdateProductStatusRequest
-){
-    return request.patch<ProductDto>(
-        `/api/products/${productId}/status`,
-        data
-    )
-}
-
-export function uploadProductImages(
-    productId:number,
-    data:UploadProductImagesRequest
-){
-    const formData=new FormData()
-
-    data.images.forEach((file) => {
-        formData.append('images', file)
-    })
-
-    return request.post(
-        `/api/products/${productId}/images`,
-        formData,
-        {
-            timeout: PRODUCT_UPLOAD_TIMEOUT
-        }
-    )
-}
-
-export function sortProductImages(
-    productId:number,
-    data:SortProductImagesRequest
-){
-    return request.put(
-        `/api/products/${productId}/images/sort`,
-        data
-    )
-}
-
-export function deleteProductImage(
-    productId:number,
-    imageId:number
-){
-    return request.delete<void>(
-        `/api/products/${productId}/images/${imageId}`
     )
 }

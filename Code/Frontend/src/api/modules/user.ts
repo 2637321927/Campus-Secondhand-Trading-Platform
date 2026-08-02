@@ -16,3 +16,9 @@ export async function getPublicUser(
         userName: response.data.userName
     }
 }
+
+export function getUserProductIds(userId: number) {
+    return request.get<number[]>(
+        `/api/products/user/${userId}`
+    )
+}

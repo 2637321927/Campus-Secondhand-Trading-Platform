@@ -3,20 +3,48 @@
  * 0 = 在售
  * 1 = 已售
  * 2 = 已下架
- * 3 = 草稿
- *
- * 状态 3 为前端先行约定，联调时需要与后端确认最终枚举值。
  */
-export type ProductStatus = 0 | 1 | 2 | 3
+export type ProductStatus = 0 | 1 | 2
+export type ShippingType = 0 | 1 | 2 | 3
 
 export interface ProductCardDto{
     productId:number;
     name:string;
     price:number;
-    coverImageUrl?:string|null;
+    coverImageFileId?:number|null;
     sellerName:string;
     releaseDate:string;
     viewCount:number;
+}
+
+export interface SearchProductParams {
+    keyword: string
+    searchId?: string
+    page?: number
+    pageSize?: number
+    sortBy?: 'relevance' | 'latest' | 'price_asc' | 'price_desc'
+}
+
+export interface SearchProductResultDto {
+    searchId: string
+    items: ProductCardDto[]
+    totalCount: number
+    page: number
+    pageSize: number
+    totalPages: number
+    expandedTerms: string[]
+}
+
+export interface ProductListItemDto {
+    productId: number
+    name: string
+    price: number
+    viewCount: number
+    coverImageFileId?: number | null
+    status?: ProductStatus
+    categoryName?: string | null
+    info?: string | null
+    images?: ProductImageDto[]
 }
 
 export interface ProductDto{
@@ -30,15 +58,22 @@ export interface ProductDto{
     categoryName?:string|null;
     viewCount: number;
     images:ProductImageDto[];
-    releaseDate?: string;
-    shippingMethodId?: number|null;
-    addressId?: number|null;
+    releaseDate: string;
+    shippingType: ShippingType;
+    shippingFee?: number|null;
+    allowPickup: 0 | 1;
 }
 
 export interface ProductImageDto{
-    imgFileId: number; //实际文件 ID，用于拼接图片访问地址
+    imgFileId: number; //商品图片记录主键，同时也是实际文件 ID。
     imgIndex: number; //图片展示顺序，数值越小越靠前。
-    imageId?: number //商品图片关系 ID。
+}
+
+export interface ProductImageDataDto {
+    fileId: number
+    fileName: string
+    mimeType: string
+    content: string
 }
 
 export interface CreateProductRequest {
@@ -48,42 +83,21 @@ export interface CreateProductRequest {
     categoryId: number
     images: File[]
 
-    /**
-     * 以下字段来自完整商品发布规划，
-     * 具体字段名和数据格式联调时再与后端统一。
-     */
-    shippingMethodId?: number
-    addressId?: number
-
-    /**
-     * true 表示保存为草稿，false 表示正式发布。
-     */
-    saveAsDraft?: boolean
+    shippingType: ShippingType
+    shippingFee?: number | null
+    allowPickup: 0 | 1
 }
-
 export interface UpdateProductRequest {
     name: string
     price: number
     info?: string
     categoryId: number
     status: ProductStatus
-
     newImages: File[] //本次编辑中新选择的图片文件。
 
-    toRemoveImageIds: number[] //用户准备删除的已有商品图片 ID。
+    toRemoveImageIds: number[] //待删除图片的 imgFileId 列表。
 
-    shippingMethodId?: number
-    addressId?: number
-}
-
-export interface UpdateProductStatusRequest {
-    status: ProductStatus
-}
-
-export interface UploadProductImagesRequest {
-    images: File[]
-}
-
-export interface SortProductImagesRequest {
-    imageIds: number[] //按目标展示顺序排列的商品图片关系 ID。
+    shippingType: ShippingType
+    shippingFee?: number | null
+    allowPickup: 0 | 1
 }

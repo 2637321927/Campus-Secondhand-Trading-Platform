@@ -27,7 +27,8 @@ import {
 } from 'vue-router'
 import { createProduct } from '../../api/modules/product'
 import type {
-  CreateProductRequest
+  CreateProductRequest,
+  ShippingType
 } from '../../types/api/product'
 
 interface ProductPublishForm {
@@ -36,8 +37,9 @@ interface ProductPublishForm {
   categoryId: number | null
   info: string
   images: File[]
-  shippingMethodId: number | null
-  addressId: number | null
+  shippingType: ShippingType | null
+  shippingFee: number | null
+  allowPickup: boolean
 }
 
 interface ProductPublishDraft {
@@ -45,8 +47,9 @@ interface ProductPublishDraft {
   price: number | null
   categoryId: number | null
   info: string
-  shippingMethodId: number | null
-  addressId: number | null
+  shippingType: ShippingType | null
+  shippingFee: number | null
+  allowPickup: boolean
   activeStep: number
   updatedAt: string
 }
@@ -58,26 +61,31 @@ interface ProductImagePreview {
 }
 
 interface ShippingMethodOption {
-  value: number
+  value: ShippingType
   label: string
   description: string
 }
 
 const shippingMethodOptions: ShippingMethodOption[] = [
   {
+    value: 0,
+    label: '包邮',
+    description: '商品价格已包含寄送费用'
+  },
+  {
     value: 1,
-    label: '当面交易',
-    description: '与买家协商校内见面地点和时间'
+    label: '按距离计费',
+    description: '运费根据配送距离与买家协商'
   },
   {
     value: 2,
-    label: '快递交易',
-    description: '商品通过快递或校内配送方式交付'
+    label: '固定邮费',
+    description: '发布时填写明确的固定邮费'
   },
   {
     value: 3,
-    label: '两者均可',
-    description: '支持当面交易，也可以协商快递'
+    label: '无需邮寄',
+    description: '仅支持校内当面交付或自提'
   }
 ]
 
@@ -110,12 +118,12 @@ const selectedCategoryName = computed<string>(() => {
 })
 
 const selectedShippingMethodLabel = computed<string>(() => {
-  if (form.shippingMethodId === null) {
+  if (form.shippingType === null) {
     return '未选择'
   }
 
   for (const method of shippingMethodOptions) {
-    if (method.value === form.shippingMethodId) {
+    if (method.value === form.shippingType) {
       return method.label
     }
   }
@@ -148,8 +156,9 @@ const form = reactive<ProductPublishForm>({
   categoryId: null,
   info: '',
   images: [],
-  shippingMethodId: null,
-  addressId: null
+  shippingType: null,
+  shippingFee: null,
+  allowPickup: false
 })
 
 const MAX_IMAGE_COUNT = 9
@@ -214,13 +223,20 @@ const rules: FormRules<ProductPublishForm> = {
     }
   ],
 
-  shippingMethodId: [
+  shippingType: [
    {
      required: true,
-     message: '请选择交易方式',
+     message: '请选择配送方式',
      trigger: 'change'
    }
- ] 
+ ],
+
+  shippingFee: [
+    {
+      validator: validateShippingFee,
+      trigger: 'change'
+    }
+  ]
 }
 
 const DRAFT_STORAGE_KEY ='product_publish_draft'
@@ -270,6 +286,22 @@ function validateProductImages(
   callback()
 }
 
+function validateShippingFee(
+  _rule: unknown,
+  value: number | null,
+  callback: (error?: Error) => void
+): void {
+  if (
+    form.shippingType === 2 &&
+    (value === null || value <= 0)
+  ) {
+    callback(new Error('请输入大于 0 的固定邮费'))
+    return
+  }
+
+  callback()
+}
+
 function getInvalidStep(): number | null {
   if (
     !form.name.trim() ||
@@ -290,7 +322,13 @@ function getInvalidStep(): number | null {
     return 1
   }
 
-  if (form.shippingMethodId === null) {
+  if (
+    form.shippingType === null ||
+    (
+      form.shippingType === 2 &&
+      (form.shippingFee === null || form.shippingFee <= 0)
+    )
+  ) {
     return 2
   }
 
@@ -506,7 +544,7 @@ async function goNext(): Promise<void> {
   if (activeStep.value === 2) {
     try {
       await formRef.value.validateField(
-        'shippingMethodId'
+        ['shippingType', 'shippingFee']
       )
     } catch {
       return
@@ -545,11 +583,15 @@ function hasFormContent(): boolean {
     return true
   }
 
-  if (form.shippingMethodId !== null) {
+  if (form.shippingType !== null) {
     return true
   }
 
-  if (form.addressId !== null) {
+  if (form.shippingFee !== null) {
+    return true
+  }
+
+  if (form.allowPickup) {
     return true
   }
 
@@ -562,9 +604,9 @@ function createDraftData(): ProductPublishDraft {
     price: form.price,
     categoryId: form.categoryId,
     info: form.info,
-    shippingMethodId:
-      form.shippingMethodId,
-    addressId: form.addressId,
+    shippingType: form.shippingType,
+    shippingFee: form.shippingFee,
+    allowPickup: form.allowPickup,
     activeStep: activeStep.value,
     updatedAt: new Date().toISOString()
   }
@@ -646,19 +688,23 @@ function restoreDraft(): void {
     }
 
     if (
-      draft.shippingMethodId === null ||
-      typeof draft.shippingMethodId ===
+      draft.shippingType === null ||
+      typeof draft.shippingType ===
         'number'
     ) {
-      form.shippingMethodId =
-        draft.shippingMethodId
+      form.shippingType =
+        draft.shippingType
     }
 
     if (
-      draft.addressId === null ||
-      typeof draft.addressId === 'number'
+      draft.shippingFee === null ||
+      typeof draft.shippingFee === 'number'
     ) {
-      form.addressId = draft.addressId
+      form.shippingFee = draft.shippingFee
+    }
+
+    if (typeof draft.allowPickup === 'boolean') {
+      form.allowPickup = draft.allowPickup
     }
 
     if (
@@ -758,7 +804,7 @@ async function showInvalidStep(
       ? ['name', 'categoryId', 'price']
       : step === 1
         ? ['images', 'info']
-        : ['shippingMethodId']
+        : ['shippingType', 'shippingFee']
 
   await formRef.value
     .validateField(fields)
@@ -787,7 +833,7 @@ async function submitProduct(): Promise<void> {
   if (
     form.price === null ||
     form.categoryId === null ||
-    form.shippingMethodId === null
+    form.shippingType === null
   ) {
     return
   }
@@ -797,19 +843,15 @@ async function submitProduct(): Promise<void> {
     price: form.price,
     categoryId: form.categoryId,
     images: [...form.images],
-    shippingMethodId:
-      form.shippingMethodId,
-    saveAsDraft: false
+    shippingType: form.shippingType,
+    shippingFee: form.shippingFee,
+    allowPickup: form.allowPickup ? 1 : 0
   }
 
   const trimmedInfo = form.info.trim()
 
   if (trimmedInfo) {
     requestData.info = trimmedInfo
-  }
-
-  if (form.addressId !== null) {
-    requestData.addressId = form.addressId
   }
 
   submitting.value = true
@@ -895,14 +937,24 @@ onBeforeUnmount(() => {
 })
 
 watch(
+  () => form.shippingType,
+  (shippingType) => {
+    if (shippingType !== 2) {
+      form.shippingFee = null
+    }
+  }
+)
+
+watch(
   [
     () => form.name,
     () => form.price,
     () => form.categoryId,
     () => form.info,
     () => form.images.length,
-    () => form.shippingMethodId,
-    () => form.addressId,
+    () => form.shippingType,
+    () => form.shippingFee,
+    () => form.allowPickup,
     () => activeStep.value
   ],
   () => {
@@ -1295,12 +1347,12 @@ onBeforeRouteLeave(async () => {
               </div>
 
               <el-form-item
-                label="支持的交易方式"
-                prop="shippingMethodId"
+                label="配送方式"
+                prop="shippingType"
               >
                 <el-radio-group
                   v-model="
-                    form.shippingMethodId
+                    form.shippingType
                   "
                   class="shipping-method-grid"
                 >
@@ -1331,25 +1383,29 @@ onBeforeRouteLeave(async () => {
                 </el-radio-group>
               </el-form-item>
 
-              <el-alert
-                title="交易地址功能说明"
-                type="info"
-                :closable="false"
-                show-icon
-                class="address-notice"
+              <el-form-item
+                v-if="form.shippingType === 2"
+                label="固定邮费"
+                prop="shippingFee"
               >
-                <template #default>
-                  <p
-                    class="address-notice-text"
-                  >
-                    地址列表接口的响应字段尚未最终确定，
-                    当前发布时可以暂不选择地址。
-                    后续接入地址管理模块后，再通过
-                    <code>addressId</code>
-                    选择当前用户保存的交易地址。
-                  </p>
-                </template>
-              </el-alert>
+                <el-input-number
+                  v-model="form.shippingFee"
+                  :min="0.01"
+                  :max="999.99"
+                  :precision="2"
+                  :step="1"
+                  class="full-control"
+                  placeholder="请输入固定邮费"
+                />
+              </el-form-item>
+
+              <el-form-item label="校内自提">
+                <el-switch
+                  v-model="form.allowPickup"
+                  active-text="支持自提"
+                  inactive-text="不支持自提"
+                />
+              </el-form-item>
 
               <div class="transaction-tips">
                 <h3>校园交易提醒</h3>
@@ -1483,7 +1539,7 @@ onBeforeRouteLeave(async () => {
                     </div>
 
                     <div>
-                      <dt>交易方式</dt>
+                      <dt>配送方式</dt>
 
                       <dd>
                         {{
@@ -1493,15 +1549,23 @@ onBeforeRouteLeave(async () => {
                     </div>
 
                     <div>
-                      <dt>交易地址</dt>
+                      <dt>邮费</dt>
 
                       <dd>
                         {{
-                          form.addressId ===
-                          null
-                            ? '暂未选择'
-                            : `地址 ${form.addressId}`
+                          form.shippingType === 2
+                            ? `¥${(form.shippingFee ?? 0).toFixed(2)}`
+                            : form.shippingType === 0
+                              ? '卖家包邮'
+                              : '按配送方式确定'
                         }}
+                      </dd>
+                    </div>
+
+                    <div>
+                      <dt>校内自提</dt>
+                      <dd>
+                        {{ form.allowPickup ? '支持' : '不支持' }}
                       </dd>
                     </div>
                   </dl>

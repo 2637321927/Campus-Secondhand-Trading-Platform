@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted,ref,watch,onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { getProducts } from '../../api/modules/product'
+import {
+  getProducts,
+  searchProducts
+} from '../../api/modules/product'
 import type { 
-    ProductDto,
+    ProductListItemDto,
     ProductStatus
  } from '../../types/api/product'
 import ProductListCard from '../../components/product/ProductListCard.vue'
 import { getCategoryProducts } from '../../api/modules/category'
 import { Loading } from '@element-plus/icons-vue'
+import { useProductImages } from '../../composables/useProductImages'
 
 type SortOption =
   | 'default'
@@ -18,11 +22,26 @@ type SortOption =
 
 const loading = ref(false)
 const errorMessage = ref('')
-const products = ref<ProductDto[]>([])
+const products = ref<ProductListItemDto[]>([])
 const selectedStatus = ref<'all' | ProductStatus>('all')
 const minPrice = ref<number | null>(null)
 const maxPrice = ref<number | null>(null)
 const sortOption = ref<SortOption>('default')
+const {
+  loadProductImages,
+  getProductImageUrl
+} = useProductImages()
+
+function getCoverFileId(product: ProductListItemDto): number | null {
+  if (product.coverImageFileId !== undefined) {
+    return product.coverImageFileId ?? null
+  }
+
+  const firstImage = [...(product.images ?? [])]
+    .sort((a, b) => a.imgIndex - b.imgIndex)[0]
+
+  return firstImage?.imgFileId ?? null
+}
 
 let productListLoadVersion = 0
 
@@ -54,25 +73,37 @@ const priceRangeError = computed(() => {
 
 function isCurrentProductListLoad(
   version: number,
-  requestedCategoryId: number | null
+  requestedCategoryId: number | null,
+  requestedKeyword: string
 ): boolean {
   return (
     version === productListLoadVersion &&
-    categoryId.value === requestedCategoryId
+    categoryId.value === requestedCategoryId &&
+    keyword.value === requestedKeyword
   )
 }
 
 async function loadProducts(): Promise<void> {
   const requestedCategoryId = categoryId.value
+  const requestedKeyword = keyword.value
   const currentVersion = ++productListLoadVersion
 
   loading.value = true
   errorMessage.value = ''
 
   try {
-    let nextProducts: ProductDto[] = []
+    let nextProducts: ProductListItemDto[] = []
 
-    if (requestedCategoryId !== null) {
+    if (requestedKeyword) {
+      const response = await searchProducts({
+        keyword: requestedKeyword,
+        page: 1,
+        pageSize: 50,
+        sortBy: 'relevance'
+      })
+
+      nextProducts = response.data.items ?? []
+    } else if (requestedCategoryId !== null) {
       const response = await getCategoryProducts(
         requestedCategoryId
       )
@@ -87,18 +118,26 @@ async function loadProducts(): Promise<void> {
     if (
       !isCurrentProductListLoad(
         currentVersion,
-        requestedCategoryId
+        requestedCategoryId,
+        requestedKeyword
       )
     ) {
       return
     }
 
     products.value = nextProducts
+
+    await loadProductImages(
+      nextProducts.map(getCoverFileId)
+    ).catch((error) => {
+      console.error('商品封面加载失败：', error)
+    })
   } catch (error) {
     if (
       !isCurrentProductListLoad(
         currentVersion,
-        requestedCategoryId
+        requestedCategoryId,
+        requestedKeyword
       )
     ) {
       return
@@ -113,7 +152,8 @@ async function loadProducts(): Promise<void> {
     if (
       isCurrentProductListLoad(
         currentVersion,
-        requestedCategoryId
+        requestedCategoryId,
+        requestedKeyword
       )
     ) {
       loading.value = false
@@ -125,23 +165,16 @@ const keyword = computed(() => {
   const value = route.query.keyword
 
   return typeof value === 'string'
-    ? value.trim().toLowerCase()
+    ? value.trim()
     : ''
 })
 
 const displayedProducts = computed(() => {
-  const normalizedKeyword = keyword.value.toLowerCase()
-
   let result = products.value.filter((product) => {
-    // 关键词条件
-        const matchesKeyword =
-        !normalizedKeyword ||
-        product.name.toLowerCase().includes(normalizedKeyword) ||
-        (product.info?.toLowerCase().includes(normalizedKeyword) ?? false)
     // 状态条件
         const matchesStatus =
         selectedStatus.value === 'all' ||
-        product.status === selectedStatus.value
+        (product.status ?? 0) === selectedStatus.value
     // 最低价格条件
         const matchesMinPrice =
         minPrice.value === null ||
@@ -152,7 +185,6 @@ const displayedProducts = computed(() => {
         product.price <= maxPrice.value
 
         return (
-        matchesKeyword &&
         matchesStatus &&
         matchesMinPrice &&
         matchesMaxPrice
@@ -201,7 +233,10 @@ onMounted(() => {
 })
 
 watch(
-  () => route.query.categoryId,
+  [
+    () => route.query.categoryId,
+    () => route.query.keyword
+  ],
   () => {
     loadProducts()
   }
@@ -281,9 +316,6 @@ onBeforeUnmount(() => {
                 已下架
               </el-radio-button>
 
-              <el-radio-button :value="3">
-                草稿
-              </el-radio-button>
             </el-radio-group>
           </div>
 
@@ -401,6 +433,7 @@ onBeforeUnmount(() => {
               v-for="product in displayedProducts"
               :key="product.productId"
               :product="product"
+              :image-url="getProductImageUrl(getCoverFileId(product))"
             />
           </div>
 
