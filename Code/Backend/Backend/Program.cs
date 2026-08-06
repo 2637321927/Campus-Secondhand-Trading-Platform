@@ -42,6 +42,7 @@ builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
 //Service层注册
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IBaseUserService, BaseUserService>();
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
 
