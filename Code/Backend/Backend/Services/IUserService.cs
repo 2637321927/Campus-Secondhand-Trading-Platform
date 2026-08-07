@@ -1,4 +1,5 @@
 using Backend.Dtos.User;
+using Microsoft.AspNetCore.Http;
 
 namespace Backend.Services;
 
@@ -16,4 +17,9 @@ public interface IUserService
     /// 修改当前用户的个人资料
     /// </summary>
     Task<UserProfileDto> UpdateProfileAsync(int userId, UpdateProfileDto dto);
+
+    /// <summary>
+    /// 上传或更换当前用户头像
+    /// </summary>
+    Task<UserProfileDto> UpdateAvatarAsync(int userId, IFormFile file);
 }

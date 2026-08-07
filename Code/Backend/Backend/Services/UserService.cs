@@ -2,6 +2,7 @@ using Backend.Data;
 using Backend.Dtos.User;
 using Backend.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System.Text.RegularExpressions;
 
 namespace Backend.Services;
@@ -13,18 +14,28 @@ public class UserService : IUserService
 {
     private readonly INormUserRepository _normUserRepo;
     private readonly IBaseUserRepository _baseUserRepo;
+    private readonly IUpdatedFileService _updatedFileService;
     private readonly AppDbContext _context;
+    private readonly long _defaultAvatarFileId;
 
     private static readonly string[] AllowedGenders = { "male", "female", "unknown" };
+    private static readonly HashSet<string> AllowedAvatarMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp"
+    };
 
     public UserService(
         INormUserRepository normUserRepo,
         IBaseUserRepository baseUserRepo,
+        IUpdatedFileService updatedFileService,
+        IConfiguration configuration,
         AppDbContext context)
     {
         _normUserRepo = normUserRepo;
         _baseUserRepo = baseUserRepo;
+        _updatedFileService = updatedFileService;
         _context = context;
+        _defaultAvatarFileId = configuration.GetValue<long>("AppDefaults:DefaultAvatarFileId");
     }
 
     /// <summary>
@@ -132,6 +143,52 @@ public class UserService : IUserService
         await _normUserRepo.SaveAsync();
 
         // 4. 返回更新后的完整资料
+        var profile = await GetProfileAsync(userId);
+        if (profile == null)
+            throw new InvalidOperationException("获取更新后的资料失败");
+
+        return profile;
+    }
+
+    /// <summary>
+    /// 上传或更换当前用户头像
+    /// </summary>
+    public async Task<UserProfileDto> UpdateAvatarAsync(int userId, IFormFile file)
+    {
+        // 1. 验证文件
+        if (file == null || file.Length == 0)
+            throw new InvalidOperationException("请上传头像文件");
+
+        if (!AllowedAvatarMimeTypes.Contains(file.ContentType))
+            throw new InvalidOperationException("仅支持 jpeg/png/gif/bmp/webp 格式的图片");
+
+        // 2. 获取用户信息
+        var baseUser = await _baseUserRepo.GetByIdAsync(userId);
+        if (baseUser == null)
+            throw new InvalidOperationException("用户不存在");
+
+        // 3. 上传新文件
+        var uploadedFile = await _updatedFileService.UploadAsync(file, userId);
+
+        // 4. 删除旧头像（非默认头像时）
+        if (baseUser.AvatarFileId.HasValue && baseUser.AvatarFileId.Value != _defaultAvatarFileId)
+        {
+            try
+            {
+                await _updatedFileService.HardDeleteAsync(baseUser.AvatarFileId.Value);
+            }
+            catch
+            {
+                // 旧头像删除失败不影响新头像更新，仅记录
+            }
+        }
+
+        // 5. 更新用户头像
+        baseUser.AvatarFileId = uploadedFile.FileId;
+        _baseUserRepo.Update(baseUser);
+        await _baseUserRepo.SaveAsync();
+
+        // 6. 返回更新后的资料
         var profile = await GetProfileAsync(userId);
         if (profile == null)
             throw new InvalidOperationException("获取更新后的资料失败");

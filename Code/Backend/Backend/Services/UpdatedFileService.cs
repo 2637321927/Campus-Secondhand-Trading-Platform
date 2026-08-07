@@ -131,22 +131,18 @@ public class UpdatedFileService : IUpdatedFileService
         var file = await _repo.GetByIdAsync(fileId)
             ?? throw new KeyNotFoundException($"UpdatedFile {fileId} not found.");
 
-        await _storage.DeleteFileAsync(file.StoragePath);
+        // 先清理数据库记录，确保文件不再可访问
+        _repo.Delete(file);
+        await _repo.SaveAsync();
 
+        // 再尝试删除物理文件，失败不影响数据库清理
         try
         {
-
-            _repo.Delete(file);
-            await _repo.SaveAsync();
-
+            await _storage.DeleteFileAsync(file.StoragePath);
         }
         catch
         {
-
-            await _repo.SoftDeleteAsync(fileId);
-            await _repo.SaveAsync();
-            throw;
-
+            // 物理文件删除失败不抛异常，仅静默处理
         }
     }
 

@@ -1,4 +1,5 @@
 using Backend.Models.Enums;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Backend.Utilities;
 
@@ -6,14 +7,26 @@ public class FileStorageService : IFileStorageService
 {
 
     private readonly string _storagePath;
+    private readonly string _contentRootPath;
 
-    public FileStorageService(IConfiguration configuration)
+    public FileStorageService(IConfiguration configuration, IWebHostEnvironment environment)
     {
 
-        _storagePath = configuration.GetSection("FileStorage:StoragePath").Value ?? "./Uploads";
+        _contentRootPath = environment.ContentRootPath;
+        var configuredPath = configuration.GetSection("FileStorage:StoragePath").Value ?? "./Uploads";
+        _storagePath = Path.IsPathRooted(configuredPath)
+            ? configuredPath
+            : Path.Combine(_contentRootPath, configuredPath);
 
         if (!Directory.Exists(_storagePath)) Directory.CreateDirectory(_storagePath);
 
+    }
+
+    private string ResolvePath(string path)
+    {
+        if (Path.IsPathRooted(path))
+            return path;
+        return Path.GetFullPath(Path.Combine(_contentRootPath, path));
     }
 
     public async Task<string> UploadFileAsync(Stream fileStream, string fileName, FileType fileType)
@@ -44,10 +57,12 @@ public class FileStorageService : IFileStorageService
     public async Task DeleteFileAsync(string fileUrl)
     {
 
-        if (File.Exists(fileUrl))
+        var resolvedPath = ResolvePath(fileUrl);
+
+        if (File.Exists(resolvedPath))
         {
 
-            await Task.Run(() => File.Delete(fileUrl));
+            await Task.Run(() => File.Delete(resolvedPath));
 
         }
         else
@@ -62,10 +77,12 @@ public class FileStorageService : IFileStorageService
     public async Task GetFileAsync(string fileUrl, Stream outputStream)
     {
 
-        if (File.Exists(fileUrl))
+        var resolvedPath = ResolvePath(fileUrl);
+
+        if (File.Exists(resolvedPath))
         {
 
-            using (var fileStreamInput = new FileStream(fileUrl, FileMode.Open, FileAccess.Read))
+            using (var fileStreamInput = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read))
             {
 
                 await fileStreamInput.CopyToAsync(outputStream);

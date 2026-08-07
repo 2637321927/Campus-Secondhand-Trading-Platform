@@ -63,4 +63,23 @@ public class UserController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+
+    /// <summary>
+    /// 上传或更换当前用户头像
+    /// </summary>
+    [Authorize]
+    [HttpPost("me/avatar")]
+    public async Task<ActionResult<UserProfileDto>> UpdateAvatar(IFormFile file)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var profile = await _userService.UpdateAvatarAsync(userId, file);
+            return Ok(profile);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }
