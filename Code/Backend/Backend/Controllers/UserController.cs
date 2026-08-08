@@ -1,3 +1,4 @@
+using Backend.Dtos.Product;
 using Backend.Dtos.User;
 using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -13,10 +14,12 @@ namespace Backend.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IBaseUserService _userService;
+    private readonly IProductService _productService;
 
-    public UserController(IBaseUserService userService)
+    public UserController(IBaseUserService userService, IProductService productService)
     {
         _userService = userService;
+        _productService = productService;
     }
 
     /// <summary>
@@ -28,6 +31,32 @@ public class UserController : ControllerBase
         var user = await _userService.GetByIdAsync(id);
         if (user == null) return NotFound();
         return Ok(user);
+    }
+
+    /// <summary>
+    /// 查看某用户已发布商品
+    /// </summary>
+    [HttpGet("{userId:int}/products")]
+    public async Task<ActionResult<List<ProductDto>>> GetUserProducts(int userId)
+    {
+        if (userId <= 0)
+            return BadRequest(new { error = "userId must be greater than zero." });
+
+        var products = await _productService.GetProductsByUserIdAsync(userId);
+        return Ok(products);
+    }
+
+    /// <summary>
+    /// 查看某用户已卖出商品
+    /// </summary>
+    [HttpGet("{userId:int}/sold-products")]
+    public async Task<ActionResult<List<ProductDto>>> GetUserSoldProducts(int userId)
+    {
+        if (userId <= 0)
+            return BadRequest(new { error = "userId must be greater than zero." });
+
+        var products = await _productService.GetSoldProductsByUserIdAsync(userId);
+        return Ok(products);
     }
 
     /// <summary>

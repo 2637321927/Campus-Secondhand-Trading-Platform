@@ -8,6 +8,7 @@ public interface IProductRepository
     Task<List<Product>> GetAllAsync();
     Task<List<Product>> GetByCategoryAsync(long categoryId);
     Task<List<Product>> GetByUserIdAsync(int userId);
+    Task<List<Product>> GetSoldByUserIdAsync(int userId);
     Task<List<Product>> GetAvailableAsync();
     IQueryable<Product> Query();
     Task AddAsync(Product product);

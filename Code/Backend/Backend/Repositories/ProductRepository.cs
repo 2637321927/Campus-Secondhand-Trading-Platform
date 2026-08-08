@@ -49,6 +49,14 @@ public class ProductRepository : IProductRepository
             .Include(p => p.Seller)
             .ToListAsync();
 
+    public async Task<List<Product>> GetSoldByUserIdAsync(int userId)
+        => await _context.Products
+            .Where(p => p.UserId == userId && p.Status == ProductStatus.Sold)
+            .Include(p => p.Images)
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
+            .ToListAsync();
+
     public IQueryable<Product> Query()
         => _context.Products.AsQueryable();
 
