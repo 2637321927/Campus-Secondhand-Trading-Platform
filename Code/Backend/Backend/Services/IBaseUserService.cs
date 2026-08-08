@@ -37,4 +37,19 @@ public interface IBaseUserService
     ///根据ID获取
     ///</summary>
     Task<UserDto?> GetByIdAsync(int userId);
+
+    ///<summary>
+    ///获取个人中心资料
+    ///</summary>
+    Task<UserProfileDto?> GetProfileAsync(int userId);
+
+    ///<summary>
+    ///修改个人中心资料（支持部分更新）
+    ///</summary>
+    Task<UserProfileDto?> UpdateProfileAsync(int userId, UpdateProfileDto dto);
+
+    ///<summary>
+    ///上传/更换当前用户头像
+    ///</summary>
+    Task<AvatarUploadResponseDto> UploadAvatarAsync(int userId, IFormFile file);
 }

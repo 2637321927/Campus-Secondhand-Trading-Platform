@@ -32,4 +32,14 @@ public class BaseUserRepository : IBaseUserRepository
 
     public async Task SaveAsync()
         => await _context.SaveChangesAsync();
+
+    public async Task ResetAvatarByFileIdAsync(long fileId, long defaultFileId)
+    {
+        var users = await _context.BaseUsers
+            .Where(u => u.AvatarFileId == fileId)
+            .ToListAsync();
+
+        foreach (var u in users)
+            u.AvatarFileId = defaultFileId;
+    }
 }
