@@ -15,11 +15,15 @@ public class UserController : ControllerBase
 {
     private readonly IBaseUserService _userService;
     private readonly IProductService _productService;
+    private readonly ISearchService _searchService;
+    private readonly IProductCommentService _commentService;
 
-    public UserController(IBaseUserService userService, IProductService productService)
+    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService)
     {
         _userService = userService;
         _productService = productService;
+        _searchService = searchService;
+        _commentService = commentService;
     }
 
     /// <summary>
@@ -57,6 +61,68 @@ public class UserController : ControllerBase
 
         var products = await _productService.GetSoldProductsByUserIdAsync(userId);
         return Ok(products);
+    }
+
+    /// <summary>
+    /// 在某用户主页内搜索其发布的商品
+    /// </summary>
+    [HttpGet("{userId:int}/product-search")]
+    public async Task<ActionResult<SearchResultDto>> SearchUserProducts(
+        int userId,
+        [FromQuery] string? keyword = null,
+        [FromQuery] string? searchId = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? sortBy = null)
+    {
+        if (userId <= 0)
+            return BadRequest(new { error = "userId must be greater than zero." });
+
+        if (string.IsNullOrWhiteSpace(keyword) && string.IsNullOrWhiteSpace(searchId))
+            return BadRequest(new { message = "keyword 和 searchId 不能同时为空" });
+
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 50) pageSize = 50;
+
+        var request = new SearchRequestDto
+        {
+            SearchId = searchId,
+            Keyword = (keyword ?? "").Trim(),
+            Page = page,
+            PageSize = pageSize,
+            SortBy = sortBy,
+            UserId = userId
+        };
+
+        var result = await _searchService.SearchProductAsync(request);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// 查看某用户收到的评价（其商品被他人评论）
+    /// </summary>
+    [HttpGet("{userId:int}/reviews/received")]
+    public async Task<ActionResult<List<UserCommentDto>>> GetReceivedReviews(int userId)
+    {
+        if (userId <= 0)
+            return BadRequest(new { error = "userId must be greater than zero." });
+
+        var comments = await _commentService.GetUserReceivedCommentsAsync(userId);
+        return Ok(comments);
+    }
+
+    /// <summary>
+    /// 查看某用户发出的评价（其对他人商品的评论）
+    /// </summary>
+    [HttpGet("{userId:int}/reviews/given")]
+    public async Task<ActionResult<List<UserCommentDto>>> GetGivenReviews(int userId)
+    {
+        if (userId <= 0)
+            return BadRequest(new { error = "userId must be greater than zero." });
+
+        var comments = await _commentService.GetUserGivenCommentsAsync(userId);
+        return Ok(comments);
     }
 
     /// <summary>

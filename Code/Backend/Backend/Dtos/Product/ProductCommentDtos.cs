@@ -17,3 +17,15 @@ public class ProductCommentDto
     public DateTime CreateTime { get; set; }
     public List<ProductCommentDto> Replies { get; set; } = new();
 }
+
+public class UserCommentDto
+{
+    public long CommentId { get; set; }
+    public int UserId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public long? ResponseToId { get; set; }
+    public DateTime CreateTime { get; set; }
+    public long ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+}

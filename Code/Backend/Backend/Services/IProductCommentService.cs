@@ -8,5 +8,7 @@ public interface IProductCommentService
     Task<List<ProductCommentDto>> GetByProductIdAsync(long productId);
     Task<ProductCommentDto> CreateAsync(long productId, int userId, CreateProductCommentDto dto);
     Task<bool> DeleteAsync(long commentId, int userId);
+    Task<List<UserCommentDto>> GetUserGivenCommentsAsync(int userId);
+    Task<List<UserCommentDto>> GetUserReceivedCommentsAsync(int userId);
 
 }
