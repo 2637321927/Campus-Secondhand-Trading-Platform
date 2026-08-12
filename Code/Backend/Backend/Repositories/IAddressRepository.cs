@@ -6,6 +6,8 @@ public interface IAddressRepository
 {
     Task<Address?> GetByIdAsync(int addressId);
     Task<List<Address>> GetByUserIdAsync(int userId);
+    Task<Address?> GetDefaultByUserIdAsync(int userId);
+    Task ResetDefaultByUserIdAsync(int userId);
     Task<List<Address>> GetAllAsync();
     Task AddAsync(Address address);
     void Update(Address address);

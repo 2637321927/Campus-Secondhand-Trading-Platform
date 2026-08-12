@@ -53,6 +53,7 @@ builder.Services.AddScoped<IProdImageService, ProdImageService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IProductCommentService, ProductCommentService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
+builder.Services.AddScoped<IAddressService, AddressService>();
 
 // 搜索引擎 — 分词 + 词条图 + 搜索
 builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();

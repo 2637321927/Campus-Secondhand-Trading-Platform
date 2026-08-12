@@ -19,7 +19,7 @@ public class Address
     public string Name { get; set; } = string.Empty;
 
     [Column("phone_number")]
-    [MaxLength(20)]
+    [MaxLength(11)]
     public string PhoneNumber { get; set; } = string.Empty;
 
     [Column("detail_address")]

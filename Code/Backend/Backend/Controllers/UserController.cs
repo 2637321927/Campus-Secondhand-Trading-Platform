@@ -19,8 +19,9 @@ public class UserController : ControllerBase
     private readonly IProductCommentService _commentService;
     private readonly IPurchaseService _purchaseService;
     private readonly IProductViewService _viewService;
+    private readonly IAddressService _addressService;
 
-    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService, IPurchaseService purchaseService, IProductViewService viewService)
+    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService, IPurchaseService purchaseService, IProductViewService viewService, IAddressService addressService)
     {
         _userService = userService;
         _productService = productService;
@@ -28,6 +29,7 @@ public class UserController : ControllerBase
         _commentService = commentService;
         _purchaseService = purchaseService;
         _viewService = viewService;
+        _addressService = addressService;
     }
 
     /// <summary>
@@ -251,5 +253,49 @@ public class UserController : ControllerBase
         var userId = int.Parse(User.FindFirst("userId")!.Value);
         await _viewService.ClearBrowseHistoryAsync(userId);
         return NoContent();
+    }
+
+    /// <summary>
+    /// 获取当前用户地址列表
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/addresses")]
+    public async Task<ActionResult<List<AddressDto>>> GetMyAddresses()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var addresses = await _addressService.GetMyAddressesAsync(userId);
+        return Ok(addresses);
+    }
+
+    /// <summary>
+    /// 新增收货或交易地址
+    /// </summary>
+    [Authorize]
+    [HttpPost("me/addresses")]
+    public async Task<ActionResult<AddressDto>> CreateAddress([FromBody] CreateAddressDto dto)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var address = await _addressService.CreateAddressAsync(userId, dto);
+            return Ok(address);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取单个地址详情
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/addresses/{addressId:int}")]
+    public async Task<ActionResult<AddressDto>> GetAddress(int addressId)
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var address = await _addressService.GetAddressByIdAsync(userId, addressId);
+        if (address == null) return NotFound(new { error = "地址不存在或无权访问" });
+        return Ok(address);
     }
 }
