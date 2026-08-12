@@ -70,6 +70,30 @@ public class ProductService : IProductService
             .ToList();
     }
 
+    public async Task<List<ProductDto>> GetProductsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetByUserIdAsync(userId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(p => p.ProductId));
+
+        return products
+            .OrderByDescending(p => p.ReleaseDate)
+            .Select(p => ToDto(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
+    }
+
+    public async Task<List<ProductDto>> GetSoldProductsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetSoldByUserIdAsync(userId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(p => p.ProductId));
+
+        return products
+            .OrderByDescending(p => p.ReleaseDate)
+            .Select(p => ToDto(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
+    }
+
     public async Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto)
     {
 

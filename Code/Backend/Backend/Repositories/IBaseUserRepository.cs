@@ -12,4 +12,10 @@ public interface IBaseUserRepository
     void Update(BaseUser user);
     void Delete(BaseUser user);
     Task SaveAsync();
+
+    /// <summary>
+    /// 将所有以指定文件作为头像的用户的头像重置为默认头像文件ID。
+    /// 用于删除文件前清理头像引用，避免外键悬空。
+    /// </summary>
+    Task ResetAvatarByFileIdAsync(long fileId, long defaultFileId);
 }

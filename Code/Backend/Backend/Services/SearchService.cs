@@ -157,6 +157,9 @@ public class SearchService : ISearchService
         var baseQuery = _db.Products
             .Where(p => p.Status == ProductStatus.Available);
 
+        if (request.UserId.HasValue)
+            baseQuery = baseQuery.Where(p => p.UserId == request.UserId.Value);
+
         if (filter != null)
             baseQuery = baseQuery.Where(filter);
 
@@ -215,6 +218,9 @@ public class SearchService : ISearchService
     {
         var baseQuery = _db.Products
             .Where(p => p.Status == ProductStatus.Available);
+
+        if (request.UserId.HasValue)
+            baseQuery = baseQuery.Where(p => p.UserId == request.UserId.Value);
 
         if (filter != null)
             baseQuery = baseQuery.Where(filter);

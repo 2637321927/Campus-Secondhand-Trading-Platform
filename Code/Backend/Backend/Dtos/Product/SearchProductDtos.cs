@@ -9,6 +9,8 @@ public class SearchRequestDto
     public int PageSize { get; set; } = 20;
     /// <summary>"relevance" | "latest" | "price_asc" | "price_desc"</summary>
     public string? SortBy { get; set; }
+    /// <summary>可选，限定在某个用户发布的商品内搜索</summary>
+    public int? UserId { get; set; }
 }
 
 public class SearchResultDto

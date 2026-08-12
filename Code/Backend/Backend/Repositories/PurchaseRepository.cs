@@ -30,6 +30,23 @@ public class PurchaseRepository : IPurchaseRepository
         => await _context.Purchases
             .Where(p => p.BuyerId == buyerId)
             .Include(p => p.Product)
+            .ThenInclude(p => p!.Seller)
+            .Include(p => p.Product)
+            .ThenInclude(p => p!.Images)
+            .Include(p => p.Buyer)
+            .OrderByDescending(p => p.CreateTime)
+            .ToListAsync();
+
+    public async Task<List<Purchase>> GetBySellerUserIdAsync(int sellerUserId)
+        => await _context.Purchases
+            .Where(p => p.Product!.UserId == sellerUserId)
+            .Include(p => p.Product)
+            .ThenInclude(p => p!.Seller)
+            .Include(p => p.Product)
+            .ThenInclude(p => p!.Images)
+            .Include(p => p.Buyer)
+            .OrderByDescending(p => p.CreateTime)
+            .ToListAsync();
                 .ThenInclude(p => p!.Images)
             .Include(p => p.Product!.Seller)
             .Include(p => p.Review)
