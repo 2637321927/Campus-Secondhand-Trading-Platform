@@ -47,11 +47,6 @@ public class PurchaseRepository : IPurchaseRepository
             .Include(p => p.Buyer)
             .OrderByDescending(p => p.CreateTime)
             .ToListAsync();
-                .ThenInclude(p => p!.Images)
-            .Include(p => p.Product!.Seller)
-            .Include(p => p.Review)
-            .OrderByDescending(p => p.CreateTime)
-            .ToListAsync();
 
     public async Task<List<Purchase>> GetBySellerIdAsync(int sellerId)
         => await _context.Purchases
