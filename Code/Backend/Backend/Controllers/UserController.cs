@@ -18,14 +18,16 @@ public class UserController : ControllerBase
     private readonly ISearchService _searchService;
     private readonly IProductCommentService _commentService;
     private readonly IPurchaseService _purchaseService;
+    private readonly IProductViewService _viewService;
 
-    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService, IPurchaseService purchaseService)
+    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService, IPurchaseService purchaseService, IProductViewService viewService)
     {
         _userService = userService;
         _productService = productService;
         _searchService = searchService;
         _commentService = commentService;
         _purchaseService = purchaseService;
+        _viewService = viewService;
     }
 
     /// <summary>
@@ -213,5 +215,41 @@ public class UserController : ControllerBase
         var userId = int.Parse(User.FindFirst("userId")!.Value);
         var orders = await _purchaseService.GetMyPurchasesAsync(userId);
         return Ok(orders);
+    }
+
+    /// <summary>
+    /// 获取当前用户浏览历史
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/browse-history")]
+    public async Task<ActionResult<List<BrowseHistoryDto>>> GetMyBrowseHistory()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var history = await _viewService.GetBrowseHistoryAsync(userId);
+        return Ok(history);
+    }
+
+    /// <summary>
+    /// 删除某条商品浏览历史
+    /// </summary>
+    [Authorize]
+    [HttpDelete("me/browse-history/{productId:int}")]
+    public async Task<IActionResult> DeleteBrowseHistoryItem(long productId)
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        await _viewService.DeleteBrowseHistoryItemAsync(userId, productId);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// 清空当前用户浏览历史
+    /// </summary>
+    [Authorize]
+    [HttpDelete("me/browse-history")]
+    public async Task<IActionResult> ClearMyBrowseHistory()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        await _viewService.ClearBrowseHistoryAsync(userId);
+        return NoContent();
     }
 }
