@@ -18,20 +18,6 @@ public class ProductCommentRepository : IProductCommentRepository
             .OrderBy(c => c.Index)
             .ToListAsync();
 
-    public async Task<List<ProductComment>> GetByUserIdAsync(int userId)
-        => await _context.ProductComments
-            .Where(c => c.UserId == userId)
-            .OrderByDescending(c => c.CreateTime)
-            .Include(c => c.Product)
-            .ToListAsync();
-
-    public async Task<List<ProductComment>> GetBySellerUserIdAsync(int sellerUserId)
-        => await _context.ProductComments
-            .Where(c => c.Product!.UserId == sellerUserId)
-            .OrderByDescending(c => c.CreateTime)
-            .Include(c => c.Product)
-            .ToListAsync();
-
     public async Task<List<ProductComment>> GetRepliesAsync(long commentId)
         => await _context.ProductComments
             .Where(c => c.ResponseToId == commentId)

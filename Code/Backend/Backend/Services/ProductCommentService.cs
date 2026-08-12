@@ -95,30 +95,6 @@ public class ProductCommentService : IProductCommentService
 
     }
 
-    public async Task<List<UserCommentDto>> GetUserGivenCommentsAsync(int userId)
-    {
-        var comments = await _commentRepo.GetByUserIdAsync(userId);
-        return comments.Select(ToUserCommentDto).ToList();
-    }
-
-    public async Task<List<UserCommentDto>> GetUserReceivedCommentsAsync(int userId)
-    {
-        var comments = await _commentRepo.GetBySellerUserIdAsync(userId);
-        return comments.Select(ToUserCommentDto).ToList();
-    }
-
-    private static UserCommentDto ToUserCommentDto(ProductComment c) => new()
-    {
-        CommentId = c.CommentId,
-        UserId = c.UserId,
-        UserName = c.User?.UserName ?? "",
-        Content = c.Content,
-        ResponseToId = c.ResponseToId,
-        CreateTime = c.CreateTime,
-        ProductId = c.ProductId,
-        ProductName = c.Product?.Name ?? ""
-    };
-
     private static ProductCommentDto ToDto(ProductComment c) => new()
     {
 

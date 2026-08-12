@@ -6,8 +6,6 @@ public interface IProductCommentRepository
 {
     Task<ProductComment?> GetByIdAsync(long commentId);
     Task<List<ProductComment>> GetByProductIdAsync(long productId);
-    Task<List<ProductComment>> GetByUserIdAsync(int userId);
-    Task<List<ProductComment>> GetBySellerUserIdAsync(int sellerUserId);
     Task<List<ProductComment>> GetRepliesAsync(long commentId);
     Task<int> GetNextIndexAsync(long productId);
     Task<bool> HasRepliesAsync(long commentId);

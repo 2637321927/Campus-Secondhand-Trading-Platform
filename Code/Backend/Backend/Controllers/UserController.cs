@@ -16,16 +16,14 @@ public class UserController : ControllerBase
     private readonly IBaseUserService _userService;
     private readonly IProductService _productService;
     private readonly ISearchService _searchService;
-    private readonly IProductCommentService _commentService;
     private readonly IPurchaseService _purchaseService;
     private readonly IProductViewService _viewService;
 
-    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService, IPurchaseService purchaseService, IProductViewService viewService)
+    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IPurchaseService purchaseService, IProductViewService viewService)
     {
         _userService = userService;
         _productService = productService;
         _searchService = searchService;
-        _commentService = commentService;
         _purchaseService = purchaseService;
         _viewService = viewService;
     }
@@ -101,32 +99,6 @@ public class UserController : ControllerBase
 
         var result = await _searchService.SearchProductAsync(request);
         return Ok(result);
-    }
-
-    /// <summary>
-    /// 查看某用户收到的评价（其商品被他人评论）
-    /// </summary>
-    [HttpGet("{userId:int}/reviews/received")]
-    public async Task<ActionResult<List<UserCommentDto>>> GetReceivedReviews(int userId)
-    {
-        if (userId <= 0)
-            return BadRequest(new { error = "userId must be greater than zero." });
-
-        var comments = await _commentService.GetUserReceivedCommentsAsync(userId);
-        return Ok(comments);
-    }
-
-    /// <summary>
-    /// 查看某用户发出的评价（其对他人商品的评论）
-    /// </summary>
-    [HttpGet("{userId:int}/reviews/given")]
-    public async Task<ActionResult<List<UserCommentDto>>> GetGivenReviews(int userId)
-    {
-        if (userId <= 0)
-            return BadRequest(new { error = "userId must be greater than zero." });
-
-        var comments = await _commentService.GetUserGivenCommentsAsync(userId);
-        return Ok(comments);
     }
 
     /// <summary>
