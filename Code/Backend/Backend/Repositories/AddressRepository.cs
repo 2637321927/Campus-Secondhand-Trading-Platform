@@ -15,15 +15,6 @@ public class AddressRepository : IAddressRepository
     public async Task<List<Address>> GetByUserIdAsync(int userId)
         => await _context.Addresses.Where(a => a.UserId == userId).ToListAsync();
 
-    public async Task<Address?> GetDefaultByUserIdAsync(int userId)
-        => await _context.Addresses.FirstOrDefaultAsync(a => a.UserId == userId && a.IsDefault == 1);
-
-    public async Task ResetDefaultByUserIdAsync(int userId)
-    {
-        var defaults = await _context.Addresses.Where(a => a.UserId == userId && a.IsDefault == 1).ToListAsync();
-        foreach (var d in defaults) d.IsDefault = 0;
-    }
-
     public async Task<List<Address>> GetAllAsync()
         => await _context.Addresses.ToListAsync();
 
