@@ -19,7 +19,26 @@ public class PurchaseRepository : IPurchaseRepository
         => await _context.Purchases.Include(p => p.Product).ToListAsync();
 
     public async Task<List<Purchase>> GetByBuyerIdAsync(int buyerId)
-        => await _context.Purchases.Where(p => p.BuyerId == buyerId).Include(p => p.Product).ToListAsync();
+        => await _context.Purchases
+            .Where(p => p.BuyerId == buyerId)
+            .Include(p => p.Product)
+            .ThenInclude(p => p!.Seller)
+            .Include(p => p.Product)
+            .ThenInclude(p => p!.Images)
+            .Include(p => p.Buyer)
+            .OrderByDescending(p => p.CreateTime)
+            .ToListAsync();
+
+    public async Task<List<Purchase>> GetBySellerUserIdAsync(int sellerUserId)
+        => await _context.Purchases
+            .Where(p => p.Product!.UserId == sellerUserId)
+            .Include(p => p.Product)
+            .ThenInclude(p => p!.Seller)
+            .Include(p => p.Product)
+            .ThenInclude(p => p!.Images)
+            .Include(p => p.Buyer)
+            .OrderByDescending(p => p.CreateTime)
+            .ToListAsync();
 
     public async Task<List<Purchase>> GetByStatusAsync(string status)
         => await _context.Purchases.Where(p => p.Status == status).Include(p => p.Product).ToListAsync();

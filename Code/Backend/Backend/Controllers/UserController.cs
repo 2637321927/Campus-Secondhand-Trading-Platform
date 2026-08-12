@@ -17,13 +17,15 @@ public class UserController : ControllerBase
     private readonly IProductService _productService;
     private readonly ISearchService _searchService;
     private readonly IProductCommentService _commentService;
+    private readonly IPurchaseService _purchaseService;
 
-    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService)
+    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IProductCommentService commentService, IPurchaseService purchaseService)
     {
         _userService = userService;
         _productService = productService;
         _searchService = searchService;
         _commentService = commentService;
+        _purchaseService = purchaseService;
     }
 
     /// <summary>
@@ -175,5 +177,41 @@ public class UserController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// 当前用户"我发布"的商品列表
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/published-products")]
+    public async Task<ActionResult<List<ProductDto>>> GetMyPublishedProducts()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var products = await _productService.GetProductsByUserIdAsync(userId);
+        return Ok(products);
+    }
+
+    /// <summary>
+    /// 当前用户"我卖出"的订单列表
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/sold-orders")]
+    public async Task<ActionResult<List<PurchaseDto>>> GetMySoldOrders()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var orders = await _purchaseService.GetMySoldOrdersAsync(userId);
+        return Ok(orders);
+    }
+
+    /// <summary>
+    /// 当前用户"我购买"的订单列表
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/purchase-orders")]
+    public async Task<ActionResult<List<PurchaseDto>>> GetMyPurchaseOrders()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var orders = await _purchaseService.GetMyPurchasesAsync(userId);
+        return Ok(orders);
     }
 }
