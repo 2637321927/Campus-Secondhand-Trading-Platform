@@ -30,6 +30,25 @@ public class Review
     [Column("purchase_id")]
     public long PurchaseId { get; set; }
 
+    /// <summary>
+    /// 被评价方回复内容
+    /// </summary>
+    [Column("reply_info")]
+    [MaxLength(200)]
+    public string? ReplyInfo { get; set; }
+
+    /// <summary>
+    /// 被评价方回复时间
+    /// </summary>
+    [Column("reply_time")]
+    public DateTime? ReplyTime { get; set; }
+
+    /// <summary>
+    /// 评价是否已被删除/屏蔽：0=正常，1=已屏蔽
+    /// </summary>
+    [Column("is_hidden")]
+    public int IsHidden { get; set; } = 0;
+
     // 导航属性
     [ForeignKey("PurchaseId")]
     public Purchase? Purchase { get; set; }

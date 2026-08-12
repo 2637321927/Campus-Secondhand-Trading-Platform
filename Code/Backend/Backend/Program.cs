@@ -41,6 +41,8 @@ builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
 builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
 builder.Services.AddScoped<IProductViewRepository, ProductViewRepository>();
 builder.Services.AddScoped<IProductCommentRepository, ProductCommentRepository>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IOrderTimelineRepository, OrderTimelineRepository>();
 //Service层注册
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -51,6 +53,10 @@ builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
 builder.Services.AddScoped<IProdImageService, ProdImageService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IProductCommentService, ProductCommentService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IReputationService, ReputationService>();
 
 // 搜索引擎 — 分词 + 词条图 + 搜索
 builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();
