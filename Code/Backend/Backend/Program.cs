@@ -59,6 +59,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IReputationService, ReputationService>();
+builder.Services.AddScoped<IAddressService, AddressService>();
 
 // 搜索引擎 — 分词 + 词条图 + 搜索
 builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();

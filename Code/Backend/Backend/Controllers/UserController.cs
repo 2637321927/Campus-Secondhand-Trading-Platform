@@ -18,14 +18,16 @@ public class UserController : ControllerBase
     private readonly ISearchService _searchService;
     private readonly IPurchaseService _purchaseService;
     private readonly IProductViewService _viewService;
+    private readonly IAddressService _addressService;
 
-    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IPurchaseService purchaseService, IProductViewService viewService)
+    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IPurchaseService purchaseService, IProductViewService viewService, IAddressService addressService)
     {
         _userService = userService;
         _productService = productService;
         _searchService = searchService;
         _purchaseService = purchaseService;
         _viewService = viewService;
+        _addressService = addressService;
     }
 
     /// <summary>
@@ -223,5 +225,119 @@ public class UserController : ControllerBase
         var userId = int.Parse(User.FindFirst("userId")!.Value);
         await _viewService.ClearBrowseHistoryAsync(userId);
         return NoContent();
+    }
+
+    /// <summary>
+    /// 获取当前用户地址列表（默认地址排最前）
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/addresses")]
+    public async Task<ActionResult<List<AddressDto>>> GetMyAddresses()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var addresses = await _addressService.GetMyAddressesAsync(userId);
+        return Ok(addresses);
+    }
+
+    /// <summary>
+    /// 新增收货或交易地址
+    /// </summary>
+    [Authorize]
+    [HttpPost("me/addresses")]
+    public async Task<ActionResult<AddressDto>> CreateAddress([FromBody] CreateAddressDto dto)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var address = await _addressService.CreateAsync(userId, dto);
+            return CreatedAtAction(nameof(GetMyAddresses), null, address);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取单个地址详情
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/addresses/{addressId:int}")]
+    public async Task<ActionResult<AddressDto>> GetAddress(int addressId)
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var address = await _addressService.GetByIdAsync(userId, addressId);
+        if (address == null) return NotFound(new { error = "地址不存在" });
+        return Ok(address);
+    }
+
+    /// <summary>
+    /// 修改地址
+    /// </summary>
+    [Authorize]
+    [HttpPut("me/addresses/{addressId:int}")]
+    public async Task<ActionResult<AddressDto>> UpdateAddress(int addressId, [FromBody] UpdateAddressDto dto)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var address = await _addressService.UpdateAsync(userId, addressId, dto);
+            return Ok(address);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 删除地址
+    /// </summary>
+    [Authorize]
+    [HttpDelete("me/addresses/{addressId:int}")]
+    public async Task<IActionResult> DeleteAddress(int addressId)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            await _addressService.DeleteAsync(userId, addressId);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 设置指定地址为默认地址
+    /// </summary>
+    [Authorize]
+    [HttpPatch("me/addresses/{addressId:int}/default")]
+    public async Task<ActionResult<AddressDto>> SetDefaultAddress(int addressId)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var address = await _addressService.SetDefaultAsync(userId, addressId);
+            return Ok(address);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 获取当前用户的默认地址
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/default-address")]
+    public async Task<ActionResult<AddressDto>> GetDefaultAddress()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var address = await _addressService.GetDefaultAsync(userId);
+        if (address == null) return NotFound(new { error = "暂无默认地址" });
+        return Ok(address);
     }
 }
