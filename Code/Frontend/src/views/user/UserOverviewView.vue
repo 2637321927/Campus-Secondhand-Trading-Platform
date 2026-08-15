@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
   getMyProfile,
   getMyPublishedProducts,
@@ -142,6 +143,14 @@ function goToAddresses(): void {
   void router.push({ name: 'user-addresses' })
 }
 
+function goToSoldOrders(): void {
+  ElMessage.info('卖出的订单功能将在订单模块中开放')
+}
+
+function goToPurchaseOrders(): void {
+  ElMessage.info('购买的订单功能将在订单模块中开放')
+}
+
 onMounted(() => {
   void loadProfile()
   void loadStats()
@@ -269,21 +278,33 @@ onMounted(() => {
               <span class="stat-arrow">查看 →</span>
             </button>
 
-            <div class="stat-card">
+            <button
+              class="stat-card stat-card--link"
+              type="button"
+              @click="goToSoldOrders"
+            >
               <span class="stat-value">
                 {{ stats.sold ?? '—' }}
               </span>
 
               <span class="stat-label">我卖出的订单</span>
-            </div>
 
-            <div class="stat-card">
+              <span class="stat-arrow">查看 →</span>
+            </button>
+
+            <button
+              class="stat-card stat-card--link"
+              type="button"
+              @click="goToPurchaseOrders"
+            >
               <span class="stat-value">
                 {{ stats.purchased ?? '—' }}
               </span>
 
               <span class="stat-label">我购买的订单</span>
-            </div>
+
+              <span class="stat-arrow">查看 →</span>
+            </button>
 
             <button
               class="stat-card stat-card--link"
