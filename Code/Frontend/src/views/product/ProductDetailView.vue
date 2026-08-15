@@ -20,6 +20,8 @@ import type {
 } from '../../types/api/product'
 import { getPublicUser } from '../../api/modules/user'
 import type { PublicUserDto } from '../../types/api/user'
+import { createConversation } from '../../api/modules/conversation'
+import { getApiErrorMessage } from '../../utils/error'
 import {
   getCollectionStatus,
   toggleCollection
@@ -57,6 +59,7 @@ const authStore=useAuthStore()
 
 const isCollected = ref(false)
 const collectionLoading = ref(false)
+const contactLoading = ref(false)
 
 const comments = ref<ProductCommentDto[]>([])
 const commentsLoading = ref(false)
@@ -158,8 +161,61 @@ function handleBuy(): void {
   ElMessage.info('购买功能将在订单模块中开放')
 }
 
-function handleContactSeller(): void {
-  ElMessage.info('联系卖家功能将在消息模块中开放')
+async function handleContactSeller(): Promise<void> {
+  if (contactLoading.value) {
+    return
+  }
+
+  if (!product.value) {
+    return
+  }
+
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再联系卖家')
+
+    await router.push({
+      name: 'login',
+      query: {
+        redirect: route.fullPath
+      }
+    })
+
+    return
+  }
+
+  if (authStore.currentUser?.userId === product.value.userId) {
+    ElMessage.warning('不能联系自己发布的商品')
+    return
+  }
+
+  contactLoading.value = true
+
+  try {
+    const response = await createConversation({
+      productId: product.value.productId
+    })
+
+    const conversation = response.data
+
+    if (conversation?.conversationId) {
+      await router.push({
+        name: 'message-chat',
+        params: {
+          conversationId: String(conversation.conversationId)
+        }
+      })
+    } else {
+      ElMessage.warning('会话创建失败，请稍后重试')
+    }
+  } catch (error) {
+    ElMessage.error(
+      getApiErrorMessage(error, '联系卖家失败，请稍后重试')
+    )
+
+    console.error('联系卖家失败：', error)
+  } finally {
+    contactLoading.value = false
+  }
 }
 
 function handleViewSellerHome(): void {
@@ -933,6 +989,7 @@ onBeforeUnmount(() => {
             <el-button
               size="large"
               class="contact-button"
+              :loading="contactLoading"
               @click="handleContactSeller"
             >
               联系卖家
@@ -1073,7 +1130,10 @@ onBeforeUnmount(() => {
               查看主页
             </el-button>
 
-            <el-button @click="handleContactSeller">
+            <el-button
+              :loading="contactLoading"
+              @click="handleContactSeller"
+            >
               联系卖家
             </el-button>
           </div>
