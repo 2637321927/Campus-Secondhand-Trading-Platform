@@ -158,7 +158,7 @@ function handleBuy(): void {
     return
   }
 
-  ElMessage.info('购买功能将在订单模块中开放')
+  ElMessage.info('此功能正在开发中')
 }
 
 async function handleContactSeller(): Promise<void> {

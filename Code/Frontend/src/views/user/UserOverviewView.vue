@@ -144,11 +144,11 @@ function goToAddresses(): void {
 }
 
 function goToSoldOrders(): void {
-  ElMessage.info('卖出的订单功能将在订单模块中开放')
+  ElMessage.info('此功能正在开发中')
 }
 
 function goToPurchaseOrders(): void {
-  ElMessage.info('购买的订单功能将在订单模块中开放')
+  ElMessage.info('此功能正在开发中')
 }
 
 onMounted(() => {
