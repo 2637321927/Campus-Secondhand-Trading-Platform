@@ -138,6 +138,10 @@ function goToHistory(): void {
   void router.push({ name: 'user-history' })
 }
 
+function goToAddresses(): void {
+  void router.push({ name: 'user-addresses' })
+}
+
 onMounted(() => {
   void loadProfile()
   void loadStats()
@@ -359,6 +363,18 @@ onMounted(() => {
 
               <span class="entry-desc">
                 查看并管理最近浏览过的商品
+              </span>
+            </button>
+
+            <button
+              class="entry-card"
+              type="button"
+              @click="goToAddresses"
+            >
+              <span class="entry-title">地址管理</span>
+
+              <span class="entry-desc">
+                管理收货与交易地址，设置默认地址
               </span>
             </button>
           </div>

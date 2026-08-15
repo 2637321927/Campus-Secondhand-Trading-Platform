@@ -93,6 +93,16 @@ const routes = [
             },
 
             {
+                path: 'user/addresses',
+                name: 'user-addresses',
+                component: () =>
+                    import('../views/user/AddressView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
                 path: 'users/:userId',
                 name: 'user-home',
                 component: () =>
