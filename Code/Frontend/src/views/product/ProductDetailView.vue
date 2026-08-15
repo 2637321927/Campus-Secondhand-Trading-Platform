@@ -162,6 +162,19 @@ function handleContactSeller(): void {
   ElMessage.info('联系卖家功能将在消息模块中开放')
 }
 
+function handleViewSellerHome(): void {
+  if (!seller.value) {
+    return
+  }
+
+  void router.push({
+    name: 'user-home',
+    params: {
+      userId: seller.value.userId
+    }
+  })
+}
+
 async function handleFavorite(): Promise<void> {
   if(!product.value){
     return
@@ -1055,9 +1068,15 @@ onBeforeUnmount(() => {
             </span>
           </div>
 
-          <el-button @click="handleContactSeller">
-            联系卖家
-          </el-button>
+          <div class="seller-actions">
+            <el-button @click="handleViewSellerHome">
+              查看主页
+            </el-button>
+
+            <el-button @click="handleContactSeller">
+              联系卖家
+            </el-button>
+          </div>
         </div>
 
         <!-- 卖家信息为空 -->
@@ -1913,6 +1932,13 @@ onBeforeUnmount(() => {
 .seller-info span {
   color: #84908b;
   font-size: 13px;
+}
+
+.seller-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
 }
 
 .comment-section {

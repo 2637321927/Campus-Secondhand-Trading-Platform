@@ -53,6 +53,53 @@ const routes = [
             },
 
             {
+                path: 'user',
+                name: 'user-overview',
+                component: () =>
+                    import('../views/user/UserOverviewView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/profile',
+                name: 'user-profile',
+                component: () =>
+                    import('../views/user/ProfileView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/settings',
+                name: 'user-settings',
+                component: () =>
+                    import('../views/user/AccountSettingView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/history',
+                name: 'user-history',
+                component: () =>
+                    import('../views/user/BrowseHistoryView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'users/:userId',
+                name: 'user-home',
+                component: () =>
+                    import('../views/user/UserHomeView.vue')
+            },
+
+            {
                 path: 'products',
                 name: 'product-list',
                 component: () =>
