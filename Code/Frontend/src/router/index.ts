@@ -110,6 +110,26 @@ const routes = [
             },
 
             {
+                path: 'messages',
+                name: 'message-list',
+                component: () =>
+                    import('../views/message/MessageListView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'messages/:conversationId',
+                name: 'message-chat',
+                component: () =>
+                    import('../views/message/ChatView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
                 path: 'products',
                 name: 'product-list',
                 component: () =>

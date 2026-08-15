@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useMessageStore } from '../../stores/message'
 import { ElMessage } from 'element-plus'
 import {
   ArrowDown,
@@ -12,6 +13,7 @@ import {
 const keyword = ref('')
 const router = useRouter()
 const authStore=useAuthStore()
+const messageStore=useMessageStore()
 
 function handleSearch():void{
     const trimmedKeyword=keyword.value.trim()
@@ -68,8 +70,23 @@ async function goFavorites():Promise <void> {
   })
 }
 
-function goMessages(): void {
-  ElMessage.info('消息功能正在开发中')
+async function goMessages(): Promise<void> {
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+
+    await router.push({
+      name: 'login',
+      query: {
+        redirect: '/messages'
+      }
+    })
+
+    return
+  }
+
+  await router.push({
+    name: 'message-list'
+  })
 }
 
 async function handleUserCommand(command: string): Promise<void> {
@@ -92,6 +109,12 @@ async function handleLogout(): Promise<void> {
 
   await router.push('/')
 }
+
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    void messageStore.loadUnreadCount()
+  }
+})
 </script>
 
 <template>
@@ -138,9 +161,16 @@ async function handleLogout(): Promise<void> {
             收藏
         </el-button>
 
-        <el-button text @click="goMessages">
-            消息
-        </el-button>
+        <el-badge
+          :value="messageStore.unreadCount"
+          :max="99"
+          :hidden="!messageStore.hasUnread"
+          class="message-badge"
+        >
+          <el-button text @click="goMessages">
+              消息
+          </el-button>
+        </el-badge>
 
         <el-button
           class="publish-button"
