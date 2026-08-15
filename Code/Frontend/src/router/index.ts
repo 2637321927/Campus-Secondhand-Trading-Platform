@@ -53,6 +53,83 @@ const routes = [
             },
 
             {
+                path: 'user',
+                name: 'user-overview',
+                component: () =>
+                    import('../views/user/UserOverviewView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/profile',
+                name: 'user-profile',
+                component: () =>
+                    import('../views/user/ProfileView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/settings',
+                name: 'user-settings',
+                component: () =>
+                    import('../views/user/AccountSettingView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/history',
+                name: 'user-history',
+                component: () =>
+                    import('../views/user/BrowseHistoryView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/addresses',
+                name: 'user-addresses',
+                component: () =>
+                    import('../views/user/AddressView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'users/:userId',
+                name: 'user-home',
+                component: () =>
+                    import('../views/user/UserHomeView.vue')
+            },
+
+            {
+                path: 'messages',
+                name: 'message-list',
+                component: () =>
+                    import('../views/message/MessageListView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'messages/:conversationId',
+                name: 'message-chat',
+                component: () =>
+                    import('../views/message/ChatView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
                 path: 'products',
                 name: 'product-list',
                 component: () =>
