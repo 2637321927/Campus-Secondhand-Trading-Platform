@@ -3,6 +3,7 @@ using System;
 using Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Oracle.EntityFrameworkCore.Metadata;
 
@@ -11,9 +12,11 @@ using Oracle.EntityFrameworkCore.Metadata;
 namespace Backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260816171934_AddAdminUserStatusAndWarnings")]
+    partial class AddAdminUserStatusAndWarnings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -485,22 +488,9 @@ namespace Backend.Migrations
                         .HasColumnType("decimal(10,2)")
                         .HasColumnName("price");
 
-                    b.Property<string>("RejectReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("NVARCHAR2(500)")
-                        .HasColumnName("reject_reason");
-
                     b.Property<DateTime>("ReleaseDate")
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("release_date");
-
-                    b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("TIMESTAMP(7)")
-                        .HasColumnName("reviewed_at");
-
-                    b.Property<int?>("ReviewedByAdminId")
-                        .HasColumnType("NUMBER(10)")
-                        .HasColumnName("reviewed_by");
 
                     b.Property<decimal?>("ShippingFee")
                         .HasColumnType("decimal(5,2)")
@@ -523,60 +513,9 @@ namespace Backend.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("ReviewedByAdminId");
-
                     b.HasIndex("UserId");
 
                     b.ToTable("product");
-                });
-
-            modelBuilder.Entity("Backend.Models.ProductAuditLog", b =>
-                {
-                    b.Property<long>("AuditId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("audit_id");
-
-                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("AuditId"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("NVARCHAR2(20)")
-                        .HasColumnName("action");
-
-                    b.Property<int>("AdminId")
-                        .HasColumnType("NUMBER(10)")
-                        .HasColumnName("admin_id");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TIMESTAMP(7)")
-                        .HasColumnName("create_time");
-
-                    b.Property<int>("NewStatus")
-                        .HasColumnType("NUMBER(10)")
-                        .HasColumnName("new_status");
-
-                    b.Property<int>("OldStatus")
-                        .HasColumnType("NUMBER(10)")
-                        .HasColumnName("old_status");
-
-                    b.Property<long>("ProductId")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("product_id");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("NVARCHAR2(500)")
-                        .HasColumnName("reason");
-
-                    b.HasKey("AuditId");
-
-                    b.HasIndex("AdminId");
-
-                    b.HasIndex("ProductId");
-
-                    b.ToTable("product_audit_log");
                 });
 
             modelBuilder.Entity("Backend.Models.ProductComment", b =>
@@ -1090,18 +1029,9 @@ namespace Backend.Migrations
                         .HasColumnType("NUMBER(10)")
                         .HasColumnName("admin_id");
 
-                    b.Property<long?>("AppealAgainstWorkOrderId")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("appeal_against_id");
-
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("create_time");
-
-                    b.Property<string>("HandleAction")
-                        .HasMaxLength(50)
-                        .HasColumnType("NVARCHAR2(50)")
-                        .HasColumnName("handle_action");
 
                     b.Property<string>("Info")
                         .HasMaxLength(500)
@@ -1131,25 +1061,11 @@ namespace Backend.Migrations
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("response_time");
 
-                    b.Property<string>("Result")
-                        .HasMaxLength(20)
-                        .HasColumnType("NVARCHAR2(20)")
-                        .HasColumnName("result");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("NVARCHAR2(15)")
                         .HasColumnName("status");
-
-                    b.Property<long?>("TargetId")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("target_id");
-
-                    b.Property<string>("TargetType")
-                        .HasMaxLength(20)
-                        .HasColumnType("NVARCHAR2(20)")
-                        .HasColumnName("target_type");
 
                     b.Property<int>("Type")
                         .HasColumnType("NUMBER(10)")
@@ -1161,54 +1077,11 @@ namespace Backend.Migrations
 
                     b.HasIndex("AdminId");
 
-                    b.HasIndex("AppealAgainstWorkOrderId");
-
                     b.HasIndex("InitiatorId");
 
                     b.HasIndex("ProductId");
 
                     b.ToTable("work_order");
-                });
-
-            modelBuilder.Entity("Backend.Models.WorkOrderTimeline", b =>
-                {
-                    b.Property<long>("TimelineId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("timeline_id");
-
-                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("TimelineId"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("NVARCHAR2(50)")
-                        .HasColumnName("action");
-
-                    b.Property<int?>("AdminId")
-                        .HasColumnType("NUMBER(10)")
-                        .HasColumnName("admin_id");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TIMESTAMP(7)")
-                        .HasColumnName("create_time");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("NVARCHAR2(500)")
-                        .HasColumnName("note");
-
-                    b.Property<long>("WorkOrderId")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("work_order_id");
-
-                    b.HasKey("TimelineId");
-
-                    b.HasIndex("AdminId");
-
-                    b.HasIndex("WorkOrderId");
-
-                    b.ToTable("work_order_timeline");
                 });
 
             modelBuilder.Entity("Backend.Models.Address", b =>
@@ -1386,11 +1259,6 @@ namespace Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Backend.Models.AdminUser", "ReviewedBy")
-                        .WithMany()
-                        .HasForeignKey("ReviewedByAdminId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Backend.Models.NormUser", "Seller")
                         .WithMany("Products")
                         .HasForeignKey("UserId")
@@ -1399,28 +1267,7 @@ namespace Backend.Migrations
 
                     b.Navigation("Category");
 
-                    b.Navigation("ReviewedBy");
-
                     b.Navigation("Seller");
-                });
-
-            modelBuilder.Entity("Backend.Models.ProductAuditLog", b =>
-                {
-                    b.HasOne("Backend.Models.AdminUser", "Admin")
-                        .WithMany()
-                        .HasForeignKey("AdminId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Backend.Models.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Admin");
-
-                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("Backend.Models.ProductComment", b =>
@@ -1619,11 +1466,6 @@ namespace Backend.Migrations
                         .HasForeignKey("AdminId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Backend.Models.WorkOrder", "AppealAgainst")
-                        .WithMany()
-                        .HasForeignKey("AppealAgainstWorkOrderId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Backend.Models.NormUser", "Initiator")
                         .WithMany()
                         .HasForeignKey("InitiatorId")
@@ -1639,29 +1481,9 @@ namespace Backend.Migrations
 
                     b.Navigation("Admin");
 
-                    b.Navigation("AppealAgainst");
-
                     b.Navigation("Initiator");
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("Backend.Models.WorkOrderTimeline", b =>
-                {
-                    b.HasOne("Backend.Models.AdminUser", "Admin")
-                        .WithMany()
-                        .HasForeignKey("AdminId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Backend.Models.WorkOrder", "WorkOrder")
-                        .WithMany("Timelines")
-                        .HasForeignKey("WorkOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Admin");
-
-                    b.Navigation("WorkOrder");
                 });
 
             modelBuilder.Entity("Backend.Models.AdminUser", b =>
@@ -1734,11 +1556,6 @@ namespace Backend.Migrations
             modelBuilder.Entity("Backend.Models.Review", b =>
                 {
                     b.Navigation("Images");
-                });
-
-            modelBuilder.Entity("Backend.Models.WorkOrder", b =>
-                {
-                    b.Navigation("Timelines");
                 });
 #pragma warning restore 612, 618
         }

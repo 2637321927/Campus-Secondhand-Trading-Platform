@@ -7,6 +7,7 @@ public interface ICollectionRepository
     Task<Collection?> GetByIdAsync(long productId, int userId);
     Task<List<Collection>> GetByUserIdAsync(int userId);
     Task<bool> IsCollectedAsync(long productId, int userId);
+    Task<Dictionary<long, int>> GetCountsByProductIdsAsync(IEnumerable<long> productIds);
     Task AddAsync(Collection collection);
     void Delete(Collection collection);
     Task SaveAsync();

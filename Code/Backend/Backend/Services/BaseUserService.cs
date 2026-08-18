@@ -110,7 +110,8 @@ public class BaseUserService : IBaseUserService
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             throw new InvalidOperationException("邮箱或密码错误");
 
-        if (user.IsBanned == 1 && (user.BannedUntil == null || user.BannedUntil > DateTime.Now))
+        if (user.AccountStatus == Backend.Models.Enums.AccountStatus.Banned ||
+            (user.IsBanned == 1 && (user.BannedUntil == null || user.BannedUntil > DateTime.Now)))
             throw new InvalidOperationException("该账号已被封禁");
 
         //获取用户名
@@ -164,7 +165,8 @@ public class BaseUserService : IBaseUserService
             Gender = user.Gender,
             AvatarFileId = user.AvatarFileId,
             IsBanned = user.IsBanned,
-            BannedUntil = user.BannedUntil
+            BannedUntil = user.BannedUntil,
+            AccountStatus = user.AccountStatus
         };
     }
 

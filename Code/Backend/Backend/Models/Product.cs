@@ -60,12 +60,25 @@ public class Product
     [Column("allow_pickup")]
     public int AllowPickup { get; set; } = 0;
 
+    [Column("reject_reason")]
+    [MaxLength(500)]
+    public string? RejectReason { get; set; }
+
+    [Column("reviewed_by")]
+    public int? ReviewedByAdminId { get; set; }
+
+    [Column("reviewed_at")]
+    public DateTime? ReviewedAt { get; set; }
+
     // 导航属性
     [ForeignKey("UserId")]
     public NormUser? Seller { get; set; }
 
     [ForeignKey("CategoryId")]
     public Category? Category { get; set; }
+
+    [ForeignKey("ReviewedByAdminId")]
+    public AdminUser? ReviewedBy { get; set; }
 
     public ICollection<ProdImage> Images { get; set; } = new List<ProdImage>();
     public ICollection<Collection> Collections { get; set; } = new List<Collection>();

@@ -39,6 +39,9 @@ builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
 builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
+builder.Services.AddScoped<IUserWarningRepository, UserWarningRepository>();
+builder.Services.AddScoped<IProductAuditLogRepository, ProductAuditLogRepository>();
+builder.Services.AddScoped<IWorkOrderTimelineRepository, WorkOrderTimelineRepository>();
 builder.Services.AddScoped<IProductViewRepository, ProductViewRepository>();
 builder.Services.AddScoped<IProductViewService, ProductViewService>();
 builder.Services.AddScoped<IProductCommentRepository, ProductCommentRepository>();
@@ -60,6 +63,9 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IReputationService, ReputationService>();
 builder.Services.AddScoped<IAddressService, AddressService>();
+builder.Services.AddScoped<IAdminUserManagementService, AdminUserManagementService>();
+builder.Services.AddScoped<IAdminProductManagementService, AdminProductManagementService>();
+builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
 
 // 搜索引擎 — 分词 + 词条图 + 搜索
 builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();

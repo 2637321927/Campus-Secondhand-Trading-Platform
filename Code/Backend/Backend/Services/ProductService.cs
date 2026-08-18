@@ -14,14 +14,16 @@ public class ProductService : IProductService
     private readonly IProductViewRepository _productViewRepo;
     private readonly IProdImageService _prodImage;
     private readonly ISearchService _searchService;
+    private readonly IBaseUserRepository _baseUserRepo;
 
-    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService, ISearchService searchService)
+    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService, ISearchService searchService, IBaseUserRepository baseUserRepo)
     {
         _productRepo = productRepo;
         _categoryRepo = categoryRepo;
         _productViewRepo = productViewRepo;
         _prodImage = prodImageService;
         _searchService = searchService;
+        _baseUserRepo = baseUserRepo;
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId, int userId)
@@ -96,6 +98,13 @@ public class ProductService : IProductService
 
     public async Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto)
     {
+        var user = await _baseUserRepo.GetByIdAsync(userId);
+        if (user == null)
+            throw new ArgumentException("用户不存在");
+
+        if (user.AccountStatus == AccountStatus.Banned ||
+            user.AccountStatus == AccountStatus.PublishRestricted)
+            throw new UnauthorizedAccessException("当前账号状态不允许发布商品");
 
         if (await _categoryRepo.GetByIdAsync(dto.CategoryId) == null)
         {
@@ -110,7 +119,7 @@ public class ProductService : IProductService
             Name = dto.Name,
             Price = dto.Price,
             Info = dto.Info,
-            Status = ProductStatus.Available,
+            Status = ProductStatus.PendingReview,
             UserId = userId,
             ReleaseDate = DateTime.Now,
             CategoryId = dto.CategoryId,

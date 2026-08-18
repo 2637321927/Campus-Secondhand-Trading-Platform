@@ -36,6 +36,9 @@ public class AppDbContext : DbContext
     public DbSet<SearchTermEdge> SearchTermEdges => Set<SearchTermEdge>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<OrderTimeline> OrderTimelines => Set<OrderTimeline>();
+    public DbSet<UserWarning> UserWarnings => Set<UserWarning>();
+    public DbSet<ProductAuditLog> ProductAuditLogs => Set<ProductAuditLog>();
+    public DbSet<WorkOrderTimeline> WorkOrderTimelines => Set<WorkOrderTimeline>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,5 +73,8 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EntityConfigs.SearchTermEdgeConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.PaymentConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.OrderTimelineConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.UserWarningConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.ProductAuditLogConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.WorkOrderTimelineConfig());
     }
 }

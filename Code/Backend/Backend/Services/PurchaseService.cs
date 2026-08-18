@@ -25,6 +25,21 @@ public class PurchaseService : IPurchaseService
         return purchases.Select(ToDto).ToList();
     }
 
+    public async Task<List<PurchaseDto>> GetRelatedByUserIdAsync(int userId)
+    {
+        var buyerOrders = await _purchaseRepo.GetByBuyerIdAsync(userId);
+        var sellerOrders = await _purchaseRepo.GetBySellerUserIdAsync(userId);
+
+        var merged = buyerOrders
+            .Concat(sellerOrders)
+            .GroupBy(p => p.PurchaseId)
+            .Select(g => g.First())
+            .OrderByDescending(p => p.CreateTime)
+            .ToList();
+
+        return merged.Select(ToDto).ToList();
+    }
+
     private static PurchaseDto ToDto(Purchase p)
     {
         var firstImageFileId = p.Product?.Images?
