@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
-
-onMounted(() => {
-})
+import HelloWorld from './components/HelloWorld.vue'
 </script>
 
 <template>
-  <router-view />
+  <HelloWorld />
 </template>
