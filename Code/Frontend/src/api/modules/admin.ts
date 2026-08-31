@@ -192,3 +192,49 @@ export function replyAppeal(appealId: number, data: { reply: string }) {
 export function getModerationTasks() {
   return request.get('/api/admin/moderation/tasks')
 }
+// 商品审核统计
+export interface ProductStatistics {
+  totalProducts: number
+  availableCount: number
+  soldCount: number
+  removedCount: number
+  pendingReviewCount: number
+  rejectedCount: number
+  newProductsToday: number
+  totalAuditLogs?: number
+  todayAuditLogs?: number
+}
+
+// 用户统计
+export interface UserStatistics {
+  totalUsers: number
+  normalUsers: number
+  mutedUsers: number
+  publishRestrictedUsers: number
+  bannedUsers: number
+  newUsersToday: number
+  newUsersThisWeek: number
+  usersWithProducts: number
+  totalOrders: number
+  totalWorkOrders?: number
+  pendingWorkOrders?: number
+  totalWarnings: number
+}
+
+// 待办任务
+export interface ModerationTasks {
+  totalPending: number
+  waitingCount: number
+  processingCount: number
+  reportCount: number
+  appealCount: number
+  recentTasks: ModerationTask[]
+}
+
+export interface ModerationTask {
+  id: number
+  type: 'report' | 'appeal'
+  title: string
+  status: 'waiting' | 'processing'
+  createTime: string
+}
