@@ -1,9 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import type {
-    ConversationDto,
-    ConversationDetailDto
-} from '../types/api/conversation'
+import type { ConversationDto } from '../types/api/conversation'
 import {
     getConversations,
     getUnreadCount
@@ -11,14 +8,11 @@ import {
 
 /**
  * 消息模块状态：未读消息数量、会话列表、当前会话。
- *
- * 说明：第8模块后端尚未实现，接口调用在骨架阶段可能 404，
- * 故这里全部采用静默容错，不影响页面其它功能。
  */
 export const useMessageStore = defineStore('message', () => {
     const unreadCount = ref(0)
     const conversations = ref<ConversationDto[]>([])
-    const currentConversation = ref<ConversationDetailDto | null>(null)
+    const currentConversation = ref<ConversationDto | null>(null)
     const loading = ref(false)
     const initialized = ref(false)
 
@@ -28,21 +22,21 @@ export const useMessageStore = defineStore('message', () => {
         try {
             const response = await getUnreadCount()
 
-            unreadCount.value = response.data?.unreadCount ?? 0
+            unreadCount.value = response.data ?? 0
         } catch (error) {
-            console.warn('未读消息数量加载失败（后端可能未实现）：', error)
+            console.warn('未读消息数量加载失败：', error)
         }
     }
 
-    async function loadConversations(): Promise<void> {
+    async function loadConversations(keyword?: string): Promise<void> {
         loading.value = true
 
         try {
-            const response = await getConversations()
+            const response = await getConversations(keyword)
 
             conversations.value = response.data ?? []
         } catch (error) {
-            console.warn('会话列表加载失败（后端可能未实现）：', error)
+            console.warn('会话列表加载失败：', error)
 
             conversations.value = []
         } finally {
@@ -51,7 +45,7 @@ export const useMessageStore = defineStore('message', () => {
     }
 
     function setCurrentConversation(
-        conversation: ConversationDetailDto | null
+        conversation: ConversationDto | null
     ): void {
         currentConversation.value = conversation
     }
