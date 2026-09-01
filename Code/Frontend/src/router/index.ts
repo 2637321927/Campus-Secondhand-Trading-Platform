@@ -3,7 +3,7 @@ import {
     createWebHistory
 } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-
+import { adminRoutes} from './modules/admin'
 const routes = [
     {
         path: '/login',
