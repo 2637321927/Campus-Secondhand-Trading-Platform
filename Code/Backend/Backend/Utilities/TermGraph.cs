@@ -294,6 +294,10 @@ public class TermGraph
                     var id2 = Math.Max(termToId[p.Term1], termToId[p.Term2]);
                     return (id1, id2, t1: p.Term1, t2: p.Term2);
                 })
+                // 同一条边可能重复出现（分词产生重复词条、多个商品共用同一词对），
+                // 必须按 (id1, id2) 去重，否则批量插入会违反唯一索引 IX_search_term_edge_term1_id_term2_id
+                .GroupBy(p => (p.id1, p.id2))
+                .Select(g => g.First())
                 .ToList();
 
             var allDirtyTermIds = termToId.Values.ToList();

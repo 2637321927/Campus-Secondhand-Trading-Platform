@@ -13,8 +13,7 @@ import {
 import { Search } from '@element-plus/icons-vue'
 import { useMessageStore } from '../../stores/message'
 import {
-  deleteConversation,
-  searchConversations
+  deleteConversation
 } from '../../api/modules/conversation'
 import {
   getNotifications,
@@ -71,22 +70,26 @@ function formatTime(value?: string): string {
   return date.toLocaleString('zh-CN', options)
 }
 
+/**
+ * 对方显示名：后端会话列表不含用户名，
+ * 用商品名代替，双方都能对应上（买家和卖家聊的都是同一件商品）
+ * TODO: 后端 ConversationDto 补 otherUserName 字段后替换
+ */
+function displayName(conversation: ConversationDto): string {
+  return `关于「${conversation.productName}」`
+}
+
 async function loadConversations(): Promise<void> {
   loadingConversations.value = true
   conversationsError.value = ''
 
   try {
+    // 后端搜索 = 列表接口的 keyword 参数（无独立 search 路由）
     const keywordText = keyword.value.trim()
 
-    if (keywordText) {
-      const response = await searchConversations(keywordText)
+    await messageStore.loadConversations(keywordText || undefined)
 
-      conversations.value = response.data ?? []
-    } else {
-      await messageStore.loadConversations()
-
-      conversations.value = messageStore.conversations
-    }
+    conversations.value = messageStore.conversations
   } catch (error) {
     conversationsError.value = '会话列表加载失败，请稍后重试'
 
@@ -133,7 +136,7 @@ async function handleDeleteConversation(
 
   try {
     await ElMessageBox.confirm(
-      `确定删除与「${conversation.otherUserName}」的会话吗？`,
+      `确定删除与「${conversation.productName}」相关的会话吗？`,
       '删除会话',
       {
         type: 'warning',
@@ -396,26 +399,27 @@ onMounted(() => {
                     class="conversation-avatar"
                     :size="46"
                   >
-                    {{ conversation.otherUserName?.charAt(0) ?? '对' }}
+                    对
                   </el-avatar>
 
                   <span class="conversation-body">
                     <span class="conversation-top">
                       <span class="conversation-name">
-                        {{ conversation.otherUserName }}
+                        {{ displayName(conversation) }}
                       </span>
 
                       <span class="conversation-time">
-                        {{ formatTime(conversation.lastMessageTime) }}
+                        {{ formatTime(conversation.createTime) }}
                       </span>
                     </span>
 
                     <span class="conversation-product">
-                      {{ conversation.productName }}
+                      商品 #{{ conversation.productId }}
                     </span>
 
                     <span class="conversation-preview">
-                      {{ conversation.lastMessage }}
+                      <!-- TODO: 后端补 lastMessage 摘要后替换 -->
+                      {{ conversation.unreadCount > 0 ? `${conversation.unreadCount} 条未读消息` : '点击查看消息' }}
                     </span>
                   </span>
                 </button>

@@ -1,7 +1,6 @@
 import request from '../http'
 import type {
     ConversationDto,
-    ConversationDetailDto,
     CreateConversationRequest,
     SendMessageRequest,
     MessageDto,
@@ -12,15 +11,17 @@ import type {
 
 /**
  * 获取当前用户会话列表
+ * @param keyword 可选，按商品名模糊搜索（后端列表接口自带过滤，无独立 search 路由）
  */
-export function getConversations() {
+export function getConversations(keyword?: string) {
     return request.get<ConversationDto[]>(
-        '/api/conversations'
+        '/api/conversations',
+        { params: keyword ? { keyword } : undefined }
     )
 }
 
 /**
- * 创建或打开与某个用户、某个商品相关的会话
+ * 创建或打开与某商品卖家的会话（买家为当前登录用户，同一买家+商品只保留一个会话）
  */
 export function createConversation(data: CreateConversationRequest) {
     return request.post<ConversationDto>(
@@ -30,10 +31,10 @@ export function createConversation(data: CreateConversationRequest) {
 }
 
 /**
- * 获取会话详情（含关联商品和对方用户信息）
+ * 获取会话详情（不含消息记录，消息需调 getConversationMessages）
  */
 export function getConversation(conversationId: number) {
-    return request.get<ConversationDetailDto>(
+    return request.get<ConversationDto>(
         `/api/conversations/${conversationId}`
     )
 }
@@ -48,21 +49,11 @@ export function deleteConversation(conversationId: number) {
 }
 
 /**
- * 将会话标记为已读
+ * 将会话中对方发来的消息全部标记为已读
  */
 export function markConversationRead(conversationId: number) {
     return request.patch<void>(
         `/api/conversations/${conversationId}/read`
-    )
-}
-
-/**
- * 搜索会话
- */
-export function searchConversations(keyword: string) {
-    return request.get<ConversationDto[]>(
-        '/api/conversations/search',
-        { params: { keyword } }
     )
 }
 
@@ -76,7 +67,7 @@ export function getConversationMessages(conversationId: number) {
 }
 
 /**
- * 发送文本消息
+ * 发送文字消息（JSON 请求体）
  */
 export function sendMessage(
     conversationId: number,
@@ -89,7 +80,7 @@ export function sendMessage(
 }
 
 /**
- * 发送或上传会话附件（multipart/form-data，字段名为 file）
+ * 发送图片等附件（multipart/form-data，字段名为 file）
  */
 export function sendAttachment(
     conversationId: number,
@@ -117,7 +108,7 @@ export function deleteMessage(
 }
 
 /**
- * 获取当前用户未读消息数量
+ * 获取当前用户未读消息数量（后端直接返回数字本身）
  */
 export function getUnreadCount() {
     return request.get<UnreadCountDto>(

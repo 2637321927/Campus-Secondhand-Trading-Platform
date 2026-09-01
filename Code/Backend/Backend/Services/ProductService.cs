@@ -16,7 +16,13 @@ public class ProductService : IProductService
     private readonly ISearchService _searchService;
     private readonly IBaseUserRepository _baseUserRepo;
 
-    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService, ISearchService searchService, IBaseUserRepository baseUserRepo)
+    public ProductService(
+        IProductRepository productRepo,
+        ICategoryRepository categoryRepo,
+        IProductViewRepository productViewRepo,
+        IProdImageService prodImageService,
+        ISearchService searchService,
+        IBaseUserRepository baseUserRepo)
     {
         _productRepo = productRepo;
         _categoryRepo = categoryRepo;

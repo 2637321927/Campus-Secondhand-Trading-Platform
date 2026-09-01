@@ -20,7 +20,13 @@ public class UserController : ControllerBase
     private readonly IProductViewService _viewService;
     private readonly IAddressService _addressService;
 
-    public UserController(IBaseUserService userService, IProductService productService, ISearchService searchService, IPurchaseService purchaseService, IProductViewService viewService, IAddressService addressService)
+    public UserController(
+        IBaseUserService userService,
+        IProductService productService,
+        ISearchService searchService,
+        IPurchaseService purchaseService,
+        IProductViewService viewService,
+        IAddressService addressService)
     {
         _userService = userService;
         _productService = productService;

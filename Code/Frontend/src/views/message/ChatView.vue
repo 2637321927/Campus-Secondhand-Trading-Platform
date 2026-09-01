@@ -13,13 +13,16 @@ import { useAuthStore } from '../../stores/auth'
 import { useMessageStore } from '../../stores/message'
 import {
   getConversation,
+  getConversationMessages,
   sendMessage,
   sendAttachment,
   deleteMessage,
   markConversationRead
 } from '../../api/modules/conversation'
+import { getUserById } from '../../api/modules/user'
+import { getProductDetail } from '../../api/modules/product'
 import type {
-  ConversationDetailDto,
+  ConversationDto,
   MessageDto
 } from '../../types/api/conversation'
 import { useProductImages } from '../../composables/useProductImages'
@@ -32,7 +35,15 @@ const messageStore = useMessageStore()
 
 const conversationId = Number(route.params.conversationId)
 
-const conversation = ref<ConversationDetailDto | null>(null)
+const conversation = ref<ConversationDto | null>(null)
+const messages = ref<MessageDto[]>([])
+/** 对方用户名（后端会话接口不含用户信息，按对方 ID 单独请求） */
+const otherUserName = ref('')
+const otherUserId = ref<number | null>(null)
+/** 商品价格与封面（后端会话接口不含，按商品 ID 单独请求） */
+const productPrice = ref<number | null>(null)
+const productCoverFileId = ref<number | null>(null)
+
 const loading = ref(false)
 const errorMessage = ref('')
 const sending = ref(false)
@@ -47,6 +58,17 @@ const { getProductImageUrl, loadProductImages } =
 const currentUserId = computed(
   () => authStore.currentUser?.userId
 )
+
+/** 对方 = 会话双方中不是当前用户的那一方 */
+function resolveOtherUserId(c: ConversationDto): number | null {
+  const uid = currentUserId.value
+
+  if (uid === c.buyerId) return c.sellerId
+  if (uid === c.sellerId) return c.buyerId
+
+  // 当前用户不在会话双方中（异常情况），退化为卖家
+  return c.sellerId
+}
 
 function isMine(message: MessageDto): boolean {
   return (
@@ -83,24 +105,62 @@ async function scrollToBottom(): Promise<void> {
   }
 }
 
+/**
+ * 加载会话详情、消息记录、对方用户名、商品摘要。
+ * 后端各接口独立返回，这里并行请求拼装。
+ */
 async function loadConversation(): Promise<void> {
   loading.value = true
   errorMessage.value = ''
 
   try {
-    const response = await getConversation(conversationId)
+    const detailResponse = await getConversation(conversationId)
 
-    conversation.value = response.data
-    messageStore.setCurrentConversation(response.data)
+    conversation.value = detailResponse.data
+    messageStore.setCurrentConversation(detailResponse.data)
 
-    if (response.data?.productCoverFileId) {
-      await loadProductImages([response.data.productCoverFileId])
+    if (conversation.value) {
+      const otherId = resolveOtherUserId(conversation.value)
+      otherUserId.value = otherId
+
+      // 并行加载：消息记录、对方用户名、商品详情
+      const [messagesResult, otherUserResult, productResult] =
+        await Promise.allSettled([
+          getConversationMessages(conversationId),
+          otherId !== null ? getUserById(otherId) : Promise.reject(new Error('无对方 ID')),
+          getProductDetail(conversation.value.productId)
+        ])
+
+      if (messagesResult.status === 'fulfilled') {
+        messages.value = messagesResult.value.data ?? []
+      } else {
+        messages.value = []
+        console.warn('消息记录加载失败：', messagesResult.reason)
+      }
+
+      if (otherUserResult.status === 'fulfilled') {
+        otherUserName.value = otherUserResult.value.data.userName
+      } else {
+        console.warn('对方用户信息加载失败：', otherUserResult.reason)
+      }
+
+      if (productResult.status === 'fulfilled') {
+        const product = productResult.value.data
+        productPrice.value = product.price
+        productCoverFileId.value = product.images?.[0]?.imgFileId ?? null
+
+        if (productCoverFileId.value) {
+          await loadProductImages([productCoverFileId.value])
+        }
+      } else {
+        console.warn('商品信息加载失败：', productResult.reason)
+      }
     }
 
     await scrollToBottom()
 
     void markConversationRead(conversationId).catch((error) => {
-      console.warn('标记会话已读失败（后端可能未实现）：', error)
+      console.warn('标记会话已读失败：', error)
     })
 
     void messageStore.loadUnreadCount()
@@ -129,11 +189,8 @@ async function handleSend(): Promise<void> {
 
     const sentMessage = response.data
 
-    if (sentMessage && conversation.value) {
-      conversation.value.messages = [
-        ...conversation.value.messages,
-        sentMessage
-      ]
+    if (sentMessage) {
+      messages.value = [...messages.value, sentMessage]
     }
 
     inputText.value = ''
@@ -166,11 +223,8 @@ async function handleUploadAttachment(
 
     const sentMessage = response.data
 
-    if (sentMessage && conversation.value) {
-      conversation.value.messages = [
-        ...conversation.value.messages,
-        sentMessage
-      ]
+    if (sentMessage) {
+      messages.value = [...messages.value, sentMessage]
     }
 
     ElMessage.success('附件已发送')
@@ -193,12 +247,9 @@ async function handleDeleteMessage(
   try {
     await deleteMessage(conversationId, message.messageId)
 
-    if (conversation.value) {
-      conversation.value.messages =
-        conversation.value.messages.filter(
-          (item) => item.messageId !== message.messageId
-        )
-    }
+    messages.value = messages.value.filter(
+      (item) => item.messageId !== message.messageId
+    )
 
     ElMessage.success('消息已删除')
   } catch (error) {
@@ -251,12 +302,12 @@ onMounted(() => {
             class="partner-avatar"
             :size="40"
           >
-            {{ conversation.otherUserName?.charAt(0) ?? '对' }}
+            {{ otherUserName?.charAt(0) ?? '对' }}
           </el-avatar>
 
           <div class="partner-info">
             <span class="partner-name">
-              {{ conversation.otherUserName }}
+              {{ otherUserName || `用户 #${otherUserId ?? '?'}` }}
             </span>
 
             <button
@@ -278,10 +329,10 @@ onMounted(() => {
         <div class="product-cover">
           <img
             v-if="
-              getProductImageUrl(conversation.productCoverFileId)
+              getProductImageUrl(productCoverFileId)
             "
             :src="
-              getProductImageUrl(conversation.productCoverFileId)
+              getProductImageUrl(productCoverFileId)
             "
             alt="商品图片"
           />
@@ -299,8 +350,11 @@ onMounted(() => {
             {{ conversation.productName }}
           </span>
 
-          <span class="product-price">
-            ¥{{ conversation.productPrice }}
+          <span
+            v-if="productPrice !== null"
+            class="product-price"
+          >
+            ¥{{ productPrice }}
           </span>
         </div>
       </div>
@@ -335,21 +389,21 @@ onMounted(() => {
           <el-empty
             v-if="
               !loading &&
-              (conversation?.messages ?? []).length === 0
+              messages.length === 0
             "
             description="暂无消息，发送一条消息开始交流吧"
             class="messages-empty"
           />
 
           <div
-            v-for="message in conversation?.messages ?? []"
+            v-for="message in messages"
             :key="message.messageId"
             class="message-row"
             :class="{ 'message-row--mine': isMine(message) }"
           >
             <div class="message-bubble">
               <p
-                v-if="message.msgType === 0"
+                v-if="message.messageType === 0"
                 class="message-content"
               >
                 {{ message.content }}
@@ -359,9 +413,18 @@ onMounted(() => {
                 v-else
                 class="message-attachment"
               >
-                <el-icon><Paperclip /></el-icon>
+                <img
+                  v-if="getProductImageUrl(message.fileId)"
+                  class="message-image"
+                  :src="getProductImageUrl(message.fileId)"
+                  alt="图片消息"
+                />
 
-                <span>{{ message.fileName ?? '附件' }}</span>
+                <template v-else>
+                  <el-icon><Paperclip /></el-icon>
+
+                  <span>图片</span>
+                </template>
               </div>
 
               <div class="message-meta">
@@ -459,75 +522,68 @@ onMounted(() => {
   background: transparent;
   border: none;
   border-radius: 8px;
-  font-size: 14px;
   cursor: pointer;
 }
 
 .back-button:hover {
-  background: #eef7f3;
+  background: #eef4f2;
 }
 
 .chat-partner {
   display: flex;
-  min-width: 0;
   align-items: center;
   gap: 12px;
 }
 
 .partner-avatar {
-  flex-shrink: 0;
+  background: #24735b;
   color: #ffffff;
-  background: #3e9b79;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .partner-info {
   display: flex;
-  min-width: 0;
   flex-direction: column;
   gap: 2px;
 }
 
 .partner-name {
-  color: #1e2a26;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .partner-product {
   padding: 0;
-  color: #6c7a74;
+  color: #6b7f78;
+  font-size: 12px;
+  text-align: left;
   background: transparent;
   border: none;
-  font-size: 13px;
-  text-align: left;
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .partner-product:hover {
   color: #24735b;
 }
 
-/* 商品信息卡片 */
 .product-card {
   display: flex;
   padding: 12px 20px;
   align-items: center;
-  gap: 14px;
-  background: #f8fbf9;
+  gap: 12px;
+  background: #f7faf9;
   border-bottom: 1px solid #edf1ef;
 }
 
 .product-cover {
+  display: flex;
   width: 52px;
   height: 52px;
-  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
+  background: #e8efec;
   border-radius: 10px;
-  background: #e3e9e6;
 }
 
 .product-cover img {
@@ -537,42 +593,27 @@ onMounted(() => {
 }
 
 .product-cover-placeholder {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  color: #9aa6a0;
+  color: #9db4ad;
   font-size: 14px;
 }
 
 .product-info {
   display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .product-name {
-  min-width: 0;
-  color: #1e2a26;
-  font-size: 15px;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .product-price {
-  flex-shrink: 0;
-  color: #f3a95f;
-  font-size: 17px;
-  font-weight: 700;
+  color: #d64b3f;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/* 消息区 */
 .chat-body {
   display: flex;
   min-height: 0;
@@ -582,19 +623,18 @@ onMounted(() => {
 
 .messages-container {
   flex: 1;
-  min-height: 0;
   padding: 20px;
   overflow-y: auto;
+  background: #ffffff;
 }
 
 .messages-empty {
-  padding: 60px 0;
+  margin-top: 48px;
 }
 
 .message-row {
   display: flex;
-  margin-bottom: 16px;
-  justify-content: flex-start;
+  margin-bottom: 14px;
 }
 
 .message-row--mine {
@@ -602,66 +642,74 @@ onMounted(() => {
 }
 
 .message-bubble {
-  max-width: 72%;
+  max-width: 70%;
   padding: 10px 14px;
-  background: #f2f5f3;
+  background: #f2f5f4;
   border-radius: 14px;
 }
 
 .message-row--mine .message-bubble {
-  background: #e3f2ec;
+  background: #d8ede6;
 }
 
 .message-content {
   margin: 0;
-  color: #1e2a26;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.6;
-  overflow-wrap: anywhere;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .message-attachment {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #24735b;
-  font-size: 14px;
+  gap: 6px;
+  color: #556761;
+  font-size: 13px;
+}
+
+.message-image {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 8px;
 }
 
 .message-meta {
   display: flex;
-  margin-top: 4px;
+  margin-top: 6px;
   align-items: center;
-  gap: 8px;
   justify-content: flex-end;
+  gap: 10px;
 }
 
 .message-time {
-  color: #9aa6a0;
+  color: #93a39e;
   font-size: 11px;
 }
 
 .message-delete {
   padding: 0;
-  color: #d9544d;
+  color: #b0685f;
+  font-size: 11px;
   background: transparent;
   border: none;
-  font-size: 11px;
   cursor: pointer;
 }
 
-/* 输入区 */
+.message-delete:hover {
+  color: #d64b3f;
+}
+
 .chat-input {
   display: flex;
-  padding: 12px 16px;
+  padding: 14px 20px;
   align-items: flex-end;
-  gap: 10px;
+  gap: 12px;
   border-top: 1px solid #edf1ef;
 }
 
 .attachment-upload {
-  flex-shrink: 0;
+  line-height: 1;
 }
 
 .text-input {
@@ -669,19 +717,7 @@ onMounted(() => {
 }
 
 .send-button {
-  flex-shrink: 0;
-  min-height: 40px;
-  padding: 0 22px;
-  border-radius: 10px;
-}
-
-@media (max-width: 640px) {
-  .chat-container {
-    height: calc(100vh - 72px - 24px);
-  }
-
-  .message-bubble {
-    max-width: 86%;
-  }
+  background: #24735b;
+  border-color: #24735b;
 }
 </style>
