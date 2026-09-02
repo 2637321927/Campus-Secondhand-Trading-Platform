@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import {
   getMyProfile,
   getMyPublishedProducts,
@@ -144,11 +143,11 @@ function goToAddresses(): void {
 }
 
 function goToSoldOrders(): void {
-  ElMessage.info('此功能正在开发中')
+  void router.push({ name: 'order-selling' })
 }
 
 function goToPurchaseOrders(): void {
-  ElMessage.info('此功能正在开发中')
+  void router.push({ name: 'order-buying' })
 }
 
 onMounted(() => {
