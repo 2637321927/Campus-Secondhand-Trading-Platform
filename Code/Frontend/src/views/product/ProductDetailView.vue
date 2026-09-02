@@ -231,6 +231,20 @@ function handleViewSellerHome(): void {
   })
 }
 
+function handleReportProduct(): void {
+  if (!product.value) {
+    return
+  }
+
+  void router.push({
+    name: 'report-create',
+    query: {
+      type: 'product',
+      targetId: String(product.value.productId)
+    }
+  })
+}
+
 async function handleFavorite(): Promise<void> {
   if(!product.value){
     return
@@ -1017,6 +1031,23 @@ onBeforeUnmount(() => {
                 {{ isCollected ? '取消收藏' : '收藏商品' }}
               </template>
             </el-button>
+          </div>
+
+          <!-- 举报入口 -->
+          <div
+            v-if="
+              product &&
+              authStore.currentUser?.userId !== product.userId
+            "
+            class="report-entry"
+          >
+            <button
+              class="report-link"
+              type="button"
+              @click="handleReportProduct"
+            >
+              举报此商品
+            </button>
           </div>
 
           <!-- 交易安全提示 -->
@@ -1886,6 +1917,26 @@ onBeforeUnmount(() => {
   background: #fafbfa;
   border: 1px solid #e8edeb;
   border-radius: 14px;
+}
+
+.report-entry {
+  margin-top: 12px;
+  text-align: right;
+}
+
+.report-link {
+  padding: 4px 8px;
+  color: #93a39e;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.report-link:hover {
+  color: #d9544d;
+  background: #fdf3f2;
 }
 
 .trade-notice h3 {

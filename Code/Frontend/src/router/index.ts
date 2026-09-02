@@ -103,6 +103,36 @@ const routes = [
             },
 
             {
+                path: 'reports/create',
+                name: 'report-create',
+                component: () =>
+                    import('../views/report/ReportCreateView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'appeals/create',
+                name: 'appeal-create',
+                component: () =>
+                    import('../views/report/AppealCreateView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
+                path: 'user/reports',
+                name: 'user-reports',
+                component: () =>
+                    import('../views/report/MyReportsView.vue'),
+                meta: {
+                    requiresAuth: true
+                }
+            },
+
+            {
                 path: 'users/:userId',
                 name: 'user-home',
                 component: () =>

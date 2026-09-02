@@ -61,7 +61,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("address");
+                    b.ToTable("address", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.AdminUser", b =>
@@ -76,7 +76,7 @@ namespace Backend.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("admin_user");
+                    b.ToTable("admin_user", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Announcement", b =>
@@ -112,7 +112,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("AdminId");
 
-                    b.ToTable("announcement");
+                    b.ToTable("announcement", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.BaseUser", b =>
@@ -182,7 +182,7 @@ namespace Backend.Migrations
                         .IsUnique()
                         .HasFilter("\"phone_number\" IS NOT NULL");
 
-                    b.ToTable("base_user");
+                    b.ToTable("base_user", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Category", b =>
@@ -208,7 +208,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("ParentId");
 
-                    b.ToTable("category");
+                    b.ToTable("category", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Collection", b =>
@@ -231,7 +231,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("collection");
+                    b.ToTable("collection", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Conversation", b =>
@@ -261,7 +261,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("conversation");
+                    b.ToTable("conversation", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Message", b =>
@@ -308,7 +308,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("SenderId");
 
-                    b.ToTable("message");
+                    b.ToTable("message", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.NormUser", b =>
@@ -334,7 +334,7 @@ namespace Backend.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("norm_user");
+                    b.ToTable("norm_user", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.OrderTimeline", b =>
@@ -378,7 +378,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("PurchaseId");
 
-                    b.ToTable("order_timeline");
+                    b.ToTable("order_timeline", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Payment", b =>
@@ -429,7 +429,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("PurchaseId");
 
-                    b.ToTable("payment");
+                    b.ToTable("payment", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.ProdImage", b =>
@@ -450,7 +450,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("prod_image");
+                    b.ToTable("prod_image", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Product", b =>
@@ -527,7 +527,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("product");
+                    b.ToTable("product", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.ProductAuditLog", b =>
@@ -576,7 +576,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("product_audit_log");
+                    b.ToTable("product_audit_log", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.ProductComment", b =>
@@ -623,7 +623,7 @@ namespace Backend.Migrations
                     b.HasIndex("ProductId", "Index")
                         .IsUnique();
 
-                    b.ToTable("product_comment");
+                    b.ToTable("product_comment", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.ProductView", b =>
@@ -653,7 +653,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("product_view");
+                    b.ToTable("product_view", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Purchase", b =>
@@ -743,7 +743,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("purchase");
+                    b.ToTable("purchase", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Refund", b =>
@@ -782,7 +782,7 @@ namespace Backend.Migrations
                     b.HasIndex("PurchaseId")
                         .IsUnique();
 
-                    b.ToTable("refund");
+                    b.ToTable("refund", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.RefundReview", b =>
@@ -812,7 +812,7 @@ namespace Backend.Migrations
 
                     b.HasKey("RefundId", "ReviewerType");
 
-                    b.ToTable("refund_review");
+                    b.ToTable("refund_review", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.RevImage", b =>
@@ -833,7 +833,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("ReviewId");
 
-                    b.ToTable("rev_image");
+                    b.ToTable("rev_image", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Review", b =>
@@ -880,7 +880,7 @@ namespace Backend.Migrations
                     b.HasIndex("PurchaseId")
                         .IsUnique();
 
-                    b.ToTable("review");
+                    b.ToTable("review", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.SearchTerm", b =>
@@ -911,7 +911,7 @@ namespace Backend.Migrations
                     b.HasIndex("TermText")
                         .IsUnique();
 
-                    b.ToTable("search_term");
+                    b.ToTable("search_term", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.SearchTermEdge", b =>
@@ -946,7 +946,7 @@ namespace Backend.Migrations
                     b.HasIndex("Term1Id", "Term2Id")
                         .IsUnique();
 
-                    b.ToTable("search_term_edge");
+                    b.ToTable("search_term_edge", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.SysInfo", b =>
@@ -976,7 +976,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("sys_info");
+                    b.ToTable("sys_info", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.UpdatedFile", b =>
@@ -1034,7 +1034,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UploaderId");
 
-                    b.ToTable("files");
+                    b.ToTable("files", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.UserWarning", b =>
@@ -1070,7 +1070,7 @@ namespace Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("user_warning");
+                    b.ToTable("user_warning", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.WorkOrder", b =>
@@ -1090,18 +1090,9 @@ namespace Backend.Migrations
                         .HasColumnType("NUMBER(10)")
                         .HasColumnName("admin_id");
 
-                    b.Property<long?>("AppealAgainstWorkOrderId")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("appeal_against_id");
-
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("create_time");
-
-                    b.Property<string>("HandleAction")
-                        .HasMaxLength(50)
-                        .HasColumnType("NVARCHAR2(50)")
-                        .HasColumnName("handle_action");
 
                     b.Property<string>("Info")
                         .HasMaxLength(500)
@@ -1131,25 +1122,11 @@ namespace Backend.Migrations
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("response_time");
 
-                    b.Property<string>("Result")
-                        .HasMaxLength(20)
-                        .HasColumnType("NVARCHAR2(20)")
-                        .HasColumnName("result");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("NVARCHAR2(15)")
                         .HasColumnName("status");
-
-                    b.Property<long?>("TargetId")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("target_id");
-
-                    b.Property<string>("TargetType")
-                        .HasMaxLength(20)
-                        .HasColumnType("NVARCHAR2(20)")
-                        .HasColumnName("target_type");
 
                     b.Property<int>("Type")
                         .HasColumnType("NUMBER(10)")
@@ -1161,54 +1138,11 @@ namespace Backend.Migrations
 
                     b.HasIndex("AdminId");
 
-                    b.HasIndex("AppealAgainstWorkOrderId");
-
                     b.HasIndex("InitiatorId");
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("work_order");
-                });
-
-            modelBuilder.Entity("Backend.Models.WorkOrderTimeline", b =>
-                {
-                    b.Property<long>("TimelineId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("timeline_id");
-
-                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("TimelineId"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("NVARCHAR2(50)")
-                        .HasColumnName("action");
-
-                    b.Property<int?>("AdminId")
-                        .HasColumnType("NUMBER(10)")
-                        .HasColumnName("admin_id");
-
-                    b.Property<DateTime>("CreateTime")
-                        .HasColumnType("TIMESTAMP(7)")
-                        .HasColumnName("create_time");
-
-                    b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("NVARCHAR2(500)")
-                        .HasColumnName("note");
-
-                    b.Property<long>("WorkOrderId")
-                        .HasColumnType("NUMBER(19)")
-                        .HasColumnName("work_order_id");
-
-                    b.HasKey("TimelineId");
-
-                    b.HasIndex("AdminId");
-
-                    b.HasIndex("WorkOrderId");
-
-                    b.ToTable("work_order_timeline");
+                    b.ToTable("work_order", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.Address", b =>
@@ -1619,11 +1553,6 @@ namespace Backend.Migrations
                         .HasForeignKey("AdminId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Backend.Models.WorkOrder", "AppealAgainst")
-                        .WithMany()
-                        .HasForeignKey("AppealAgainstWorkOrderId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Backend.Models.NormUser", "Initiator")
                         .WithMany()
                         .HasForeignKey("InitiatorId")
@@ -1639,29 +1568,9 @@ namespace Backend.Migrations
 
                     b.Navigation("Admin");
 
-                    b.Navigation("AppealAgainst");
-
                     b.Navigation("Initiator");
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("Backend.Models.WorkOrderTimeline", b =>
-                {
-                    b.HasOne("Backend.Models.AdminUser", "Admin")
-                        .WithMany()
-                        .HasForeignKey("AdminId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Backend.Models.WorkOrder", "WorkOrder")
-                        .WithMany("Timelines")
-                        .HasForeignKey("WorkOrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Admin");
-
-                    b.Navigation("WorkOrder");
                 });
 
             modelBuilder.Entity("Backend.Models.AdminUser", b =>
@@ -1734,11 +1643,6 @@ namespace Backend.Migrations
             modelBuilder.Entity("Backend.Models.Review", b =>
                 {
                     b.Navigation("Images");
-                });
-
-            modelBuilder.Entity("Backend.Models.WorkOrder", b =>
-                {
-                    b.Navigation("Timelines");
                 });
 #pragma warning restore 612, 618
         }

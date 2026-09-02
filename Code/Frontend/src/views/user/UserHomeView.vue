@@ -220,6 +220,20 @@ function goBack(): void {
   void router.back()
 }
 
+function handleReportUser(): void {
+  if (!user.value) {
+    return
+  }
+
+  void router.push({
+    name: 'report-create',
+    query: {
+      type: 'user',
+      targetId: String(user.value.userId)
+    }
+  })
+}
+
 function goToProduct(productId: number): void {
   void router.push({
     name: 'product-detail',
@@ -310,6 +324,15 @@ onMounted(() => {
               </span>
             </div>
           </div>
+
+          <button
+            v-if="!isCurrentUser"
+            class="report-user-link"
+            type="button"
+            @click="handleReportUser"
+          >
+            举报该用户
+          </button>
         </section>
 
         <!-- 商品列表 -->
@@ -546,6 +569,22 @@ onMounted(() => {
     );
   border: 1px solid #e3e9e6;
   border-radius: 18px;
+}
+
+.report-user-link {
+  margin-left: auto;
+  padding: 6px 12px;
+  color: #93a39e;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.report-user-link:hover {
+  color: #d9544d;
+  background: #fdf3f2;
 }
 
 .profile-avatar {

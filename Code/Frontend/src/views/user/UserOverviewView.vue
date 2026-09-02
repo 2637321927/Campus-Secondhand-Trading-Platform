@@ -143,6 +143,10 @@ function goToAddresses(): void {
   void router.push({ name: 'user-addresses' })
 }
 
+function goToReports(): void {
+  void router.push({ name: 'user-reports' })
+}
+
 function goToSoldOrders(): void {
   ElMessage.info('此功能正在开发中')
 }
@@ -396,6 +400,18 @@ onMounted(() => {
 
               <span class="entry-desc">
                 管理收货与交易地址，设置默认地址
+              </span>
+            </button>
+
+            <button
+              class="entry-card"
+              type="button"
+              @click="goToReports"
+            >
+              <span class="entry-title">举报与申诉</span>
+
+              <span class="entry-desc">
+                发起举报或申诉，查看处理进度
               </span>
             </button>
           </div>
