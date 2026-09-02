@@ -201,6 +201,16 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+// 导入 API
+import {
+  getAnnouncements,
+  getAnnouncementStatistics,
+  createAnnouncement,
+  updateAnnouncement,
+  publishAnnouncement,
+  archiveAnnouncement,
+  deleteAnnouncement
+} from '../../../api/modules/admin'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -256,43 +266,20 @@ const formRules = {
   ]
 }
 
-// 模拟数据
-const mockAnnouncements = [
-  {
-    id: 1,
-    title: '平台维护通知',
-    content: '平台将于2026年9月10日凌晨2:00-4:00进行系统维护，届时将暂停服务，请提前做好准备。',
-    status: 'published',
-    isPinned: true,
-    publishTime: new Date(Date.now() - 3600000).toISOString()
-  },
-  {
-    id: 2,
-    title: '新学期交易活动预告',
-    content: '新学期即将开始，平台将于9月15日推出"开学季"二手交易活动，敬请期待！',
-    status: 'draft',
-    isPinned: false,
-    publishTime: null
-  }
-]
-
+// ========== 加载公告列表 ==========
 const loadData = async () => {
   loading.value = true
   try {
-    // TODO: 替换为真实 API
-    // const res = await getAnnouncements({ ...queryParams, page: page.value, pageSize: pageSize.value })
-    // announcementList.value = res.items
-    // total.value = res.totalCount
-
-    await new Promise(resolve => setTimeout(resolve, 500))
-    announcementList.value = mockAnnouncements
-    total.value = 2
-
-    statistics.value = {
-      total: 5,
-      published: 3,
-      draft: 2
+    const params: any = {
+      page: page.value,
+      pageSize: pageSize.value
     }
+    if (queryParams.keyword) params.keyword = queryParams.keyword
+    if (queryParams.status) params.status = queryParams.status
+
+    const res = await getAnnouncements(params)
+    announcementList.value = res.items || []
+    total.value = res.totalCount || 0
   } catch (error) {
     ElMessage.error('加载公告列表失败')
   } finally {
@@ -300,6 +287,17 @@ const loadData = async () => {
   }
 }
 
+// ========== 加载统计数据 ==========
+const loadStatistics = async () => {
+  try {
+    const res = await getAnnouncementStatistics()
+    statistics.value = res
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
+
+// ========== 搜索和重置 ==========
 const handleSearch = () => {
   page.value = 1
   loadData()
@@ -312,6 +310,7 @@ const resetSearch = () => {
   loadData()
 }
 
+// ========== 表单操作 ==========
 const resetForm = () => {
   formData.id = undefined
   formData.title = ''
@@ -336,23 +335,30 @@ const openEditDialog = (row: any) => {
   dialogVisible.value = true
 }
 
+// ========== 提交表单（创建/更新） ==========
 const submitForm = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
   submitLoading.value = true
   try {
+    const data = {
+      title: formData.title,
+      content: formData.content,
+      isPinned: formData.isPinned,
+      status: formData.status
+    }
+
     if (formData.id) {
-      // TODO: 调用更新公告 API
-      // await updateAnnouncement(formData.id, formData)
+      await updateAnnouncement(formData.id, data)
       ElMessage.success('公告已更新')
     } else {
-      // TODO: 调用创建公告 API
-      // await createAnnouncement(formData)
+      await createAnnouncement(data)
       ElMessage.success('公告已发布')
     }
     dialogVisible.value = false
     loadData()
+    loadStatistics()
   } catch (error) {
     ElMessage.error('操作失败')
   } finally {
@@ -360,20 +366,22 @@ const submitForm = async () => {
   }
 }
 
+// ========== 查看详情 ==========
 const viewDetail = (row: any) => {
   currentAnnouncement.value = row
   detailDialogVisible.value = true
 }
 
+// ========== 发布公告 ==========
 const handlePublish = async (row: any) => {
   try {
     await ElMessageBox.confirm(`确定要发布公告 "${row.title}" 吗？`, '发布公告', {
       type: 'success'
     })
-    // TODO: 调用发布公告 API
-    // await publishAnnouncement(row.id)
+    await publishAnnouncement(row.id)
     ElMessage.success('公告已发布')
     loadData()
+    loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
@@ -381,15 +389,16 @@ const handlePublish = async (row: any) => {
   }
 }
 
+// ========== 下架公告 ==========
 const handleArchive = async (row: any) => {
   try {
     await ElMessageBox.confirm(`确定要下架公告 "${row.title}" 吗？`, '下架公告', {
       type: 'warning'
     })
-    // TODO: 调用下架公告 API
-    // await archiveAnnouncement(row.id)
+    await archiveAnnouncement(row.id)
     ElMessage.success('公告已下架')
     loadData()
+    loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
@@ -397,15 +406,16 @@ const handleArchive = async (row: any) => {
   }
 }
 
+// ========== 删除公告 ==========
 const handleDelete = async (row: any) => {
   try {
     await ElMessageBox.confirm(`确定要删除公告 "${row.title}" 吗？此操作不可恢复！`, '删除公告', {
       type: 'error'
     })
-    // TODO: 调用删除公告 API
-    // await deleteAnnouncement(row.id)
+    await deleteAnnouncement(row.id)
     ElMessage.success('公告已删除')
     loadData()
+    loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
@@ -413,17 +423,21 @@ const handleDelete = async (row: any) => {
   }
 }
 
+// ========== 工具函数 ==========
 const formatDate = (date: string) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
 }
 
+// ========== 生命周期 ==========
 onMounted(() => {
   loadData()
+  loadStatistics()
 })
 </script>
 
 <style scoped>
+/* ... 样式保持不变 ... */
 .announcement-manage {
   padding: 20px;
 }

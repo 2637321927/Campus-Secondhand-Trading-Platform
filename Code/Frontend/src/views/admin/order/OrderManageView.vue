@@ -195,6 +195,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+// 导入 API
+import { getOrderList, getOrderStatistics, cancelOrder, completeOrder } from '../../../api/modules/admin'
 
 const loading = ref(false)
 const orderList = ref<any[]>([])
@@ -230,62 +232,26 @@ const statusMap: Record<string, { text: string; type: string }> = {
 const getStatusText = (status: string) => statusMap[status]?.text || '未知'
 const getStatusType = (status: string) => statusMap[status]?.type || 'info'
 
-// 模拟数据
-const mockOrders = [
-  {
-    orderId: 'ORD20260902001',
-    productName: 'iPhone 15 Pro Max',
-    productImage: '',
-    totalAmount: 6999,
-    buyerName: '张三',
-    sellerName: '李四',
-    status: 'pending',
-    paymentMethod: '微信支付',
-    createTime: new Date().toISOString(),
-    shippingAddress: '广东省广州市天河区xx路xx号',
-    timeline: [
-      { id: 1, content: '订单创建', type: 'primary', createTime: new Date().toISOString() }
-    ]
-  },
-  {
-    orderId: 'ORD20260902002',
-    productName: 'MacBook Pro 14寸',
-    productImage: '',
-    totalAmount: 12999,
-    buyerName: '王五',
-    sellerName: '赵六',
-    status: 'shipped',
-    paymentMethod: '支付宝',
-    createTime: new Date(Date.now() - 86400000).toISOString(),
-    shippingAddress: '北京市海淀区中关村xx号',
-    timeline: [
-      { id: 1, content: '订单创建', type: 'primary', createTime: new Date(Date.now() - 86400000).toISOString() },
-      { id: 2, content: '卖家确认', type: 'success', createTime: new Date(Date.now() - 43200000).toISOString() },
-      { id: 3, content: '商品已发货', type: 'info', createTime: new Date(Date.now() - 21600000).toISOString() }
-    ]
-  }
-]
-
+// ========== 加载数据 ==========
 const loadData = async () => {
   loading.value = true
   try {
-    // TODO: 替换为真实 API
-    // const res = await getOrderList({ ...queryParams, page: page.value, pageSize: pageSize.value })
-    // orderList.value = res.items
-    // total.value = res.totalCount
-
-    // 模拟数据
-    await new Promise(resolve => setTimeout(resolve, 500))
-    orderList.value = mockOrders
-    total.value = 2
-
-    // 模拟统计
-    statistics.value = {
-      totalOrders: 25,
-      pendingCount: 5,
-      shippingCount: 8,
-      completedCount: 10
+    // 构建请求参数
+    const params: any = {
+      page: page.value,
+      pageSize: pageSize.value
     }
+    if (queryParams.orderId) params.orderId = queryParams.orderId
+    if (queryParams.status) params.status = queryParams.status
+    if (queryParams.dateRange?.length === 2) {
+      params.startDate = queryParams.dateRange[0]
+      params.endDate = queryParams.dateRange[1]
+    }
+
+    // 调用真实 API
+    const res = await getOrderList(params)
+    orderList.value = res.items || []
+    total.value = res.totalCount || 0
   } catch (error) {
     ElMessage.error('加载订单列表失败')
   } finally {
@@ -293,6 +259,17 @@ const loadData = async () => {
   }
 }
 
+// ========== 加载统计数据 ==========
+const loadStatistics = async () => {
+  try {
+    const res = await getOrderStatistics()
+    statistics.value = res
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
+
+// ========== 搜索和重置 ==========
 const handleSearch = () => {
   page.value = 1
   loadData()
@@ -306,20 +283,29 @@ const resetSearch = () => {
   loadData()
 }
 
-const viewDetail = (row: any) => {
-  currentOrder.value = row
-  detailDialogVisible.value = true
+// ========== 查看详情 ==========
+const viewDetail = async (row: any) => {
+  try {
+    // 调用详情 API 获取完整信息
+    // const res = await getOrderDetail(row.orderId)
+    // currentOrder.value = res
+    currentOrder.value = row  // 临时用行数据
+    detailDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error('加载订单详情失败')
+  }
 }
 
+// ========== 取消订单 ==========
 const handleCancel = async (row: any) => {
   try {
     await ElMessageBox.confirm(`确定要取消订单 "${row.orderId}" 吗？`, '取消订单', {
       type: 'warning'
     })
-    // TODO: 调用取消订单 API
-    // await cancelOrder(row.orderId)
+    await cancelOrder(row.orderId)
     ElMessage.success('订单已取消')
     loadData()
+    loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
@@ -327,15 +313,16 @@ const handleCancel = async (row: any) => {
   }
 }
 
+// ========== 完成订单 ==========
 const handleComplete = async (row: any) => {
   try {
     await ElMessageBox.confirm(`确定要完成订单 "${row.orderId}" 吗？`, '完成订单', {
       type: 'success'
     })
-    // TODO: 调用完成订单 API
-    // await completeOrder(row.orderId)
+    await completeOrder(row.orderId)
     ElMessage.success('订单已完成')
     loadData()
+    loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('操作失败')
@@ -343,13 +330,16 @@ const handleComplete = async (row: any) => {
   }
 }
 
+// ========== 工具函数 ==========
 const formatDate = (date: string) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
 }
 
+// ========== 生命周期 ==========
 onMounted(() => {
   loadData()
+  loadStatistics()
 })
 </script>
 
