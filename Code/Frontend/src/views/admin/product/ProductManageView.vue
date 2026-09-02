@@ -230,8 +230,8 @@ import {
   rejectProduct,
   removeProduct,
   restoreProduct
-} from '@/api/modules/admin'
-import { getCategories } from '@/api/modules/category'
+} from '../../../api/modules/admin' 
+import { getCategories } from '../../../api/modules/category'
 
 const router = useRouter()
 const loading = ref(false)

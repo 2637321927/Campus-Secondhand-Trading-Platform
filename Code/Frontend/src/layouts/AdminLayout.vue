@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-layout">
+  <div class="admin-layout" v-loading="loading">
     <!-- 左侧导航 -->
     <el-aside width="220px" class="admin-sidebar">
       <div class="logo">
@@ -28,6 +28,10 @@
           <el-icon><User /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/orders">
+          <el-icon><List /></el-icon>
+          <span>订单管理</span>
+        </el-menu-item>
         <el-menu-item index="/admin/reports">
           <el-icon><Warning /></el-icon>
           <span>举报处理</span>
@@ -36,6 +40,10 @@
           <el-icon><ChatDotRound /></el-icon>
           <span>申诉处理</span>
         </el-menu-item>
+        <el-menu-item index="/admin/announcements">
+          <el-icon><Notification /></el-icon>
+          <span>公告管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -43,7 +51,7 @@
     <el-container class="admin-main">
       <el-header class="admin-header">
         <div class="header-right">
-          <span>{{ authStore.userName || '管理员' }}</span>
+          <span class="user-name">{{ authStore.userName || '管理员' }}</span>
           <el-button type="text" @click="handleLogout">退出</el-button>
         </div>
       </el-header>
@@ -55,19 +63,40 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ElMessage } from 'element-plus'
+import { useAuthStore } from '../stores/auth'
 import {
-  DataLine, Document, Goods, User, Warning, ChatDotRound
+  DataLine,
+  Document,
+  Goods,
+  User,
+  Warning,
+  ChatDotRound,
+  List,
+  Notification
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const loading = ref(true)
 
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')
 }
+
+onMounted(async () => {
+  try {
+    // 如果 authStore 有异步获取用户信息的方法，可以在这里调用
+    // await authStore.fetchUserInfo?.()
+  } catch (error) {
+    console.error('加载用户信息失败:', error)
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <style scoped>
@@ -84,7 +113,7 @@ const handleLogout = () => {
   padding: 20px;
   text-align: center;
   color: white;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .logo h2 {
   margin: 0;
@@ -108,6 +137,10 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   gap: 15px;
+}
+.user-name {
+  color: #1e2a26;
+  font-weight: 500;
 }
 .el-menu {
   border-right: none;

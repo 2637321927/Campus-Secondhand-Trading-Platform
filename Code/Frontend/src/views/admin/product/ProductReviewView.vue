@@ -91,7 +91,7 @@ import {
   approveProduct,
   rejectProduct,
   getProductStatistics
-} from '@/api/modules/admin'
+} from '../../../api/modules/admin' 
 
 const loading = ref(false)
 const productList = ref([])

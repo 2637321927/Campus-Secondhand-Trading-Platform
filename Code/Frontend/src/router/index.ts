@@ -173,7 +173,9 @@ const routes = [
                     import('../views/product/ProductDetailView.vue')
             }
         ]
-    }
+    },
+    // add routers for admin
+    ...adminRoutes
 ]
 
 const router = createRouter({

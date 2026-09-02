@@ -1,9 +1,9 @@
-// 申诉管理
+// 举报管理
 <template>
-  <div class="appeal-manage">
+  <div class="report-manage">
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stats-row">
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card>
           <div class="stat-item">
             <div class="stat-number">{{ moderationTasks.totalPending || 0 }}</div>
@@ -11,19 +11,27 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card>
-          <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.appealCount || 0 }}</div>
-            <div class="stat-label">申诉总数</div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
+      <el-col :span="6">
         <el-card>
           <div class="stat-item">
             <div class="stat-number">{{ moderationTasks.waitingCount || 0 }}</div>
-            <div class="stat-label">待处理申诉</div>
+            <div class="stat-label">待处理</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card>
+          <div class="stat-item">
+            <div class="stat-number">{{ moderationTasks.processingCount || 0 }}</div>
+            <div class="stat-label">处理中</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card>
+          <div class="stat-item">
+            <div class="stat-number">{{ moderationTasks.reportCount || 0 }}</div>
+            <div class="stat-label">举报总数</div>
           </div>
         </el-card>
       </el-col>
@@ -35,7 +43,7 @@
         <el-form-item label="关键词">
           <el-input
             v-model="queryParams.keyword"
-            placeholder="申诉内容/用户名"
+            placeholder="原因/描述/昵称/商品名"
             clearable
             @keyup.enter="handleSearch"
           />
@@ -47,6 +55,15 @@
             <el-option label="已完成" value="done" />
           </el-select>
         </el-form-item>
+        <el-form-item label="举报类型">
+          <el-select v-model="queryParams.targetType" placeholder="全部类型" clearable>
+            <el-option label="商品" value="product" />
+            <el-option label="用户" value="user" />
+            <el-option label="留言" value="comment" />
+            <el-option label="消息" value="message" />
+            <el-option label="订单" value="order" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">搜索</el-button>
           <el-button @click="resetSearch">重置</el-button>
@@ -55,12 +72,21 @@
       </el-form>
     </el-card>
 
-    <!-- 申诉列表 -->
+    <!-- 举报列表 -->
     <el-card class="table-card">
-      <el-table :data="appealList" v-loading="loading" border>
-        <el-table-column prop="appealId" label="ID" width="70" />
-        <el-table-column prop="userName" label="申诉人" width="120" />
-        <el-table-column prop="content" label="申诉内容" min-width="200" show-overflow-tooltip />
+      <el-table :data="reportList" v-loading="loading" border>
+        <el-table-column prop="reportId" label="ID" width="70" />
+        <el-table-column prop="reporterName" label="举报人" width="100" />
+        <el-table-column label="举报对象" min-width="150">
+          <template #default="{ row }">
+            <div>
+              <el-tag size="small" type="info">{{ row.targetType }}</el-tag>
+              <span>{{ row.targetName }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reason" label="原因" min-width="150" />
+        <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
@@ -70,15 +96,15 @@
         </el-table-column>
         <el-table-column label="结果" width="100">
           <template #default="{ row }">
-            <el-tag v-if="row.result === 'approved'" type="success">通过</el-tag>
-            <el-tag v-else-if="row.result === 'rejected'" type="danger">驳回</el-tag>
+            <el-tag v-if="row.result === 'accepted'" type="success">成立</el-tag>
+            <el-tag v-else-if="row.result === 'rejected'" type="info">不成立</el-tag>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="提交时间" width="160">
+        <el-table-column label="举报时间" width="160">
           <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button size="small" type="primary" @click="viewDetail(row)">
               详情
@@ -87,14 +113,14 @@
               v-if="row.status === 'waiting' || row.status === 'processing'"
               size="small"
               type="success"
-              @click="handleApprove(row)"
+              @click="handleAccept(row)"
             >
-              通过
+              成立
             </el-button>
             <el-button
               v-if="row.status === 'waiting' || row.status === 'processing'"
               size="small"
-              type="danger"
+              type="info"
               @click="handleReject(row)"
             >
               驳回
@@ -103,9 +129,9 @@
               v-if="row.status === 'waiting' || row.status === 'processing'"
               size="small"
               type="warning"
-              @click="openReplyDialog(row)"
+              @click="handleAction(row)"
             >
-              回复
+              处理
             </el-button>
           </template>
         </el-table-column>
@@ -123,21 +149,33 @@
       />
     </el-card>
 
-    <!-- 回复对话框 -->
-    <el-dialog v-model="replyDialogVisible" title="回复申诉" width="500px">
+    <!-- 综合处理对话框 -->
+    <el-dialog v-model="actionDialogVisible" title="综合处理" width="500px">
       <el-form>
-        <el-form-item label="回复内容">
+        <el-form-item label="处理动作">
+          <el-select v-model="actionType" placeholder="请选择处理动作">
+            <el-option label="仅记录" value="none" />
+            <el-option label="下架商品" value="remove_product" />
+            <el-option label="恢复商品" value="restore_product" />
+            <el-option label="封禁用户" value="ban_user" />
+            <el-option label="禁言用户" value="mute_user" />
+            <el-option label="限制发布" value="restrict_publish" />
+            <el-option label="解除限制" value="unban_user" />
+            <el-option label="发送警告" value="warn_user" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="处理原因">
           <el-input
-            v-model="replyContent"
+            v-model="actionReason"
             type="textarea"
-            rows="4"
-            placeholder="请填写回复内容"
+            rows="3"
+            placeholder="请填写处理原因"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="replyDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmReply">发送回复</el-button>
+        <el-button @click="actionDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmAction">确认处理</el-button>
       </template>
     </el-dialog>
   </div>
@@ -148,23 +186,24 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  getAppeals,
+  getReports,
   getModerationTasks,
-  approveAppeal,
-  rejectAppeal,
-  replyAppeal
-} from '@/api/modules/admin'
+  acceptReport,
+  rejectReport,
+  handleReport
+} from '../../../api/modules/admin' 
 
 const router = useRouter()
 const loading = ref(false)
-const appealList = ref<any[]>([])
+const reportList = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 
 const queryParams = reactive({
   keyword: '',
-  status: undefined as string | undefined
+  status: undefined as string | undefined,
+  targetType: undefined as string | undefined
 })
 
 const moderationTasks = ref({
@@ -186,23 +225,24 @@ const statusMap = {
 const getStatusText = (status: string) => statusMap[status as keyof typeof statusMap]?.text || '未知'
 const getStatusType = (status: string) => statusMap[status as keyof typeof statusMap]?.type || 'info'
 
-// 回复
-const replyDialogVisible = ref(false)
-const replyContent = ref('')
-const currentAppeal = ref<any>(null)
+// 综合处理
+const actionDialogVisible = ref(false)
+const actionType = ref('')
+const actionReason = ref('')
+const currentReport = ref<any>(null)
 
 const loadData = async () => {
   loading.value = true
   try {
-    const res = await getAppeals({
+    const res = await getReports({
       ...queryParams,
       page: page.value,
       pageSize: pageSize.value
     })
-    appealList.value = res.items || []
+    reportList.value = res.items || []
     total.value = res.totalCount || 0
   } catch (error) {
-    ElMessage.error('加载申诉列表失败')
+    ElMessage.error('加载举报列表失败')
   } finally {
     loading.value = false
   }
@@ -224,21 +264,22 @@ const handleSearch = () => {
 const resetSearch = () => {
   queryParams.keyword = ''
   queryParams.status = undefined
+  queryParams.targetType = undefined
   page.value = 1
   loadData()
 }
 
 const viewDetail = (row: any) => {
-  router.push(`/admin/appeals/${row.appealId}`)
+  router.push(`/admin/reports/${row.reportId}`)
 }
 
-const handleApprove = async (row: any) => {
+const handleAccept = async (row: any) => {
   try {
-    await ElMessageBox.confirm(`确定通过此申诉吗？`, '申诉通过', {
+    await ElMessageBox.confirm(`确定认定此举报成立吗？`, '举报成立', {
       type: 'success'
     })
-    await approveAppeal(row.appealId)
-    ElMessage.success('申诉已通过')
+    await acceptReport(row.reportId)
+    ElMessage.success('已认定举报成立')
     loadData()
     loadTasks()
   } catch (error) {
@@ -250,11 +291,11 @@ const handleApprove = async (row: any) => {
 
 const handleReject = async (row: any) => {
   try {
-    await ElMessageBox.confirm(`确定驳回此申诉吗？`, '申诉驳回', {
+    await ElMessageBox.confirm(`确定驳回此举报吗？`, '举报驳回', {
       type: 'warning'
     })
-    await rejectAppeal(row.appealId)
-    ElMessage.success('已驳回申诉')
+    await rejectReport(row.reportId)
+    ElMessage.success('已驳回举报')
     loadData()
     loadTasks()
   } catch (error) {
@@ -264,26 +305,33 @@ const handleReject = async (row: any) => {
   }
 }
 
-const openReplyDialog = (row: any) => {
-  currentAppeal.value = row
-  replyContent.value = ''
-  replyDialogVisible.value = true
+const handleAction = (row: any) => {
+  currentReport.value = row
+  actionType.value = ''
+  actionReason.value = ''
+  actionDialogVisible.value = true
 }
 
-const confirmReply = async () => {
-  if (!replyContent.value.trim()) {
-    ElMessage.warning('请填写回复内容')
+const confirmAction = async () => {
+  if (!actionType.value) {
+    ElMessage.warning('请选择处理动作')
+    return
+  }
+  if (!actionReason.value.trim()) {
+    ElMessage.warning('请填写处理原因')
     return
   }
   try {
-    await replyAppeal(currentAppeal.value.appealId, {
-      reply: replyContent.value
+    await handleReport(currentReport.value.reportId, {
+      action: actionType.value as any,
+      reason: actionReason.value
     })
-    ElMessage.success('回复已发送')
-    replyDialogVisible.value = false
+    ElMessage.success('处理成功')
+    actionDialogVisible.value = false
     loadData()
+    loadTasks()
   } catch (error) {
-    ElMessage.error('发送失败')
+    ElMessage.error('操作失败')
   }
 }
 
@@ -299,7 +347,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.appeal-manage {
+.report-manage {
   padding: 20px;
 }
 .stats-row {

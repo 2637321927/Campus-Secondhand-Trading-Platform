@@ -162,7 +162,7 @@ import {
   getUserReputation,
   updateUserStatus,
   sendUserWarning
-} from '@/api/modules/admin'
+} from '../../../api/modules/admin' 
 
 const route = useRoute()
 const router = useRouter()

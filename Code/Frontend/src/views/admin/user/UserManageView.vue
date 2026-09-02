@@ -208,7 +208,7 @@ import {
   getUserStatistics,
   updateUserStatus,
   sendUserWarning
-} from '@/api/modules/admin'
+} from '../../../api/modules/admin' 
 
 const router = useRouter()
 const loading = ref(false)

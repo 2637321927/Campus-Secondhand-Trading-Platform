@@ -169,7 +169,7 @@ import {
   getProductStatistics,
   getUserStatistics,
   getModerationTasks
-} from '@/api/modules/admin'
+}  from '../../../api/modules/admin'
 
 const router = useRouter()
 
