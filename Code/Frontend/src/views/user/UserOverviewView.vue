@@ -150,6 +150,14 @@ function goToPurchaseOrders(): void {
   void router.push({ name: 'order-buying' })
 }
 
+function goToReports(): void {
+  void router.push({ name: 'report-list' })
+}
+
+function goToAppeals(): void {
+  void router.push({ name: 'appeal-list' })
+}
+
 onMounted(() => {
   void loadProfile()
   void loadStats()
@@ -395,6 +403,30 @@ onMounted(() => {
 
               <span class="entry-desc">
                 管理收货与交易地址，设置默认地址
+              </span>
+            </button>
+
+            <button
+              class="entry-card"
+              type="button"
+              @click="goToReports"
+            >
+              <span class="entry-title">我的举报</span>
+
+              <span class="entry-desc">
+                查看已提交的举报记录
+              </span>
+            </button>
+
+            <button
+              class="entry-card"
+              type="button"
+              @click="goToAppeals"
+            >
+              <span class="entry-title">申诉中心</span>
+
+              <span class="entry-desc">
+                查看和提交申诉记录
               </span>
             </button>
           </div>
