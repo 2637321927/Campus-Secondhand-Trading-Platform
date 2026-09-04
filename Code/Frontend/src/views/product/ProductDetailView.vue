@@ -231,6 +231,16 @@ function handleViewSellerHome(): void {
   })
 }
 
+function goToReport(type: string, id: number): void {
+  void router.push({
+    name: 'report-create',
+    query: {
+      type,
+      id: String(id)
+    }
+  })
+}
+
 async function handleFavorite(): Promise<void> {
   if(!product.value){
     return
@@ -1017,6 +1027,16 @@ onBeforeUnmount(() => {
                 {{ isCollected ? '取消收藏' : '收藏商品' }}
               </template>
             </el-button>
+
+            <el-button
+              v-if="authStore.currentUser?.userId !== product.userId"
+              size="large"
+              type="danger"
+              plain
+              @click="goToReport('product', product.productId)"
+            >
+              举报商品
+            </el-button>
           </div>
 
           <!-- 交易安全提示 -->
@@ -1336,6 +1356,15 @@ onBeforeUnmount(() => {
                   回复
                 </el-button>
 
+                <el-button
+                  v-if="comment.userId !== authStore.currentUser?.userId"
+                  text
+                  type="danger"
+                  @click="goToReport('comment', comment.commentId)"
+                >
+                  举报
+                </el-button>
+
                  <el-button
                   v-if="canDeleteComment(comment)"
                   text
@@ -1442,10 +1471,19 @@ onBeforeUnmount(() => {
                     </p>
 
                     <div
-                      v-if="canDeleteComment(reply)"
                       class="reply-actions"
                     >
                       <el-button
+                        v-if="reply.userId !== authStore.currentUser?.userId"
+                        text
+                        type="danger"
+                        @click="goToReport('comment', reply.commentId)"
+                      >
+                        举报
+                      </el-button>
+
+                      <el-button
+                        v-if="canDeleteComment(reply)"
                         text
                         type="danger"
                         :loading="
