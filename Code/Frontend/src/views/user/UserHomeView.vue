@@ -21,9 +21,11 @@ import type {
   ProductCardDto
 } from '../../types/api/product'
 import { useProductImages } from '../../composables/useProductImages'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const user = ref<UserDto | null>(null)
 const loading = ref(false)
@@ -71,7 +73,7 @@ const currentProducts = computed<ProductDto[]>(() => {
 })
 
 const isCurrentUser = computed(() =>
-  user.value?.userId === userId.value
+  user.value?.userId === authStore.currentUser?.userId
 )
 
 const isSearchMode = computed(() =>
@@ -229,6 +231,20 @@ function goToProduct(productId: number): void {
   })
 }
 
+function goToUserReport(): void {
+  if (userId.value === null) {
+    return
+  }
+
+  void router.push({
+    name: 'report-create',
+    query: {
+      type: 'user',
+      id: String(userId.value)
+    }
+  })
+}
+
 onMounted(() => {
   void loadUser()
   void loadProducts()
@@ -310,6 +326,15 @@ onMounted(() => {
               </span>
             </div>
           </div>
+
+          <el-button
+            v-if="!isCurrentUser"
+            type="danger"
+            plain
+            @click="goToUserReport"
+          >
+            举报用户
+          </el-button>
         </section>
 
         <!-- 商品列表 -->
