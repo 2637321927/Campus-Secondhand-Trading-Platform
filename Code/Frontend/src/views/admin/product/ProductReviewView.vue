@@ -112,8 +112,8 @@ const loadData = async () => {
   loading.value = true
   try {
     const res = await getPendingProducts(page.value, pageSize.value)
-    productList.value = res.items
-    total.value = res.totalCount
+    productList.value = res.data.items
+    total.value = res.data.totalCount
   } catch (error) {
     ElMessage.error('加载失败')
   } finally {
@@ -123,7 +123,7 @@ const loadData = async () => {
 
 const loadStatistics = async () => {
   try {
-    statistics.value = await getProductStatistics()
+    statistics.value = (await getProductStatistics()).data
   } catch (error) {
     console.error('加载统计失败', error)
   }
@@ -167,9 +167,9 @@ const confirmReject = async () => {
   }
 }
 
-const viewDetail = (row: any) => {
+const viewDetail = (_row: any) => {
   // 跳转到商品详情页
-  // router.push(`/admin/products/${row.productId}`)
+  // router.push(`/admin/products/${_row.productId}`)
 }
 
 onMounted(() => {

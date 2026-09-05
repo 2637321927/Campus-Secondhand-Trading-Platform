@@ -199,8 +199,8 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
-    appealList.value = res.items || []
-    total.value = res.totalCount || 0
+    appealList.value = res.data.items || []
+    total.value = res.data.totalCount || 0
   } catch (error) {
     ElMessage.error('加载申诉列表失败')
   } finally {
@@ -210,7 +210,7 @@ const loadData = async () => {
 
 const loadTasks = async () => {
   try {
-    moderationTasks.value = await getModerationTasks()
+    moderationTasks.value = (await getModerationTasks()).data
   } catch (error) {
     console.error('加载任务统计失败', error)
   }

@@ -2,6 +2,9 @@ import type {
     WorkOrderDto
 } from './report'
 
+// re-export，供 api 模块与其他页面按模块导入 WorkOrderDto
+export type { WorkOrderDto }
+
 /**
  * 发起申诉请求
  */

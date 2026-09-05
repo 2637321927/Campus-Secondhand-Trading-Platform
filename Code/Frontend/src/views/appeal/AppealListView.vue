@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { getMyAppeals } from '../../api/modules/appeal'
 import type { WorkOrderDto } from '../../types/api/appeal'
 import { getApiErrorMessage } from '../../utils/error'

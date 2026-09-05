@@ -10,7 +10,6 @@ const router = useRouter()
 
 const orderId = Number(route.params.orderId)
 
-const loading = ref(false)
 const submitting = ref(false)
 const rating = ref(5)
 const info = ref('')

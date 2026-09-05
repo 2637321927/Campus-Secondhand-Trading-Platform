@@ -215,9 +215,9 @@ const loadData = async () => {
       getUserStatistics(),
       getModerationTasks()
     ])
-    productStats.value = products
-    userStats.value = users
-    moderationTasks.value = tasks
+    productStats.value = products.data
+    userStats.value = users.data
+    moderationTasks.value = tasks.data
   } catch (error) {
     console.error('加载仪表盘数据失败', error)
   }

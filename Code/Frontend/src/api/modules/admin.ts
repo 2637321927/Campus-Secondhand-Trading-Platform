@@ -9,7 +9,7 @@ import type {
   AdminUserDetail,
   ReportListParams,
   ReportDetail
-} from '@/types/api/admin'
+} from '../../types/api/admin'
 
 // ==================== 商品管理 ====================
 

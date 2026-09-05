@@ -22,7 +22,6 @@ const router = useRouter()
 const targetType = computed(() => (route.query.type as string) || '')
 const targetId = computed(() => Number(route.query.id) || 0)
 
-const loading = ref(false)
 const submitting = ref(false)
 const reasons = ref<ReportReason[]>([])
 const productInfo = ref<ReportProductInfoDto | null>(null)

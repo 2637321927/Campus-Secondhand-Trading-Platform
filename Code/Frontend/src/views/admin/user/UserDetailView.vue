@@ -202,7 +202,7 @@ const getStatusType = (status: number) => statusMap[status as keyof typeof statu
 const statusDialogVisible = ref(false)
 const statusDialogTitle = ref('')
 const statusReason = ref('')
-const newStatus = ref<number>(0)
+const newStatus = ref<0 | 1 | 2 | 3>(0)
 const bannedUntil = ref<string | null>(null)
 
 // 警告

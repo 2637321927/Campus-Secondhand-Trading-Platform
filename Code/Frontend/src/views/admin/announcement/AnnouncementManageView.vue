@@ -278,8 +278,8 @@ const loadData = async () => {
     if (queryParams.status) params.status = queryParams.status
 
     const res = await getAnnouncements(params)
-    announcementList.value = res.items || []
-    total.value = res.totalCount || 0
+    announcementList.value = res.data.items || []
+    total.value = res.data.totalCount || 0
   } catch (error) {
     ElMessage.error('加载公告列表失败')
   } finally {
@@ -291,7 +291,7 @@ const loadData = async () => {
 const loadStatistics = async () => {
   try {
     const res = await getAnnouncementStatistics()
-    statistics.value = res
+    statistics.value = res.data
   } catch (error) {
     console.error('加载统计数据失败', error)
   }

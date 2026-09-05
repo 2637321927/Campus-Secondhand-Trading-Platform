@@ -202,8 +202,8 @@ const pageSize = ref(20)
 
 const queryParams = reactive({
   keyword: '',
-  status: undefined as string | undefined,
-  targetType: undefined as string | undefined
+  status: undefined as 'waiting' | 'processing' | 'done' | undefined,
+  targetType: undefined as 'user' | 'product' | 'comment' | 'message' | 'order' | undefined
 })
 
 const moderationTasks = ref({
@@ -239,8 +239,8 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
-    reportList.value = res.items || []
-    total.value = res.totalCount || 0
+    reportList.value = res.data.items || []
+    total.value = res.data.totalCount || 0
   } catch (error) {
     ElMessage.error('加载举报列表失败')
   } finally {
@@ -250,7 +250,7 @@ const loadData = async () => {
 
 const loadTasks = async () => {
   try {
-    moderationTasks.value = await getModerationTasks()
+    moderationTasks.value = (await getModerationTasks()).data
   } catch (error) {
     console.error('加载任务统计失败', error)
   }

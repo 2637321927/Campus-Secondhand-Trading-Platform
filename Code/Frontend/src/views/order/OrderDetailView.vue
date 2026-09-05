@@ -5,13 +5,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
     cancelOrder,
     completeOrder,
+    createPayment,
     getOrder,
     getOrderTimeline,
+    getPaymentMethods,
+    payOrderCallback,
     receiveOrder,
     sellerConfirmOrder,
     sellerRejectOrder,
-    shipOrder,
-    updateShipping
+    shipOrder
 } from '../../api/modules/order'
 import { getProductImages } from '../../api/modules/product'
 import { getOrderReview } from '../../api/modules/review'
@@ -40,11 +42,6 @@ const orderId = computed(() => Number(route.params.orderId))
 const isBuyer = computed(() => {
     if (!order.value || !authStore.currentUser) return false
     return order.value.buyerId === authStore.currentUser.userId
-})
-
-const isSeller = computed(() => {
-    if (!order.value || !authStore.currentUser) return false
-    return order.value.productCoverImageId !== null && !isBuyer.value
 })
 
 const statusTextMap: Record<string, string> = {
@@ -291,6 +288,57 @@ async function handleCompleteOrder(): Promise<void> {
     }
 }
 
+// 支付相关
+const payDialogVisible = ref(false)
+const payMethods = ref<Array<{ value: string; label: string }>>([])
+const selectedPayMethod = ref('')
+const paying = ref(false)
+
+async function openPayDialog(): Promise<void> {
+    if (!order.value) return
+
+    if (payMethods.value.length === 0) {
+        try {
+            const methodsResponse = await getPaymentMethods()
+            payMethods.value = methodsResponse.data ?? []
+        } catch (error) {
+            ElMessage.error(getApiErrorMessage(error, '获取支付方式失败'))
+            return
+        }
+    }
+
+    selectedPayMethod.value = payMethods.value[0]?.value ?? 'alipay'
+    payDialogVisible.value = true
+}
+
+async function handlePay(): Promise<void> {
+    if (!order.value || !selectedPayMethod.value) return
+
+    paying.value = true
+    try {
+        const paymentResponse = await createPayment({
+            purchaseId: order.value.purchaseId,
+            paymentMethod: selectedPayMethod.value
+        })
+        const paymentId = paymentResponse.data.paymentId
+
+        // 模拟第三方支付成功回调（校园模拟平台直接置为已付款）
+        await payOrderCallback(paymentId, {
+            result: 'success',
+            transactionId: `MOCK${Date.now()}`
+        })
+
+        ElMessage.success('支付成功')
+        payDialogVisible.value = false
+        await loadOrder()
+    } catch (error) {
+        ElMessage.error(getApiErrorMessage(error, '支付失败'))
+        console.error('支付失败：', error)
+    } finally {
+        paying.value = false
+    }
+}
+
 function goToProduct(): void {
     if (!order.value) return
     router.push({
@@ -468,6 +516,14 @@ onMounted(() => {
                         <template v-if="isBuyer">
                             <el-button
                                 v-if="order.status === 'pending'"
+                                type="primary"
+                                :loading="operating"
+                                @click="openPayDialog"
+                            >
+                                去支付
+                            </el-button>
+                            <el-button
+                                v-if="order.status === 'pending'"
                                 type="danger"
                                 :loading="operating"
                                 @click="handleCancelOrder"
@@ -552,6 +608,30 @@ onMounted(() => {
                 </section>
             </template>
         </div>
+
+        <!-- 支付弹窗 -->
+        <el-dialog
+            v-model="payDialogVisible"
+            title="选择支付方式"
+            width="440px"
+        >
+            <el-radio-group v-model="selectedPayMethod" class="pay-method-list">
+                <el-radio
+                    v-for="method in payMethods"
+                    :key="method.value"
+                    :value="method.value"
+                    class="pay-method-item"
+                >
+                    {{ method.label }}
+                </el-radio>
+            </el-radio-group>
+            <template #footer>
+                <el-button @click="payDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="paying" @click="handlePay">
+                    确认支付
+                </el-button>
+            </template>
+        </el-dialog>
 
         <!-- 发货弹窗 -->
         <el-dialog

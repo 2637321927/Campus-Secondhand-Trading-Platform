@@ -192,3 +192,16 @@ export function cancelPayment(paymentId: number) {
         `/api/payments/${paymentId}/cancel`
     )
 }
+
+/**
+ * 模拟第三方支付回调（result=success 时订单置为已付款）
+ */
+export function payOrderCallback(
+    paymentId: number,
+    data: { result: 'success' | 'fail'; transactionId?: string | null }
+) {
+    return request.post(
+        `/api/payments/${paymentId}/callback`,
+        data
+    )
+}

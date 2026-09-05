@@ -202,7 +202,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import {
   getAdminUsers,
   getUserStatistics,
@@ -219,8 +219,8 @@ const pageSize = ref(20)
 
 const queryParams = reactive({
   keyword: '',
-  accountStatus: undefined as number | undefined,
-  userType: undefined as number | undefined
+  accountStatus: undefined as 0 | 1 | 2 | 3 | undefined,
+  userType: undefined as 0 | 1 | undefined
 })
 
 const userStats = ref({
@@ -250,7 +250,7 @@ const statusDialogVisible = ref(false)
 const statusDialogTitle = ref('')
 const statusReason = ref('')
 const statusTarget = ref<any>(null)
-const newStatus = ref<number>(0)
+const newStatus = ref<0 | 1 | 2 | 3>(0)
 const bannedUntil = ref<string | null>(null)
 
 // 警告
@@ -266,8 +266,8 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
-    userList.value = res.items || []
-    total.value = res.totalCount || 0
+    userList.value = res.data.items || []
+    total.value = res.data.totalCount || 0
   } catch (error) {
     ElMessage.error('加载用户列表失败')
   } finally {
@@ -277,7 +277,7 @@ const loadData = async () => {
 
 const loadStatistics = async () => {
   try {
-    userStats.value = await getUserStatistics()
+    userStats.value = (await getUserStatistics()).data
   } catch (error) {
     console.error('加载统计数据失败', error)
   }

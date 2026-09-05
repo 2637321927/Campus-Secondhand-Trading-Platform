@@ -250,8 +250,8 @@ const loadData = async () => {
 
     // 调用真实 API
     const res = await getOrderList(params)
-    orderList.value = res.items || []
-    total.value = res.totalCount || 0
+    orderList.value = res.data.items || []
+    total.value = res.data.totalCount || 0
   } catch (error) {
     ElMessage.error('加载订单列表失败')
   } finally {
@@ -263,7 +263,7 @@ const loadData = async () => {
 const loadStatistics = async () => {
   try {
     const res = await getOrderStatistics()
-    statistics.value = res
+    statistics.value = res.data
   } catch (error) {
     console.error('加载统计数据失败', error)
   }

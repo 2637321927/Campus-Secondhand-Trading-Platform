@@ -153,12 +153,22 @@ function selectImage(fileId: number): void {
 }
 
 function handleBuy(): void {
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再购买')
+    return
+  }
+
   if (product.value?.status !== 0) {
     ElMessage.warning('当前商品不可购买')
     return
   }
 
-  ElMessage.info('此功能正在开发中')
+  if (!product.value) return
+
+  router.push({
+    name: 'purchase-confirm',
+    params: { productId: product.value.productId }
+  })
 }
 
 async function handleContactSeller(): Promise<void> {

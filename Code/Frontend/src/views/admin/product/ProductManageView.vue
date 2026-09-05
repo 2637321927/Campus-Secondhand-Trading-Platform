@@ -243,7 +243,7 @@ const categories = ref<any[]>([])
 
 const queryParams = reactive({
   keyword: '',
-  status: undefined as number | undefined,
+  status: undefined as 0 | 1 | 2 | 3 | 4 | undefined,
   categoryId: undefined as number | undefined
 })
 
@@ -285,8 +285,8 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
-    productList.value = res.items || []
-    total.value = res.totalCount || 0
+    productList.value = res.data.items || []
+    total.value = res.data.totalCount || 0
   } catch (error) {
     ElMessage.error('加载商品列表失败')
   } finally {
@@ -296,7 +296,7 @@ const loadData = async () => {
 
 const loadStatistics = async () => {
   try {
-    statistics.value = await getProductStatistics()
+    statistics.value = (await getProductStatistics()).data
   } catch (error) {
     console.error('加载统计数据失败', error)
   }
@@ -305,7 +305,7 @@ const loadStatistics = async () => {
 const loadCategories = async () => {
   try {
     const res = await getCategories()
-    categories.value = res || []
+    categories.value = res.data || []
   } catch (error) {
     console.error('加载分类失败', error)
   }

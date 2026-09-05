@@ -51,7 +51,7 @@
     <el-container class="admin-main">
       <el-header class="admin-header">
         <div class="header-right">
-          <span class="user-name">{{ authStore.userName || '管理员' }}</span>
+          <span class="user-name">{{ authStore.currentUser?.userName || '管理员' }}</span>
           <el-button type="text" @click="handleLogout">退出</el-button>
         </div>
       </el-header>
@@ -65,7 +65,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import {
   DataLine,
@@ -83,7 +82,7 @@ const authStore = useAuthStore()
 const loading = ref(true)
 
 const handleLogout = () => {
-  authStore.logout()
+  authStore.logoutAction()
   router.push('/login')
 }
 
