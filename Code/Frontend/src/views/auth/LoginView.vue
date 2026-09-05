@@ -16,7 +16,7 @@ interface ErrorResponse {
 }
 
 interface LoginForm {
-  email: string
+  account: string
   password: string
 }
 
@@ -27,20 +27,30 @@ const authStore = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const form = reactive<LoginForm>({
-  email: '',
+  account: '',
   password: ''
 })
 
 const rules = reactive<FormRules<LoginForm>>({
-  email: [
+  account: [
     {
       required: true,
-      message: '请输入邮箱',
+      message: '请输入邮箱或手机号',
       trigger: 'blur'
     },
     {
-      type: 'email',
-      message: '请输入正确的邮箱格式',
+      validator: (_rule, value, callback) => {
+        const account = String(value ?? '').trim()
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account)
+        const isPhone = /^1\d{10}$/.test(account)
+
+        if (!isEmail && !isPhone) {
+          callback(new Error('请输入正确的邮箱或手机号'))
+          return
+        }
+
+        callback()
+      },
       trigger: 'blur'
     }
   ],
@@ -95,10 +105,12 @@ async function handleLogin(): Promise<void> {
     return
   }
 
-  const requestData: LoginRequest = {
-    email: form.email.trim(),
-    password: form.password
-  }
+  const account = form.account.trim()
+  const isEmail = account.includes('@')
+
+  const requestData: LoginRequest = isEmail
+    ? { email: account, password: form.password }
+    : { phoneNumber: account, password: form.password }
 
   try {
     await authStore.loginAction(requestData)
@@ -109,13 +121,13 @@ async function handleLogin(): Promise<void> {
   catch (error) {
     console.error('登录失败', error)
 
-    let errorMessage = '登录失败，请检查邮箱和密码'
+    let errorMessage = '登录失败，请检查账号和密码'
 
     if (axios.isAxiosError<ErrorResponse>(error)) {
       if (!error.response) {
         errorMessage = '无法连接后端服务，请确认后端是否已经启动'
       } else if (error.response.status === 401) {
-        errorMessage = '邮箱或密码错误'
+        errorMessage = '账号或密码错误'
       } else if (error.response.status === 403) {
         errorMessage = '该账号暂时无法登录'
       } else if (error.response.data?.message) {
@@ -149,14 +161,14 @@ async function handleLogin(): Promise<void> {
         @submit.prevent="handleLogin"
       >
         <el-form-item
-          label="邮箱"
-          prop="email"
+          label="账号"
+          prop="account"
         >
           <el-input
-            v-model="form.email"
+            v-model="form.account"
             size="large"
-            placeholder="请输入邮箱"
-            autocomplete="email"
+            placeholder="邮箱 / 手机号"
+            autocomplete="username"
             clearable
           />
         </el-form-item>
