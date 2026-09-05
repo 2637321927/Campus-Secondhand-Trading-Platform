@@ -1,5 +1,6 @@
 using Backend.Dtos.Product;
 using Backend.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers;
@@ -47,14 +48,22 @@ public class SearchController : ControllerBase
             SortBy = sortBy
         };
 
-        var result = await _searchService.SearchProductAsync(request);
-        return Ok(result);
+        try
+        {
+            return Ok(await _searchService.SearchProductAsync(request));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        
     }
 
     /// <summary>
     /// 全量重建TermGraph
     /// </summary>
     [HttpPost("rebuild-graph")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> RebuildGraph()
     {
         await _searchService.RebuildGraphAsync();

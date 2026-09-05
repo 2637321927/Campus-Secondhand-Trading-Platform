@@ -70,6 +70,8 @@ builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
 // 搜索引擎 — 分词 + 词条图 + 搜索
 builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();
 builder.Services.AddSingleton<TermGraph>();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<SearchResultCache>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 
 //JWT认证配置
@@ -167,7 +169,6 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("TermGraph is empty, starting full rebuild...");
         var searchService = scope.ServiceProvider.GetRequiredService<ISearchService>();
         await searchService.RebuildGraphAsync();
-        // RebuildGraphAsync 内部已调用 SaveToDatabaseAsync，无需重复
         logger.LogInformation("TermGraph full rebuild done: {Nodes} nodes, {Edges} edges",
             termGraph.NodeCount, termGraph.EdgeCount);
     }

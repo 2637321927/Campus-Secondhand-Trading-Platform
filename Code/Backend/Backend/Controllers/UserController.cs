@@ -105,8 +105,15 @@ public class UserController : ControllerBase
             UserId = userId
         };
 
-        var result = await _searchService.SearchProductAsync(request);
-        return Ok(result);
+        try
+        {
+            return Ok(await _searchService.SearchProductAsync(request));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        
     }
 
     /// <summary>

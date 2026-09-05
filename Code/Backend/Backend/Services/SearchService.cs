@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using Backend.Data;
 using Backend.Dtos.Product;
@@ -18,43 +17,35 @@ public class SearchService : ISearchService
     private readonly TermGraph _termGraph;
     private readonly IProductViewRepository _productViewRepo;
     private readonly ILogger<SearchService> _logger;
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(15);
-    private const int MaxCacheCount = 200;
-    private readonly ConcurrentDictionary<string, CachedSearch> _cache = new();
-
-    private class CachedSearch
-    {
-        public ProductCardDto[] Items { get; init; } = [];
-        public int TotalCount { get; init; }
-        public List<string> ExpandedTerms { get; init; } = [];
-        public DateTime CreatedAt { get; set; }
-    }
+    private readonly SearchResultCache _cache;
 
     public SearchService(
         AppDbContext db,
         ITermExtractionService termExtraction,
         TermGraph termGraph,
         IProductViewRepository productViewRepo,
-        ILogger<SearchService> logger)
+        ILogger<SearchService> logger,
+        SearchResultCache cache)
     {
         _db = db;
         _termExtraction = termExtraction;
         _termGraph = termGraph;
         _productViewRepo = productViewRepo;
         _logger = logger;
+        _cache = cache;
     }
 
     public async Task<SearchResultDto> SearchProductAsync(SearchRequestDto request)
     {
-        // 每次请求先清理全部过期缓存
-        PurgeExpiredCache();
+        request.Page = Math.Max(1, request.Page);
+        request.PageSize = request.PageSize < 1 ? 20 : Math.Min(50, request.PageSize);
+        if ((long)(request.Page - 1) * request.PageSize > int.MaxValue)
+            throw new ArgumentException("页码超出支持范围");
 
-        // 翻页请求直接切片返回
-        if (!string.IsNullOrEmpty(request.SearchId) &&
-            _cache.TryGetValue(request.SearchId, out var cached))
-        {
-            return SliceFromCache(cached, request);
-        }
+        var cached = _cache.TryGet(request);
+        if (cached != null) return cached;
+        if (string.IsNullOrWhiteSpace(request.Keyword))
+            throw new ArgumentException("搜索缓存已过期、无效或与查询条件不匹配，请携带 keyword 重新搜索");
 
         // 分词
         var rawTerms = _termExtraction.Extract(request.Keyword);
@@ -89,59 +80,24 @@ public class SearchService : ISearchService
 
     public async Task NotifyProductCreatedAsync(long productId)
     {
-        if (!_termGraph.IsInitialized)
+        try
         {
-            _logger.LogInformation("TermGraph not initialized, skipping product notification");
-            return;
+            await _termGraph.ProcessAndSaveProductAsync(productId, _termExtraction);
         }
-
-        var product = await _db.Products
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.ProductId == productId);
-
-        if (product == null) return;
-
-        var text = $"{product.Name} {product.Info ?? ""}";
-        var terms = _termExtraction.Extract(text);
-
-        if (terms.Count == 0) return;
-
-        var (affectedTerms, affectedEdges) = _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
-        await _termGraph.SaveIncrementalAsync(affectedTerms, affectedEdges);
-
-        _logger.LogDebug("Processed new product {ProductId} with {TermCount} terms", productId, terms.Count);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update TermGraph for product {ProductId}; rebuild required", productId);
+        }
     }
 
     public async Task RebuildGraphAsync()
     {
         _logger.LogInformation("Starting full TermGraph rebuild...");
 
-        var products = await _db.Products
-            .AsNoTracking()
-            .Where(p => p.Status != ProductStatus.Removed)
-            .Select(p => new { p.ProductId, p.Name, p.Info, p.UserId, p.CategoryId })
-            .ToListAsync();
-
-        var allTerms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var allEdges = new List<EdgeKey>();
-
-        foreach (var product in products)
-        {
-            var text = $"{product.Name} {product.Info ?? ""}";
-            var terms = _termExtraction.Extract(text);
-
-            if (terms.Count > 0)
-            {
-                var (affectedTerms, affectedEdges) = _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
-                allTerms.UnionWith(affectedTerms);
-                allEdges.AddRange(affectedEdges);
-            }
-        }
+        await _termGraph.RebuildAsync(_termExtraction);
 
         _logger.LogInformation("Full TermGraph rebuild completed: {Nodes} nodes, {Edges} edges",
             _termGraph.NodeCount, _termGraph.EdgeCount);
-
-        await _termGraph.SaveIncrementalAsync(allTerms.ToList(), allEdges);
     }
 
     /// <summary>
@@ -178,18 +134,12 @@ public class SearchService : ISearchService
                 Score = ComputeRelevanceScore(p, expandedTerms)
             })
             .OrderByDescending(x => x.Score)
+            .ThenBy(x => x.Card.ProductId)
             .Select(x => x.Card)
             .ToArray();
 
         // 缓存排序结果
-        var searchId = Guid.NewGuid().ToString("N")[..12];
-        _cache[searchId] = new CachedSearch
-        {
-            Items = allItems,
-            TotalCount = allItems.Length,
-            ExpandedTerms = termList,
-            CreatedAt = DateTime.UtcNow
-        };
+        var searchId = _cache.Store(request, allItems, termList);
 
         var pageItems = allItems
             .Skip((request.Page - 1) * request.PageSize)
@@ -253,53 +203,10 @@ public class SearchService : ISearchService
         };
     }
 
-    private SearchResultDto SliceFromCache(CachedSearch cached, SearchRequestDto request)
+    private SearchResultDto NewEmptyResult(SearchRequestDto request) => new()
     {
-        // 每次访问刷新 TTL
-        cached.CreatedAt = DateTime.UtcNow;
-
-        var items = cached.Items
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToList();
-
-        return new SearchResultDto
-        {
-            SearchId = request.SearchId!,
-            Items = items,
-            TotalCount = cached.TotalCount,
-            Page = request.Page,
-            PageSize = request.PageSize,
-            ExpandedTerms = cached.ExpandedTerms
-        };
-    }
-
-    private void PurgeExpiredCache()
-    {
-        var cutoff = DateTime.UtcNow - CacheTtl;
-        foreach (var key in _cache.Keys)
-        {
-            if (_cache.TryGetValue(key, out var entry) && entry.CreatedAt < cutoff)
-                _cache.TryRemove(key, out _);
-        }
-
-        // 超出数量上限时移除最旧的
-        if (_cache.Count > MaxCacheCount)
-        {
-            var toRemove = _cache
-                .OrderBy(kv => kv.Value.CreatedAt)
-                .Take(_cache.Count - MaxCacheCount)
-                .Select(kv => kv.Key)
-                .ToList();
-
-            foreach (var key in toRemove)
-                _cache.TryRemove(key, out _);
-        }
-    }
-
-    private static SearchResultDto NewEmptyResult(SearchRequestDto request) => new()
-    {
-        SearchId = Guid.NewGuid().ToString("N")[..12],
+        SearchId = string.IsNullOrEmpty(request.SortBy) || request.SortBy == "relevance"
+            ? _cache.Store(request, [], []) : "",
         Items = new(),
         TotalCount = 0,
         Page = request.Page,
@@ -343,9 +250,9 @@ public class SearchService : ISearchService
 
     private static IOrderedQueryable<Product> ApplySorting(IQueryable<Product> query, string sortBy) => sortBy switch
     {
-        "price_asc" => query.OrderBy(p => p.Price),
-        "price_desc" => query.OrderByDescending(p => p.Price),
-        _ => query.OrderByDescending(p => p.ReleaseDate), // latest
+        "price_asc" => query.OrderBy(p => p.Price).ThenBy(p => p.ProductId),
+        "price_desc" => query.OrderByDescending(p => p.Price).ThenBy(p => p.ProductId),
+        _ => query.OrderByDescending(p => p.ReleaseDate).ThenBy(p => p.ProductId), // latest
     };
 
     /// <summary>

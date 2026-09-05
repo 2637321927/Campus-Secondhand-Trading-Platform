@@ -138,7 +138,7 @@ public class ProductService : IProductService
         await _productRepo.AddAsync(product);
         await _productRepo.SaveAsync();
 
-        _ = _searchService.NotifyProductCreatedAsync(product.ProductId);
+        await _searchService.NotifyProductCreatedAsync(product.ProductId);
 
         if (dto.Images != null && dto.Images.Count > 0)
         {
