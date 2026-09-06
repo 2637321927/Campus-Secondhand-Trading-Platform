@@ -172,6 +172,67 @@ const categories = ref<CategoryDto[]>([])
 const categoriesLoading = ref(false)
 const categoriesError = ref('')
 
+// 分类两级级联：先选大分类再选小分类，商品必须挂到小分类
+const categoryPath = ref<number[]>([])
+
+const categoryTree = computed(() => {
+  const roots = categories.value.filter(
+    (category) => category.parentId === null
+  )
+
+  return roots.map((root) => ({
+    value: root.categoryId,
+    label: root.categoryName,
+    children: categories.value
+      .filter((category) => category.parentId === root.categoryId)
+      .map((child) => ({
+        value: child.categoryId,
+        label: child.categoryName
+      }))
+  }))
+})
+
+watch(categoryPath, (path) => {
+  // 级联仅允许选到叶子（小分类）
+  form.categoryId =
+    path.length >= 2 ? Number(path[path.length - 1]) : null
+})
+
+watch(
+  () => form.categoryId,
+  () => syncCategoryPath()
+)
+
+watch(categories, () => syncCategoryPath())
+
+function syncCategoryPath(): void {
+  const id = form.categoryId
+
+  if (id === null) {
+    if (categoryPath.value.length > 0) {
+      categoryPath.value = []
+    }
+    return
+  }
+
+  const target = categories.value.find(
+    (category) => category.categoryId === id
+  )
+
+  const next =
+    target && target.parentId !== null
+      ? [target.parentId, id]
+      : [id]
+
+  const isSame =
+    next.length === categoryPath.value.length &&
+    next.every((value, index) => value === categoryPath.value[index])
+
+  if (!isSame) {
+    categoryPath.value = next
+  }
+}
+
 const rules: FormRules<ProductPublishForm> = {
   name: [
     {
@@ -1055,26 +1116,16 @@ onBeforeRouteLeave(async () => {
                 label="商品分类"
                 prop="categoryId"
               >
-                <el-select
-                  v-model="form.categoryId"
+                <el-cascader
+                  v-model="categoryPath"
+                  :options="categoryTree"
                   :loading="categoriesLoading"
                   :disabled="categoriesLoading"
                   clearable
                   filterable
-                  placeholder="请选择商品分类"
+                  placeholder="先选大分类，再选小分类"
                   class="form-control"
-                >
-                  <el-option
-                    v-for="category in categories"
-                    :key="category.categoryId"
-                    :label="
-                      category.categoryName
-                    "
-                    :value="
-                      category.categoryId
-                    "
-                  />
-                </el-select>
+                />
 
                 <div
                   v-if="categoriesError"

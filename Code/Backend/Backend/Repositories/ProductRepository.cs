@@ -33,6 +33,14 @@ public class ProductRepository : IProductRepository
             .Include(p => p.Seller)
             .ToListAsync();
 
+    public async Task<List<Product>> GetByCategoryIdsAsync(IReadOnlyCollection<long> categoryIds)
+        => await _context.Products
+            .Where(p => categoryIds.Contains(p.CategoryId))
+            .Include(p => p.Images)
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
+            .ToListAsync();
+
     public async Task<List<Product>> GetAvailableAsync()
         => await _context.Products
             .Where(p => p.Status == ProductStatus.Available)

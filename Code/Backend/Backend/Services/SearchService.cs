@@ -120,6 +120,8 @@ public class SearchService : ISearchService
             .Where(p => p.Status == ProductStatus.Available);
         if (request.UserId.HasValue)
             baseQuery = baseQuery.Where(p => p.UserId == request.UserId.Value);
+        if (request.CategoryId.HasValue)
+            baseQuery = ApplyCategoryFilter(baseQuery, request.CategoryId.Value);
         if (filter != null)
             baseQuery = baseQuery.Where(filter);
 
@@ -158,6 +160,9 @@ public class SearchService : ISearchService
         if (request.UserId.HasValue)
             baseQuery = baseQuery.Where(p => p.UserId == request.UserId.Value);
 
+        if (request.CategoryId.HasValue)
+            baseQuery = ApplyCategoryFilter(baseQuery, request.CategoryId.Value);
+
         if (filter != null)
             baseQuery = baseQuery.Where(filter);
 
@@ -188,6 +193,13 @@ public class SearchService : ISearchService
             ExpandedTerms = termList
         };
     }
+
+    /// <summary>
+    /// 命中分类自身或其直接子分类下的商品（一级分类可覆盖其二级子分类）
+    /// </summary>
+    private static IQueryable<Product> ApplyCategoryFilter(IQueryable<Product> query, long categoryId)
+        => query.Where(p => p.CategoryId == categoryId
+            || (p.Category != null && p.Category.ParentId == categoryId));
 
     private SearchResultDto NewEmptyResult(SearchRequestDto request) => new()
     {

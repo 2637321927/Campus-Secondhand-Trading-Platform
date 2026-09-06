@@ -30,7 +30,8 @@ public class SearchController : ControllerBase
         [FromQuery] string? searchId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] string? sortBy = null)
+        [FromQuery] string? sortBy = null,
+        [FromQuery] long? categoryId = null)
     {
         if (string.IsNullOrWhiteSpace(keyword) && string.IsNullOrWhiteSpace(searchId))
             return BadRequest(new { message = "keyword 和 searchId 不能同时为空" });
@@ -45,7 +46,8 @@ public class SearchController : ControllerBase
             Keyword = (keyword ?? "").Trim(),
             Page = page,
             PageSize = pageSize,
-            SortBy = sortBy
+            SortBy = sortBy,
+            CategoryId = categoryId
         };
 
         try

@@ -1,20 +1,36 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { ProductCardDto } from '../../types/api/product'
-import { resolveImageUrl } from '../../utils/image'
+import { useProductImages } from '../../composables/useProductImages'
 import { formatDate } from '../../utils/format'
 
 const props = defineProps<{
   product: ProductCardDto
+  imageUrl?: string
 }>()
 
+const {
+  loadProductImages,
+  getProductImageUrl
+} = useProductImages()
+
+watch(
+  () => props.product.coverImageFileId,
+  (fileId) => {
+    void loadProductImages([fileId]).catch((error) => {
+      console.error('商品封面加载失败：', error)
+    })
+  },
+  { immediate: true }
+)
+
 const coverUrl = computed(() => {
-  if (props.product.coverImageUrl) {
-    return resolveImageUrl(props.product.coverImageUrl)
+  if (props.imageUrl) {
+    return props.imageUrl
   }
 
-  return undefined
+  return getProductImageUrl(props.product.coverImageFileId) || undefined
 })
 
 const router = useRouter()

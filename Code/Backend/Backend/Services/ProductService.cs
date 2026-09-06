@@ -112,12 +112,10 @@ public class ProductService : IProductService
             user.AccountStatus == AccountStatus.PublishRestricted)
             throw new UnauthorizedAccessException("当前账号状态不允许发布商品");
 
-        if (await _categoryRepo.GetByIdAsync(dto.CategoryId) == null)
-        {
-            
-            throw new ArgumentException("Category does not exist.");
-
-        }
+        var category = await _categoryRepo.GetByIdAsync(dto.CategoryId)
+            ?? throw new ArgumentException("分类不存在");
+        if (category.ParentId == null)
+            throw new ArgumentException("商品必须发布到具体小分类，不能直接选择一级大分类");
 
         var product = new Product
         {
@@ -125,7 +123,7 @@ public class ProductService : IProductService
             Name = dto.Name,
             Price = dto.Price,
             Info = dto.Info,
-            Status = ProductStatus.PendingReview,
+            Status = ProductStatus.Available,
             UserId = userId,
             ReleaseDate = DateTime.Now,
             CategoryId = dto.CategoryId,
@@ -161,6 +159,11 @@ public class ProductService : IProductService
             throw new UnauthorizedAccessException("You do not have permission to update this product.");
 
         }
+
+        var targetCategory = await _categoryRepo.GetByIdAsync(dto.CategoryId)
+            ?? throw new ArgumentException("分类不存在");
+        if (targetCategory.ParentId == null)
+            throw new ArgumentException("商品分类必须是小分类，不能直接选择一级大分类");
 
         product.Name = dto.Name;
         product.Price = dto.Price;
