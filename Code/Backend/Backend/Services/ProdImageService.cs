@@ -1,3 +1,4 @@
+using Backend.Dtos.Product;
 using Backend.Models;
 using Backend.Repositories;
 
@@ -87,11 +88,11 @@ public class ProdImageService : IProdImageService
 
         foreach (var imageId in imageIds)
         {
-            
+
             var img = await _prodImageRepo.GetByIdAsync(imageId);
             if (img != null)
             {
-                
+
                 _prodImageRepo.Delete(img);
 
             }
@@ -103,5 +104,41 @@ public class ProdImageService : IProdImageService
         await _updatedFile.HardDeleteMultipleAsync(imageIds);
 
     }
-    
+
+    public async Task<List<ProductImageDataDto>> GetProductImagesAsync(List<long> fileIds)
+    {
+
+        if (fileIds == null || fileIds.Count == 0)
+            throw new ArgumentException("No image IDs provided.");
+
+        var files = await _updatedFile.GetActiveByIdsAsync(fileIds);
+
+        if (files.Count == 0)
+            return new List<ProductImageDataDto>();
+
+        var fileDict = files.ToDictionary(f => f.FileId);
+        var results = new List<ProductImageDataDto>();
+
+        foreach (var fileId in fileIds)
+        {
+
+            if (!fileDict.TryGetValue(fileId, out var file))
+                continue;
+
+            using var ms = new MemoryStream();
+            await _updatedFile.GetFileContentAsync(fileId, ms);
+            results.Add(new ProductImageDataDto
+            {
+                FileId = file.FileId,
+                FileName = file.FileName,
+                MimeType = file.MimeType,
+                Content = ms.ToArray()
+            });
+
+        }
+
+        return results;
+
+    }
+
 }

@@ -18,9 +18,10 @@ import type {
   ProductDto,
   ProductStatus
 } from '../../types/api/product'
-import { resolveFileUrl } from '../../utils/image'
 import { getPublicUser } from '../../api/modules/user'
 import type { PublicUserDto } from '../../types/api/user'
+import { createConversation } from '../../api/modules/conversation'
+import { getApiErrorMessage } from '../../utils/error'
 import {
   getCollectionStatus,
   toggleCollection
@@ -36,6 +37,7 @@ import type {
   CreateProductCommentRequest
 } from '../../types/api/comment'
 import { formatDate } from '../../utils/format'
+import { useProductImages } from '../../composables/useProductImages'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,12 +45,21 @@ const router = useRouter()
 const loading = ref(false)
 const errorMessage = ref('')
 const product = ref<ProductDto | null>(null)
-const selectedImageUrl = ref('')
+const selectedImageFileId = ref<number | null>(null)
+const {
+  loadProductImages,
+  getProductImageUrl,
+  clearProductImages
+} = useProductImages()
+const selectedImageUrl = computed(() =>
+  getProductImageUrl(selectedImageFileId.value)
+)
 
 const authStore=useAuthStore()
 
 const isCollected = ref(false)
 const collectionLoading = ref(false)
+const contactLoading = ref(false)
 
 const comments = ref<ProductCommentDto[]>([])
 const commentsLoading = ref(false)
@@ -90,6 +101,12 @@ const sortedImages = computed(() => {
   )
 })
 
+const previewImageUrls = computed(() =>
+  sortedImages.value
+    .map((image) => getProductImageUrl(image.imgFileId))
+    .filter(Boolean)
+)
+
 const seller = ref<PublicUserDto | null>(null)
 const sellerLoading = ref(false)
 const sellerErrorMessage = ref('')
@@ -103,7 +120,11 @@ function getStatusText(status: ProductStatus): string {
     return '已售'
   }
 
-  return '已下架'
+  if (status === 2) {
+    return '已下架'
+  }
+
+  return '未知状态'
 }
 
 function getStatusClass(status: ProductStatus): string {
@@ -115,24 +136,119 @@ function getStatusClass(status: ProductStatus): string {
     return 'status-sold'
   }
 
+  if (status === 2) {
+    return 'status-removed'
+  }
+
   return 'status-removed'
 }
 
+function getShippingTypeText(shippingType: number): string {
+  const labels = ['包邮', '按距离计费', '固定邮费', '无需邮寄']
+  return labels[shippingType] ?? '未知'
+}
+
 function selectImage(fileId: number): void {
-  selectedImageUrl.value = resolveFileUrl(fileId)
+  selectedImageFileId.value = fileId
 }
 
 function handleBuy(): void {
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再购买')
+    return
+  }
+
   if (product.value?.status !== 0) {
     ElMessage.warning('当前商品不可购买')
     return
   }
 
-  ElMessage.info('购买功能将在订单模块中开放')
+  if (!product.value) return
+
+  router.push({
+    name: 'purchase-confirm',
+    params: { productId: product.value.productId }
+  })
 }
 
-function handleContactSeller(): void {
-  ElMessage.info('联系卖家功能将在消息模块中开放')
+async function handleContactSeller(): Promise<void> {
+  if (contactLoading.value) {
+    return
+  }
+
+  if (!product.value) {
+    return
+  }
+
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再联系卖家')
+
+    await router.push({
+      name: 'login',
+      query: {
+        redirect: route.fullPath
+      }
+    })
+
+    return
+  }
+
+  if (authStore.currentUser?.userId === product.value.userId) {
+    ElMessage.warning('不能联系自己发布的商品')
+    return
+  }
+
+  contactLoading.value = true
+
+  try {
+    const response = await createConversation({
+      productId: product.value.productId
+    })
+
+    const conversation = response.data
+
+    if (conversation?.conversationId) {
+      await router.push({
+        name: 'message-chat',
+        params: {
+          conversationId: String(conversation.conversationId)
+        }
+      })
+    } else {
+      ElMessage.warning('会话创建失败，请稍后重试')
+    }
+  } catch (error) {
+    ElMessage.error(
+      getApiErrorMessage(error, '联系卖家失败，请稍后重试')
+    )
+
+    console.error('联系卖家失败：', error)
+  } finally {
+    contactLoading.value = false
+  }
+}
+
+function handleViewSellerHome(): void {
+  if (!seller.value) {
+    return
+  }
+
+  void router.push({
+    name: 'user-home',
+    params: {
+      userId: seller.value.userId
+    }
+  })
+}
+
+function goToReport(type: string, id: number): void {
+  void router.push({
+    name: 'report-create',
+    query: {
+      type,
+      id: String(id)
+    }
+  })
 }
 
 async function handleFavorite(): Promise<void> {
@@ -355,7 +471,7 @@ async function handleDeleteComment(
     return
   }
 
-  if (comment.canDelete !== true) {
+  if (!canDeleteComment(comment)) {
     ElMessage.warning('你无权删除这条留言')
     return
   }
@@ -400,6 +516,18 @@ async function handleDeleteComment(
   finally {
     deletingCommentId.value = null
   }
+}
+
+function canDeleteComment(comment: ProductCommentDto): boolean {
+  const currentUserId = authStore.currentUser?.userId
+
+  return (
+    currentUserId !== undefined &&
+    (
+      currentUserId === comment.userId ||
+      currentUserId === product.value?.userId
+    )
+  )
 }
 
 function isCurrentDetailLoad(
@@ -522,7 +650,8 @@ async function loadProduct(): Promise<void> {
   product.value = null
   seller.value = null
   comments.value = []
-  selectedImageUrl.value = ''
+  selectedImageFileId.value = null
+  clearProductImages()
   isCollected.value = false
 
   replyingToComment.value = null
@@ -559,9 +688,23 @@ async function loadProduct(): Promise<void> {
 
     const firstImage = images[0]
 
-    selectedImageUrl.value = firstImage
-      ? resolveFileUrl(firstImage.imgFileId)
-      : ''
+    await loadProductImages(
+      images.map((image) => image.imgFileId)
+    ).catch((error) => {
+      console.error('商品图片加载失败：', error)
+    })
+
+    if (
+      !isCurrentDetailLoad(
+        currentVersion,
+        requestedProductId
+      )
+    ) {
+      return
+    }
+
+    selectedImageFileId.value =
+      firstImage?.imgFileId ?? null
 
     void loadSeller(
       response.data.userId,
@@ -686,11 +829,7 @@ onBeforeUnmount(() => {
               :alt="product.name"
               fit="contain"
               preview-teleported
-              :preview-src-list="
-                sortedImages.map((image) =>
-                  resolveFileUrl(image.imgFileId)
-                )
-              "
+              :preview-src-list="previewImageUrls"
             >
               <template #error>
                 <div class="image-placeholder">
@@ -726,14 +865,13 @@ onBeforeUnmount(() => {
               class="thumbnail-button"
               :class="{
                 active:
-                  selectedImageUrl ===
-                  resolveFileUrl(image.imgFileId)
+                  selectedImageFileId === image.imgFileId
               }"
               type="button"
               @click="selectImage(image.imgFileId)"
             >
               <el-image
-                :src="resolveFileUrl(image.imgFileId)"
+                :src="getProductImageUrl(image.imgFileId)"
                 :alt="`${product.name}商品图片`"
                 fit="cover"
               >
@@ -826,6 +964,30 @@ onBeforeUnmount(() => {
                 {{ getStatusText(product.status) }}
               </span>
             </div>
+
+            <div class="meta-item">
+              <span class="meta-label">配送方式</span>
+              <span class="meta-value">
+                {{ getShippingTypeText(product.shippingType) }}
+              </span>
+            </div>
+
+            <div
+              v-if="product.shippingType === 2"
+              class="meta-item"
+            >
+              <span class="meta-label">固定邮费</span>
+              <span class="meta-value">
+                ¥{{ Number(product.shippingFee ?? 0).toFixed(2) }}
+              </span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">校内自提</span>
+              <span class="meta-value">
+                {{ product.allowPickup === 1 ? '支持' : '不支持' }}
+              </span>
+            </div>
           </div>
 
           <!-- 商品操作 -->
@@ -847,6 +1009,7 @@ onBeforeUnmount(() => {
             <el-button
               size="large"
               class="contact-button"
+              :loading="contactLoading"
               @click="handleContactSeller"
             >
               联系卖家
@@ -873,6 +1036,16 @@ onBeforeUnmount(() => {
               <template v-else>
                 {{ isCollected ? '取消收藏' : '收藏商品' }}
               </template>
+            </el-button>
+
+            <el-button
+              v-if="authStore.currentUser?.userId !== product.userId"
+              size="large"
+              type="danger"
+              plain
+              @click="goToReport('product', product.productId)"
+            >
+              举报商品
             </el-button>
           </div>
 
@@ -982,9 +1155,18 @@ onBeforeUnmount(() => {
             </span>
           </div>
 
-          <el-button @click="handleContactSeller">
-            联系卖家
-          </el-button>
+          <div class="seller-actions">
+            <el-button @click="handleViewSellerHome">
+              查看主页
+            </el-button>
+
+            <el-button
+              :loading="contactLoading"
+              @click="handleContactSeller"
+            >
+              联系卖家
+            </el-button>
+          </div>
         </div>
 
         <!-- 卖家信息为空 -->
@@ -1184,8 +1366,17 @@ onBeforeUnmount(() => {
                   回复
                 </el-button>
 
+                <el-button
+                  v-if="comment.userId !== authStore.currentUser?.userId"
+                  text
+                  type="danger"
+                  @click="goToReport('comment', comment.commentId)"
+                >
+                  举报
+                </el-button>
+
                  <el-button
-                  v-if="comment.canDelete === true"
+                  v-if="canDeleteComment(comment)"
                   text
                   type="danger"
                   :loading="
@@ -1290,10 +1481,19 @@ onBeforeUnmount(() => {
                     </p>
 
                     <div
-                      v-if="reply.canDelete === true"
                       class="reply-actions"
                     >
                       <el-button
+                        v-if="reply.userId !== authStore.currentUser?.userId"
+                        text
+                        type="danger"
+                        @click="goToReport('comment', reply.commentId)"
+                      >
+                        举报
+                      </el-button>
+
+                      <el-button
+                        v-if="canDeleteComment(reply)"
                         text
                         type="danger"
                         :loading="
@@ -1619,6 +1819,11 @@ onBeforeUnmount(() => {
   background: #edf0ef;
 }
 
+.status-draft {
+  color: #9b681f;
+  background: #fff2d9;
+}
+
 .product-id {
   color: #919d98;
   font-size: 13px;
@@ -1835,6 +2040,13 @@ onBeforeUnmount(() => {
 .seller-info span {
   color: #84908b;
   font-size: 13px;
+}
+
+.seller-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
 }
 
 .comment-section {

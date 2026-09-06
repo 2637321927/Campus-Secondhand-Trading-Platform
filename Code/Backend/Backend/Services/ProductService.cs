@@ -8,17 +8,28 @@ namespace Backend.Services;
 
 public class ProductService : IProductService
 {
+    
     private readonly IProductRepository _productRepo;
     private readonly ICategoryRepository _categoryRepo;
     private readonly IProductViewRepository _productViewRepo;
     private readonly IProdImageService _prodImage;
+    private readonly ISearchService _searchService;
+    private readonly IBaseUserRepository _baseUserRepo;
 
-    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService)
+    public ProductService(
+        IProductRepository productRepo,
+        ICategoryRepository categoryRepo,
+        IProductViewRepository productViewRepo,
+        IProdImageService prodImageService,
+        ISearchService searchService,
+        IBaseUserRepository baseUserRepo)
     {
         _productRepo = productRepo;
         _categoryRepo = categoryRepo;
         _productViewRepo = productViewRepo;
         _prodImage = prodImageService;
+        _searchService = searchService;
+        _baseUserRepo = baseUserRepo;
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId, int userId)
@@ -32,6 +43,20 @@ public class ProductService : IProductService
 
     }
 
+    public async Task<List<ProductDto>> GetAllAsync()
+    {
+        var products = await _productRepo.GetAllAsync();
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(product => product.ProductId));
+
+        return products
+            .OrderByDescending(product => product.ReleaseDate)
+            .Select(product => ToDto(
+                product,
+                viewCounts.GetValueOrDefault(product.ProductId, 0)))
+            .ToList();
+    }
+
     public async Task RecordViewAsync(long productId, int userId)
     {
         await _productViewRepo.AddAsync(new ProductView
@@ -43,8 +68,49 @@ public class ProductService : IProductService
         await _productViewRepo.SaveAsync();
     }
 
+    public async Task<List<long>> GetProductIdsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetByUserIdAsync(userId);
+
+        return products
+            .OrderByDescending(product => product.ReleaseDate)
+            .Select(product => product.ProductId)
+            .ToList();
+    }
+
+    public async Task<List<ProductDto>> GetProductsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetByUserIdAsync(userId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(p => p.ProductId));
+
+        return products
+            .OrderByDescending(p => p.ReleaseDate)
+            .Select(p => ToDto(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
+    }
+
+    public async Task<List<ProductDto>> GetSoldProductsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetSoldByUserIdAsync(userId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(p => p.ProductId));
+
+        return products
+            .OrderByDescending(p => p.ReleaseDate)
+            .Select(p => ToDto(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
+    }
+
     public async Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto)
     {
+        var user = await _baseUserRepo.GetByIdAsync(userId);
+        if (user == null)
+            throw new ArgumentException("用户不存在");
+
+        if (user.AccountStatus == AccountStatus.Banned ||
+            user.AccountStatus == AccountStatus.PublishRestricted)
+            throw new UnauthorizedAccessException("当前账号状态不允许发布商品");
 
         if (await _categoryRepo.GetByIdAsync(dto.CategoryId) == null)
         {
@@ -59,15 +125,20 @@ public class ProductService : IProductService
             Name = dto.Name,
             Price = dto.Price,
             Info = dto.Info,
-            Status = ProductStatus.Available,
+            Status = ProductStatus.PendingReview,
             UserId = userId,
             ReleaseDate = DateTime.Now,
-            CategoryId = dto.CategoryId
-            
+            CategoryId = dto.CategoryId,
+            ShippingType = dto.ShippingType,
+            ShippingFee = dto.ShippingFee,
+            AllowPickup = dto.AllowPickup
+
         };
 
         await _productRepo.AddAsync(product);
         await _productRepo.SaveAsync();
+
+        await _searchService.NotifyProductCreatedAsync(product.ProductId);
 
         if (dto.Images != null && dto.Images.Count > 0)
         {
@@ -94,8 +165,11 @@ public class ProductService : IProductService
         product.Name = dto.Name;
         product.Price = dto.Price;
         product.Info = dto.Info;
-        product.Status = dto.Status;
         product.CategoryId = dto.CategoryId;
+        product.ShippingType = dto.ShippingType;
+        product.ShippingFee = dto.ShippingFee;
+        product.AllowPickup = dto.AllowPickup;
+        product.Status = dto.Status;
 
         if (dto.toRemoveImageIds != null && dto.toRemoveImageIds.Count > 0)
         {
@@ -204,6 +278,9 @@ public class ProductService : IProductService
         CategoryId = p.CategoryId,
         CategoryName = p.Category?.CategoryName,
         ViewCount = viewCount,
+        ShippingType = p.ShippingType,
+        ShippingFee = p.ShippingFee,
+        AllowPickup = p.AllowPickup,
         Images = p.Images?.Select(i => new ProductImageDto
         {
             ImgFileId = i.ImgFileId,
@@ -211,15 +288,14 @@ public class ProductService : IProductService
         }).ToList() ?? new()
     };
 
-    private static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
+    public static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
     {
         ProductId = p.ProductId,
         Name = p.Name,
         Price = p.Price,
-        CoverImageUrl = p.Images?
+        CoverImageFileId = p.Images?
             .OrderBy(i => i.ImgIndex)
-            .FirstOrDefault()?.ImgFileId is long fileId
-                ? $"/api/files/{fileId}" : null,
+            .FirstOrDefault()?.ImgFileId,
         SellerName = p.Seller?.UserName ?? "",
         ReleaseDate = p.ReleaseDate,
         ViewCount = viewCount

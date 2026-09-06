@@ -124,6 +124,10 @@ namespace Backend.Migrations
 
                     OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
 
+                    b.Property<int>("AccountStatus")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("account_status");
+
                     b.Property<long?>("AvatarFileId")
                         .HasColumnType("NUMBER(19)")
                         .HasColumnName("avatar_file_id");
@@ -333,6 +337,101 @@ namespace Backend.Migrations
                     b.ToTable("norm_user");
                 });
 
+            modelBuilder.Entity("Backend.Models.OrderTimeline", b =>
+                {
+                    b.Property<long>("TimelineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("timeline_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("TimelineId"));
+
+                    b.Property<DateTime>("ChangeTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("change_time");
+
+                    b.Property<string>("NewStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("NVARCHAR2(20)")
+                        .HasColumnName("new_status");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("NVARCHAR2(200)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("OldStatus")
+                        .HasMaxLength(20)
+                        .HasColumnType("NVARCHAR2(20)")
+                        .HasColumnName("old_status");
+
+                    b.Property<int>("OperatorId")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("operator_id");
+
+                    b.Property<long>("PurchaseId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("purchase_id");
+
+                    b.HasKey("TimelineId");
+
+                    b.HasIndex("PurchaseId");
+
+                    b.ToTable("order_timeline");
+                });
+
+            modelBuilder.Entity("Backend.Models.Payment", b =>
+                {
+                    b.Property<long>("PaymentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("payment_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("PaymentId"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime?>("CancelTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("cancel_time");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("create_time");
+
+                    b.Property<DateTime?>("PayTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("pay_time");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasMaxLength(20)
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("payment_method");
+
+                    b.Property<long>("PurchaseId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("purchase_id");
+
+                    b.Property<int>("Status")
+                        .HasMaxLength(20)
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("NVARCHAR2(100)")
+                        .HasColumnName("transaction_id");
+
+                    b.HasKey("PaymentId");
+
+                    b.HasIndex("PurchaseId");
+
+                    b.ToTable("payment");
+                });
+
             modelBuilder.Entity("Backend.Models.ProdImage", b =>
                 {
                     b.Property<long>("ImgFileId")
@@ -363,6 +462,10 @@ namespace Backend.Migrations
 
                     OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ProductId"));
 
+                    b.Property<int>("AllowPickup")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("allow_pickup");
+
                     b.Property<long>("CategoryId")
                         .HasColumnType("NUMBER(19)")
                         .HasColumnName("category_id");
@@ -382,9 +485,30 @@ namespace Backend.Migrations
                         .HasColumnType("decimal(10,2)")
                         .HasColumnName("price");
 
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("NVARCHAR2(500)")
+                        .HasColumnName("reject_reason");
+
                     b.Property<DateTime>("ReleaseDate")
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("release_date");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<int?>("ReviewedByAdminId")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<decimal?>("ShippingFee")
+                        .HasColumnType("decimal(5,2)")
+                        .HasColumnName("shipping_fee");
+
+                    b.Property<int>("ShippingType")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("shipping_type");
 
                     b.Property<int>("Status")
                         .HasMaxLength(10)
@@ -399,9 +523,60 @@ namespace Backend.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("ReviewedByAdminId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("product");
+                });
+
+            modelBuilder.Entity("Backend.Models.ProductAuditLog", b =>
+                {
+                    b.Property<long>("AuditId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("audit_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("AuditId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("NVARCHAR2(20)")
+                        .HasColumnName("action");
+
+                    b.Property<int>("AdminId")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("admin_id");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("create_time");
+
+                    b.Property<int>("NewStatus")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("new_status");
+
+                    b.Property<int>("OldStatus")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("old_status");
+
+                    b.Property<long>("ProductId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("product_id");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("NVARCHAR2(500)")
+                        .HasColumnName("reason");
+
+                    b.HasKey("AuditId");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("product_audit_log");
                 });
 
             modelBuilder.Entity("Backend.Models.ProductComment", b =>
@@ -522,13 +697,28 @@ namespace Backend.Migrations
                         .HasColumnType("NUMBER(19)")
                         .HasColumnName("product_id");
 
+                    b.Property<string>("ReceivingAddress")
+                        .HasMaxLength(100)
+                        .HasColumnType("NVARCHAR2(100)")
+                        .HasColumnName("receiving_address");
+
                     b.Property<int>("ResponsibleForShip")
                         .HasColumnType("NUMBER(10)")
                         .HasColumnName("responsible_for_ship");
 
+                    b.Property<string>("ShippingAddress")
+                        .HasMaxLength(100)
+                        .HasColumnType("NVARCHAR2(100)")
+                        .HasColumnName("shipping_address");
+
                     b.Property<decimal>("ShippingFees")
                         .HasColumnType("decimal(5,2)")
                         .HasColumnName("shipping_fees");
+
+                    b.Property<string>("ShippingMethod")
+                        .HasMaxLength(30)
+                        .HasColumnType("NVARCHAR2(30)")
+                        .HasColumnName("shipping_method");
 
                     b.Property<DateTime?>("ShippingTime")
                         .HasColumnType("TIMESTAMP(7)")
@@ -539,6 +729,11 @@ namespace Backend.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("NVARCHAR2(10)")
                         .HasColumnName("status");
+
+                    b.Property<string>("TrackingNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("NVARCHAR2(50)")
+                        .HasColumnName("tracking_number");
 
                     b.HasKey("PurchaseId");
 
@@ -655,6 +850,10 @@ namespace Backend.Migrations
                         .HasColumnType("NVARCHAR2(100)")
                         .HasColumnName("info");
 
+                    b.Property<int>("IsHidden")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("is_hidden");
+
                     b.Property<long>("PurchaseId")
                         .HasColumnType("NUMBER(19)")
                         .HasColumnName("purchase_id");
@@ -662,6 +861,15 @@ namespace Backend.Migrations
                     b.Property<int>("Rating")
                         .HasColumnType("NUMBER(10)")
                         .HasColumnName("rating");
+
+                    b.Property<string>("ReplyInfo")
+                        .HasMaxLength(200)
+                        .HasColumnType("NVARCHAR2(200)")
+                        .HasColumnName("reply_info");
+
+                    b.Property<DateTime?>("ReplyTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("reply_time");
 
                     b.Property<DateTime>("ReviewTime")
                         .HasColumnType("TIMESTAMP(7)")
@@ -673,6 +881,114 @@ namespace Backend.Migrations
                         .IsUnique();
 
                     b.ToTable("review");
+                });
+
+            modelBuilder.Entity("Backend.Models.SearchTerm", b =>
+                {
+                    b.Property<long>("TermId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("term_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("TermId"));
+
+                    b.Property<double>("RowSum")
+                        .HasColumnType("BINARY_DOUBLE")
+                        .HasColumnName("row_sum");
+
+                    b.Property<string>("TermText")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("NVARCHAR2(100)")
+                        .HasColumnName("term_text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("TermId");
+
+                    b.HasIndex("TermText")
+                        .IsUnique();
+
+                    b.ToTable("search_term");
+                });
+
+            modelBuilder.Entity("Backend.Models.SearchTermEdge", b =>
+                {
+                    b.Property<long>("EdgeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("edge_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("EdgeId"));
+
+                    b.Property<long>("Term1Id")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("term1_id");
+
+                    b.Property<long>("Term2Id")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("term2_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<double>("Weight")
+                        .HasColumnType("BINARY_DOUBLE")
+                        .HasColumnName("weight");
+
+                    b.HasKey("EdgeId");
+
+                    b.HasIndex("Term2Id");
+
+                    b.HasIndex("Term1Id", "Term2Id")
+                        .IsUnique();
+
+                    b.ToTable("search_term_edge");
+                });
+
+            modelBuilder.Entity("Backend.Models.SearchTermSimilarity", b =>
+                {
+                    b.Property<long>("SimilarityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("similarity_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("SimilarityId"));
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("rank");
+
+                    b.Property<long>("SimilarTermId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("similar_term_id");
+
+                    b.Property<double>("Similarity")
+                        .HasColumnType("BINARY_DOUBLE")
+                        .HasColumnName("similarity");
+
+                    b.Property<long>("SourceTermId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("source_term_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("SimilarityId");
+
+                    b.HasIndex("SimilarTermId");
+
+                    b.HasIndex("SourceTermId", "Rank")
+                        .IsUnique();
+
+                    b.HasIndex("SourceTermId", "SimilarTermId")
+                        .IsUnique();
+
+                    b.ToTable("search_term_similarity");
                 });
 
             modelBuilder.Entity("Backend.Models.SysInfo", b =>
@@ -763,6 +1079,42 @@ namespace Backend.Migrations
                     b.ToTable("files");
                 });
 
+            modelBuilder.Entity("Backend.Models.UserWarning", b =>
+                {
+                    b.Property<long>("WarningId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("warning_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("WarningId"));
+
+                    b.Property<int>("AdminId")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("admin_id");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("create_time");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("NVARCHAR2(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("WarningId");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("user_warning");
+                });
+
             modelBuilder.Entity("Backend.Models.WorkOrder", b =>
                 {
                     b.Property<long>("WorkOrderId")
@@ -780,9 +1132,18 @@ namespace Backend.Migrations
                         .HasColumnType("NUMBER(10)")
                         .HasColumnName("admin_id");
 
+                    b.Property<long?>("AppealAgainstWorkOrderId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("appeal_against_id");
+
                     b.Property<DateTime>("CreateTime")
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("create_time");
+
+                    b.Property<string>("HandleAction")
+                        .HasMaxLength(50)
+                        .HasColumnType("NVARCHAR2(50)")
+                        .HasColumnName("handle_action");
 
                     b.Property<string>("Info")
                         .HasMaxLength(500)
@@ -812,11 +1173,25 @@ namespace Backend.Migrations
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("response_time");
 
+                    b.Property<string>("Result")
+                        .HasMaxLength(20)
+                        .HasColumnType("NVARCHAR2(20)")
+                        .HasColumnName("result");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(15)
                         .HasColumnType("NVARCHAR2(15)")
                         .HasColumnName("status");
+
+                    b.Property<long?>("TargetId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetType")
+                        .HasMaxLength(20)
+                        .HasColumnType("NVARCHAR2(20)")
+                        .HasColumnName("target_type");
 
                     b.Property<int>("Type")
                         .HasColumnType("NUMBER(10)")
@@ -828,11 +1203,54 @@ namespace Backend.Migrations
 
                     b.HasIndex("AdminId");
 
+                    b.HasIndex("AppealAgainstWorkOrderId");
+
                     b.HasIndex("InitiatorId");
 
                     b.HasIndex("ProductId");
 
                     b.ToTable("work_order");
+                });
+
+            modelBuilder.Entity("Backend.Models.WorkOrderTimeline", b =>
+                {
+                    b.Property<long>("TimelineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("timeline_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("TimelineId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("NVARCHAR2(50)")
+                        .HasColumnName("action");
+
+                    b.Property<int?>("AdminId")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("admin_id");
+
+                    b.Property<DateTime>("CreateTime")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("create_time");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("NVARCHAR2(500)")
+                        .HasColumnName("note");
+
+                    b.Property<long>("WorkOrderId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("work_order_id");
+
+                    b.HasKey("TimelineId");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("WorkOrderId");
+
+                    b.ToTable("work_order_timeline");
                 });
 
             modelBuilder.Entity("Backend.Models.Address", b =>
@@ -961,6 +1379,28 @@ namespace Backend.Migrations
                     b.Navigation("BaseUser");
                 });
 
+            modelBuilder.Entity("Backend.Models.OrderTimeline", b =>
+                {
+                    b.HasOne("Backend.Models.Purchase", "Purchase")
+                        .WithMany("Timelines")
+                        .HasForeignKey("PurchaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Purchase");
+                });
+
+            modelBuilder.Entity("Backend.Models.Payment", b =>
+                {
+                    b.HasOne("Backend.Models.Purchase", "Purchase")
+                        .WithMany("Payments")
+                        .HasForeignKey("PurchaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Purchase");
+                });
+
             modelBuilder.Entity("Backend.Models.ProdImage", b =>
                 {
                     b.HasOne("Backend.Models.UpdatedFile", "ImgFile")
@@ -988,6 +1428,11 @@ namespace Backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Backend.Models.AdminUser", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByAdminId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Backend.Models.NormUser", "Seller")
                         .WithMany("Products")
                         .HasForeignKey("UserId")
@@ -996,7 +1441,28 @@ namespace Backend.Migrations
 
                     b.Navigation("Category");
 
+                    b.Navigation("ReviewedBy");
+
                     b.Navigation("Seller");
+                });
+
+            modelBuilder.Entity("Backend.Models.ProductAuditLog", b =>
+                {
+                    b.HasOne("Backend.Models.AdminUser", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("Backend.Models.ProductComment", b =>
@@ -1123,6 +1589,44 @@ namespace Backend.Migrations
                     b.Navigation("Purchase");
                 });
 
+            modelBuilder.Entity("Backend.Models.SearchTermEdge", b =>
+                {
+                    b.HasOne("Backend.Models.SearchTerm", "Term1")
+                        .WithMany()
+                        .HasForeignKey("Term1Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.SearchTerm", "Term2")
+                        .WithMany()
+                        .HasForeignKey("Term2Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Term1");
+
+                    b.Navigation("Term2");
+                });
+
+            modelBuilder.Entity("Backend.Models.SearchTermSimilarity", b =>
+                {
+                    b.HasOne("Backend.Models.SearchTerm", "SimilarTerm")
+                        .WithMany()
+                        .HasForeignKey("SimilarTermId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.SearchTerm", "SourceTerm")
+                        .WithMany()
+                        .HasForeignKey("SourceTermId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SimilarTerm");
+
+                    b.Navigation("SourceTerm");
+                });
+
             modelBuilder.Entity("Backend.Models.SysInfo", b =>
                 {
                     b.HasOne("Backend.Models.NormUser", "User")
@@ -1145,6 +1649,25 @@ namespace Backend.Migrations
                     b.Navigation("Uploader");
                 });
 
+            modelBuilder.Entity("Backend.Models.UserWarning", b =>
+                {
+                    b.HasOne("Backend.Models.AdminUser", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.NormUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Backend.Models.WorkOrder", b =>
                 {
                     b.HasOne("Backend.Models.NormUser", "Accused")
@@ -1155,6 +1678,11 @@ namespace Backend.Migrations
                     b.HasOne("Backend.Models.AdminUser", "Admin")
                         .WithMany()
                         .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Backend.Models.WorkOrder", "AppealAgainst")
+                        .WithMany()
+                        .HasForeignKey("AppealAgainstWorkOrderId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Backend.Models.NormUser", "Initiator")
@@ -1172,9 +1700,29 @@ namespace Backend.Migrations
 
                     b.Navigation("Admin");
 
+                    b.Navigation("AppealAgainst");
+
                     b.Navigation("Initiator");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Backend.Models.WorkOrderTimeline", b =>
+                {
+                    b.HasOne("Backend.Models.AdminUser", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Backend.Models.WorkOrder", "WorkOrder")
+                        .WithMany("Timelines")
+                        .HasForeignKey("WorkOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+
+                    b.Navigation("WorkOrder");
                 });
 
             modelBuilder.Entity("Backend.Models.AdminUser", b =>
@@ -1230,9 +1778,13 @@ namespace Backend.Migrations
 
             modelBuilder.Entity("Backend.Models.Purchase", b =>
                 {
+                    b.Navigation("Payments");
+
                     b.Navigation("Refund");
 
                     b.Navigation("Review");
+
+                    b.Navigation("Timelines");
                 });
 
             modelBuilder.Entity("Backend.Models.Refund", b =>
@@ -1243,6 +1795,11 @@ namespace Backend.Migrations
             modelBuilder.Entity("Backend.Models.Review", b =>
                 {
                     b.Navigation("Images");
+                });
+
+            modelBuilder.Entity("Backend.Models.WorkOrder", b =>
+                {
+                    b.Navigation("Timelines");
                 });
 #pragma warning restore 612, 618
         }

@@ -35,6 +35,13 @@ public class ProductCommentRepository : IProductCommentRepository
         => await _context.ProductComments
             .AnyAsync(c => c.ResponseToId == commentId);
 
+    public async Task<Dictionary<long, int>> GetCountsByProductIdsAsync(IEnumerable<long> productIds)
+        => await _context.ProductComments
+            .Where(c => productIds.Contains(c.ProductId))
+            .GroupBy(c => c.ProductId)
+            .Select(g => new { ProductId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ProductId, x => x.Count);
+
     public async Task AddAsync(ProductComment comment)
         => await _context.ProductComments.AddAsync(comment);
 

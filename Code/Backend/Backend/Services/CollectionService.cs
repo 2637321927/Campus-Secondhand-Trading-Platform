@@ -10,7 +10,10 @@ public class CollectionService : ICollectionService
     private readonly IProductRepository _productRepo;
     private readonly IProductViewRepository _productViewRepo;
 
-    public CollectionService(ICollectionRepository collectionRepo,IProductRepository productRepo, IProductViewRepository productViewRepo)
+    public CollectionService(
+        ICollectionRepository collectionRepo,
+        IProductRepository productRepo,
+        IProductViewRepository productViewRepo)
     {
         _collectionRepo = collectionRepo;
         _productRepo = productRepo;
@@ -65,7 +68,7 @@ public class CollectionService : ICollectionService
         var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
 
         //映射为ProductCardDto
-        return products.Select(p => ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
+        return products.Select(p => ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
     }
 
     public async Task<int> GetCollectionCountAsync(int userId)
@@ -79,13 +82,17 @@ public class CollectionService : ICollectionService
         var collections = await _collectionRepo.GetByUserIdAsync(userId);
 
         var products = collections
-            .OrderByDescending(c => c.CollectionTime)//按收藏时间倒序
-            .Where(c => c.Product != null && c.Product!.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase))//包含关键词且忽略大小写
+            .OrderByDescending(c => c.CollectionTime) // 按收藏时间倒序
+            .Where(c => c.Product != null
+                        && c.Product!.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase)) // 包含关键词且忽略大小写
             .Select(c => c.Product!)
             .ToList();
         var ids = products.Select(p => p.ProductId);
         var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
-        return products.Select(p => ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0))).ToList();
+
+        return products
+            .Select(p => ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
     }
 
     public async Task<int> BatchDeleteAsync(int userId, List<long> productIds)
@@ -104,18 +111,4 @@ public class CollectionService : ICollectionService
             await _collectionRepo.SaveAsync();
         return deleted;
     }
-
-    private static ProductCardDto ToProductCard(Product p, int viewCount = 0) => new()
-    {
-        ProductId = p.ProductId,
-        Name = p.Name,
-        Price = p.Price,
-        CoverImageUrl = p.Images?
-            .OrderBy(i => i.ImgIndex)
-            .FirstOrDefault()?.ImgFileId is long fileId
-                ? $"/api/files/{fileId}" : null,
-        SellerName = p.Seller?.UserName ?? "",
-        ReleaseDate = p.ReleaseDate,
-        ViewCount = viewCount
-    };
 }

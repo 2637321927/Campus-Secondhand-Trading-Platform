@@ -46,6 +46,7 @@ public class MeResponseDto
     public long? AvatarFileId { get; set; }
     public int IsBanned { get; set; }
     public DateTime? BannedUntil { get; set; }
+    public Backend.Models.Enums.AccountStatus AccountStatus { get; set; } = Backend.Models.Enums.AccountStatus.Normal;
 }
 
 ///<summary>

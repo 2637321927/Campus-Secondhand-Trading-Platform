@@ -32,6 +32,14 @@ public class AppDbContext : DbContext
     public DbSet<UpdatedFile> UpdatedFiles => Set<UpdatedFile>();
     public DbSet<ProductView> ProductViews => Set<ProductView>();
     public DbSet<ProductComment> ProductComments => Set<ProductComment>();
+    public DbSet<SearchTerm> SearchTerms => Set<SearchTerm>();
+    public DbSet<SearchTermEdge> SearchTermEdges => Set<SearchTermEdge>();
+    public DbSet<SearchTermSimilarity> SearchTermSimilarities => Set<SearchTermSimilarity>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<OrderTimeline> OrderTimelines => Set<OrderTimeline>();
+    public DbSet<UserWarning> UserWarnings => Set<UserWarning>();
+    public DbSet<ProductAuditLog> ProductAuditLogs => Set<ProductAuditLog>();
+    public DbSet<WorkOrderTimeline> WorkOrderTimelines => Set<WorkOrderTimeline>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,5 +70,14 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EntityConfigs.UpdatedFileConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.ProductViewConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.ProductCommentConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.SearchTermConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.SearchTermEdgeConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.SearchTermSimilarityConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.SearchTermSimilarityConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.PaymentConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.OrderTimelineConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.UserWarningConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.ProductAuditLogConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.WorkOrderTimelineConfig());
     }
 }

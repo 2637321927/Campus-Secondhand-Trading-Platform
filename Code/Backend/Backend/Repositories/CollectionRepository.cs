@@ -24,6 +24,13 @@ public class CollectionRepository : ICollectionRepository
     public async Task<bool> IsCollectedAsync(long productId, int userId)
         => await _context.Collections.AnyAsync(c => c.ProductId == productId && c.UserId == userId);
 
+    public async Task<Dictionary<long, int>> GetCountsByProductIdsAsync(IEnumerable<long> productIds)
+        => await _context.Collections
+            .Where(c => productIds.Contains(c.ProductId))
+            .GroupBy(c => c.ProductId)
+            .Select(g => new { ProductId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ProductId, x => x.Count);
+
     public async Task AddAsync(Collection collection)
         => await _context.Collections.AddAsync(collection);
 

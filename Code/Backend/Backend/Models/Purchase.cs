@@ -57,6 +57,34 @@ public class Purchase
     [Column("address_id")]
     public int AddressId { get; set; }
 
+    /// <summary>
+    /// 发货方式描述，例如"快递"、"自提"、"面交"
+    /// </summary>
+    [Column("shipping_method")]
+    [MaxLength(30)]
+    public string? ShippingMethod { get; set; }
+
+    /// <summary>
+    /// 发货地址/发货地点
+    /// </summary>
+    [Column("shipping_address")]
+    [MaxLength(100)]
+    public string? ShippingAddress { get; set; }
+
+    /// <summary>
+    /// 收货地址（冗余存储，下单时快照）
+    /// </summary>
+    [Column("receiving_address")]
+    [MaxLength(100)]
+    public string? ReceivingAddress { get; set; }
+
+    /// <summary>
+    /// 快递单号/物流单号
+    /// </summary>
+    [Column("tracking_number")]
+    [MaxLength(50)]
+    public string? TrackingNumber { get; set; }
+
     // 导航属性
     [ForeignKey("BuyerId")]
     public NormUser? Buyer { get; set; }
@@ -69,4 +97,6 @@ public class Purchase
 
     public Review? Review { get; set; }
     public Refund? Refund { get; set; }
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public ICollection<OrderTimeline> Timelines { get; set; } = new List<OrderTimeline>();
 }

@@ -54,6 +54,39 @@ public class WorkOrder
     [Column("product_id")]
     public long? ProductId { get; set; }
 
+    /// <summary>
+    /// 举报/申诉对象类型：product/user/comment/message/order
+    /// </summary>
+    [Column("target_type")]
+    [MaxLength(20)]
+    public string? TargetType { get; set; }
+
+    /// <summary>
+    /// 举报/申诉对象ID
+    /// </summary>
+    [Column("target_id")]
+    public long? TargetId { get; set; }
+
+    /// <summary>
+    /// 申诉针对的原始工单ID（仅申诉类型使用）
+    /// </summary>
+    [Column("appeal_against_id")]
+    public long? AppealAgainstWorkOrderId { get; set; }
+
+    /// <summary>
+    /// 处理结果：accepted/rejected/handled/approved
+    /// </summary>
+    [Column("result")]
+    [MaxLength(20)]
+    public string? Result { get; set; }
+
+    /// <summary>
+    /// 处理动作：remove_product/ban_user/mute_user/restrict_publish/warn_user/restore_product/unban_user
+    /// </summary>
+    [Column("handle_action")]
+    [MaxLength(50)]
+    public string? HandleAction { get; set; }
+
     [Column("admin_id")]
     public int? AdminId { get; set; }
 
@@ -69,4 +102,9 @@ public class WorkOrder
 
     [ForeignKey("AdminId")]
     public AdminUser? Admin { get; set; }
+
+    [ForeignKey("AppealAgainstWorkOrderId")]
+    public WorkOrder? AppealAgainst { get; set; }
+
+    public ICollection<WorkOrderTimeline> Timelines { get; set; } = new List<WorkOrderTimeline>();
 }

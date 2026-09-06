@@ -39,8 +39,14 @@ builder.Services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
 builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 builder.Services.AddScoped<ISysInfoRepository, SysInfoRepository>();
 builder.Services.AddScoped<IUpdatedFileRepository, UpdatedFileRepository>();
+builder.Services.AddScoped<IUserWarningRepository, UserWarningRepository>();
+builder.Services.AddScoped<IProductAuditLogRepository, ProductAuditLogRepository>();
+builder.Services.AddScoped<IWorkOrderTimelineRepository, WorkOrderTimelineRepository>();
 builder.Services.AddScoped<IProductViewRepository, ProductViewRepository>();
+builder.Services.AddScoped<IProductViewService, ProductViewService>();
 builder.Services.AddScoped<IProductCommentRepository, ProductCommentRepository>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IOrderTimelineRepository, OrderTimelineRepository>();
 //Service层注册
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -51,6 +57,27 @@ builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
 builder.Services.AddScoped<IProdImageService, ProdImageService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IProductCommentService, ProductCommentService>();
+builder.Services.AddScoped<IPurchaseService, PurchaseService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IReputationService, ReputationService>();
+builder.Services.AddScoped<IAddressService, AddressService>();
+builder.Services.AddScoped<IAdminUserManagementService, AdminUserManagementService>();
+builder.Services.AddScoped<IAdminProductManagementService, AdminProductManagementService>();
+builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
+
+// 搜索引擎 — 分词 + 词条图 + 搜索
+builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();
+builder.Services.AddSingleton<TermGraph>();
+builder.Services.AddSingleton<ITermSimilarityCalculator, TermSimilarityCalculator>();
+builder.Services.AddSingleton<ITermSimilarityStore, TermSimilarityStore>();
+builder.Services.AddSingleton<ITermSimilarityRefreshService, TermSimilarityRefreshService>();
+builder.Services.Configure<SearchSimilarityOptions>(builder.Configuration.GetSection("SearchSimilarity"));
+builder.Services.AddHostedService<TermSimilarityMaintenanceService>();
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<SearchResultCache>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 
 //JWT认证配置
 var jwtKey = builder.Configuration["Jwt:Key"]!;
@@ -134,5 +161,30 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var termGraph = scope.ServiceProvider.GetRequiredService<Backend.Utilities.TermGraph>();
+    await termGraph.InitializeAsync();
+
+    var similarityStore = scope.ServiceProvider.GetRequiredService<ITermSimilarityStore>();
+    await similarityStore.LoadAsync();
+
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    if (termGraph.NodeCount == 0)
+    {
+        logger.LogInformation("TermGraph is empty, starting full rebuild...");
+        var searchService = scope.ServiceProvider.GetRequiredService<ISearchService>();
+        await searchService.RebuildGraphAsync();
+        logger.LogInformation("TermGraph full rebuild done: {Nodes} nodes, {Edges} edges",
+            termGraph.NodeCount, termGraph.EdgeCount);
+    }
+    else
+    {
+        logger.LogInformation("TermGraph loaded from database: {Nodes} nodes, {Edges} edges",
+            termGraph.NodeCount, termGraph.EdgeCount);
+    }
+}
 
 app.Run();

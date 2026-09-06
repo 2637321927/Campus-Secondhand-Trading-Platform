@@ -101,6 +101,16 @@ function goToDetail(): void {
   background: #edf2f0;
 }
 
+.product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 12px;
+  color: #6c7a74;
+  font-size: 13px;
+  text-align: center;
+}
+
 .product-cover :deep(.el-image) {
   width: 100%;
   height: 100%;

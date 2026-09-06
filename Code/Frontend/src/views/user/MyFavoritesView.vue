@@ -19,10 +19,25 @@ import {
 import type {
   CheckboxValueType
 } from 'element-plus'
+import { useProductImages } from '../../composables/useProductImages'
 
 const router = useRouter()
 
 const favorites = ref<ProductCardDto[]>([])
+const {
+  loadProductImages,
+  getProductImageUrl
+} = useProductImages()
+
+async function loadFavoriteImages(): Promise<void> {
+  await loadProductImages(
+    favorites.value.map(
+      (product) => product.coverImageFileId
+    )
+  ).catch((error) => {
+    console.error('收藏商品图片加载失败：', error)
+  })
+}
 const collectionCount = ref(0)
 
 const loading = ref(false)
@@ -207,6 +222,8 @@ async function loadFavoritesPage(): Promise<void> {
         countResult.reason
       )
     }
+
+    await loadFavoriteImages()
   } catch (error) {
     if (
       !isCurrentFavoritesLoad(currentVersion)
@@ -255,6 +272,7 @@ async function loadSearchResults(
     favorites.value = response.data ?? []
     selectedProductIds.value = []
     activeKeyword.value = keyword
+    await loadFavoriteImages()
   } catch (error) {
     if (
       !isCurrentFavoritesLoad(currentVersion)
@@ -780,6 +798,7 @@ onBeforeUnmount(() => {
             <!-- ProductCard 内部包含进入商品详情的逻辑 -->
             <ProductCard
               :product="product"
+              :image-url="getProductImageUrl(product.coverImageFileId)"
             />
           </div>
         </div>

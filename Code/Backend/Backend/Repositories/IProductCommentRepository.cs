@@ -9,6 +9,7 @@ public interface IProductCommentRepository
     Task<List<ProductComment>> GetRepliesAsync(long commentId);
     Task<int> GetNextIndexAsync(long productId);
     Task<bool> HasRepliesAsync(long commentId);
+    Task<Dictionary<long, int>> GetCountsByProductIdsAsync(IEnumerable<long> productIds);
     Task AddAsync(ProductComment comment);
     void Delete(ProductComment comment);
     Task SaveAsync();

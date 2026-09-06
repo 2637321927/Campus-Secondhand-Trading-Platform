@@ -12,6 +12,11 @@ public class ProdImageRepository : IProdImageRepository
     public async Task<ProdImage?> GetByIdAsync(long imgFileId)
         => await _context.ProdImages.FindAsync(imgFileId);
 
+    public async Task<List<ProdImage>> GetByIdsAsync(IEnumerable<long> imgFileIds)
+        => await _context.ProdImages
+            .Where(p => imgFileIds.Contains(p.ImgFileId))
+            .ToListAsync();
+
     public async Task<List<ProdImage>> GetByProductIdAsync(long productId)
         => await _context.ProdImages.Where(p => p.ProductId == productId).ToListAsync();
 

@@ -26,5 +26,9 @@ Code/Frontend/.env.development
 *.dump
 Code/Database/*.sqlbak
 .vscode/
+.idea/
 Uploads/
 **/Uploads/
+Code/Backend/TermTest
+docs/
+.claude/
