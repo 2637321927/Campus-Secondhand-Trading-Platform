@@ -44,6 +44,22 @@ public class TermGraph
     public int NodeCount { get { lock (_graphLock) return _adjacency.Count; } }
     public int EdgeCount { get { lock (_graphLock) return _adjacency.Values.Sum(v => v.Count) / 2; } }
 
+    /// <summary>在短锁内复制邻接表，供计算使用。</summary>
+    public TermGraphSnapshot CreateSnapshot()
+    {
+        lock (_graphLock)
+        {
+            var adjacency = _adjacency.ToDictionary(
+                pair => pair.Key,
+                pair => (IReadOnlyDictionary<string, double>)pair.Value.ToDictionary(
+                    neighbor => neighbor.Key,
+                    neighbor => neighbor.Value,
+                    StringComparer.OrdinalIgnoreCase),
+                StringComparer.OrdinalIgnoreCase);
+            return new TermGraphSnapshot(adjacency);
+        }
+    }
+
     public TermGraph(IServiceScopeFactory scopeFactory)
     {
         _scopeFactory = scopeFactory;
@@ -159,7 +175,6 @@ public class TermGraph
 
     private static Task<List<Product>> LoadProductsAsync(AppDbContext db) => db.Products
         .AsNoTracking()
-        .Where(p => p.Status != ProductStatus.Removed)
         .OrderBy(p => p.ProductId)
         .Select(p => new Product
         {
@@ -410,8 +425,6 @@ public class TermGraph
         {
             db.SearchTermEdges.RemoveRange(await db.SearchTermEdges.ToListAsync());
             await db.SaveChangesAsync();
-            db.SearchTerms.RemoveRange(await db.SearchTerms.ToListAsync());
-            await db.SaveChangesAsync();
         }
 
         if (terms.Count == 0)
@@ -420,17 +433,23 @@ public class TermGraph
             return;
         }
 
-        // 持久化词条节点
-        var existingTerms = await db.SearchTerms
-            .Where(t => terms.Contains(t.TermText))
-            .AsTracking()
-            .ToListAsync();
+        // 持久化词条节点。重建时保留旧节点 ID，以免相似度表的外键失效。
+        var existingTerms = await db.SearchTerms.AsTracking().ToListAsync();
 
         var existingTermDict = existingTerms.ToDictionary(
             t => t.TermText, t => t, StringComparer.OrdinalIgnoreCase);
 
         var newTerms = new List<SearchTerm>();
-        foreach (var termText in terms)
+        if (replace)
+        {
+            foreach (var entity in existingTerms)
+            {
+                entity.RowSum = 0;
+                entity.UpdatedAt = DateTime.Now;
+            }
+        }
+
+        foreach (var termText in terms.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             if (existingTermDict.TryGetValue(termText, out var entity))
             {
@@ -453,10 +472,7 @@ public class TermGraph
         await db.SaveChangesAsync();
 
         // 持久化边
-        var allDirtyTerms = await db.SearchTerms
-            .Where(t => terms.Contains(t.TermText))
-            .AsNoTracking()
-            .ToListAsync();
+        var allDirtyTerms = await db.SearchTerms.AsNoTracking().ToListAsync();
 
         var termToId = allDirtyTerms.ToDictionary(
             t => t.TermText, t => t.TermId, StringComparer.OrdinalIgnoreCase);

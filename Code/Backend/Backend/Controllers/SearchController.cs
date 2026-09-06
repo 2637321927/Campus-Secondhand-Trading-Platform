@@ -69,4 +69,18 @@ public class SearchController : ControllerBase
         await _searchService.RebuildGraphAsync();
         return Ok(new { message = "TermGraph rebuild completed" });
     }
+
+    /// <summary>仅根据当前共现图刷新近似词库。</summary>
+    [HttpPost("refresh-similarity")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> RefreshSimilarity(
+        [FromServices] ITermSimilarityRefreshService refreshService,
+        CancellationToken cancellationToken)
+    {
+        if (refreshService.IsRunning)
+            return Conflict(new { message = "相似度刷新任务正在运行" });
+
+        await refreshService.RefreshAsync(cancellationToken);
+        return Ok(new { message = "Search term similarity refresh completed" });
+    }
 }

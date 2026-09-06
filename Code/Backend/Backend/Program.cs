@@ -70,6 +70,11 @@ builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
 // 搜索引擎 — 分词 + 词条图 + 搜索
 builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();
 builder.Services.AddSingleton<TermGraph>();
+builder.Services.AddSingleton<ITermSimilarityCalculator, TermSimilarityCalculator>();
+builder.Services.AddSingleton<ITermSimilarityStore, TermSimilarityStore>();
+builder.Services.AddSingleton<ITermSimilarityRefreshService, TermSimilarityRefreshService>();
+builder.Services.Configure<SearchSimilarityOptions>(builder.Configuration.GetSection("SearchSimilarity"));
+builder.Services.AddHostedService<TermSimilarityMaintenanceService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<SearchResultCache>();
 builder.Services.AddScoped<ISearchService, SearchService>();
@@ -161,6 +166,9 @@ using (var scope = app.Services.CreateScope())
 {
     var termGraph = scope.ServiceProvider.GetRequiredService<Backend.Utilities.TermGraph>();
     await termGraph.InitializeAsync();
+
+    var similarityStore = scope.ServiceProvider.GetRequiredService<ITermSimilarityStore>();
+    await similarityStore.LoadAsync();
 
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 

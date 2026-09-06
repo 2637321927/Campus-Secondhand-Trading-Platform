@@ -12,13 +12,16 @@ public sealed class SearchResultCache
 
     public SearchResultCache(TimeProvider clock) => _clock = clock;
 
-    private sealed record Entry(string Keyword, int? UserId, ProductCardDto[] Items,
+    private sealed record Entry(string Keyword, int? UserId, long[] ProductIds,
         List<string> ExpandedTerms)
     {
         public DateTimeOffset LastAccess { get; set; }
     }
 
-    public string Store(SearchRequestDto request, ProductCardDto[] items, List<string> expandedTerms)
+    public sealed record Snapshot(string SearchId, long[] ProductIds, List<string> ExpandedTerms);
+
+    public string Store(SearchRequestDto request, IReadOnlyList<long> productIds,
+        IReadOnlyList<string> expandedTerms)
     {
         lock (_lock)
         {
@@ -27,7 +30,8 @@ public sealed class SearchResultCache
                 _entries.Remove(_entries.MinBy(pair => pair.Value.LastAccess).Key);
 
             var id = Guid.NewGuid().ToString("N");
-            _entries[id] = new Entry(request.Keyword.Trim(), request.UserId, items, expandedTerms)
+            _entries[id] = new Entry(request.Keyword.Trim(), request.UserId,
+                productIds.ToArray(), expandedTerms.ToList())
             {
                 LastAccess = _clock.GetUtcNow()
             };
@@ -35,7 +39,7 @@ public sealed class SearchResultCache
         }
     }
 
-    public SearchResultDto? TryGet(SearchRequestDto request)
+    public Snapshot? TryGet(SearchRequestDto request)
     {
         lock (_lock)
         {
@@ -49,16 +53,7 @@ public sealed class SearchResultCache
                 return null;
 
             entry.LastAccess = _clock.GetUtcNow();
-            return new SearchResultDto
-            {
-                SearchId = request.SearchId,
-                Items = entry.Items.Skip((request.Page - 1) * request.PageSize)
-                    .Take(request.PageSize).ToList(),
-                TotalCount = entry.Items.Length,
-                Page = request.Page,
-                PageSize = request.PageSize,
-                ExpandedTerms = entry.ExpandedTerms.ToList()
-            };
+            return new Snapshot(request.SearchId, entry.ProductIds.ToArray(), entry.ExpandedTerms.ToList());
         }
     }
 
