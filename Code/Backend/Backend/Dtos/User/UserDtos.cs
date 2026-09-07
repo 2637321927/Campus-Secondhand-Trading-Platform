@@ -8,6 +8,7 @@ public class UserDto
     public string Email { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
     public string UserName { get; set; } = string.Empty;
+    public int Credit { get; set; }
     public DateTime RegisterTime { get; set; }
 }
 

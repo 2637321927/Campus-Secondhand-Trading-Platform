@@ -47,6 +47,7 @@ const isBuyer = computed(() => {
 const statusTextMap: Record<string, string> = {
     pending: '待付款',
     paid: '已付款',
+    confirmed: '已确认',
     shipping: '已发货',
     success: '已完成',
     cancel: '已取消',
@@ -56,6 +57,7 @@ const statusTextMap: Record<string, string> = {
 const statusTagType: Record<string, string> = {
     pending: 'warning',
     paid: 'primary',
+    confirmed: 'primary',
     shipping: 'primary',
     success: 'success',
     cancel: 'info',
@@ -559,7 +561,7 @@ onMounted(() => {
                                 拒绝订单
                             </el-button>
                             <el-button
-                                v-if="order.status === 'paid' || order.status === 'shipping'"
+                                v-if="order.status === 'confirmed'"
                                 type="primary"
                                 :loading="operating"
                                 @click="openShipDialog"

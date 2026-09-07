@@ -18,6 +18,7 @@ const imageUrls = ref<Record<number, string>>({})
 const statusTextMap: Record<string, string> = {
     pending: '待付款',
     paid: '已付款',
+    confirmed: '已确认',
     shipping: '已发货',
     success: '已完成',
     cancel: '已取消',
@@ -27,6 +28,7 @@ const statusTextMap: Record<string, string> = {
 const statusTagType: Record<string, string> = {
     pending: 'warning',
     paid: 'primary',
+    confirmed: 'primary',
     shipping: 'primary',
     success: 'success',
     cancel: 'info',

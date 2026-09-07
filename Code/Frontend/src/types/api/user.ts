@@ -79,6 +79,7 @@ export interface UserDto {
     email: string
     phoneNumber: string | null
     userName: string
+    credit: number
     registerTime: string
 }
 

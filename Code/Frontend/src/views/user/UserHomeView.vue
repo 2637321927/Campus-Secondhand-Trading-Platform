@@ -314,6 +314,12 @@ onMounted(() => {
             <div class="profile-meta">
               <span>用户编号：{{ user?.userId ?? '—' }}</span>
 
+              <span class="meta-divider">
+                ·
+              </span>
+
+              <span>信誉：{{ user?.credit ?? 0 }}</span>
+
               <span
                 v-if="user?.registerTime"
                 class="meta-divider"
