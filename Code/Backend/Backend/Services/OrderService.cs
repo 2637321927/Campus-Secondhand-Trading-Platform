@@ -40,7 +40,7 @@ public class OrderService : IOrderService
 
         string? reason = null;
         if (product.Status != ProductStatus.Available)
-            reason = "商品当前不可购买（已售出或已下架）";
+            reason = "商品当前不可购买（已售出、交易中或已下架）";
         else if (isOwn)
             reason = "不能购买自己发布的商品";
         else if (hasActiveOrder)
@@ -88,6 +88,10 @@ public class OrderService : IOrderService
             ShippingFees = product.ShippingFee ?? 0,
             ResponsibleForShip = product.ShippingType == ShippingType.Free ? 0 : 1
         };
+
+        // 下单即锁定商品，防止他人重复购买（交易中）
+        product.Status = ProductStatus.Reserved;
+        _productRepo.Update(product);
 
         await _purchaseRepo.AddAsync(order);
         await _purchaseRepo.SaveAsync();
@@ -139,6 +143,14 @@ public class OrderService : IOrderService
         var oldStatus = order.Status;
         order.Status = "cancel";
         order.CancelTime = DateTime.Now;
+
+        // 取消订单后恢复商品在售
+        if (order.Product != null)
+        {
+            order.Product.Status = ProductStatus.Available;
+            _productRepo.Update(order.Product);
+        }
+
         _purchaseRepo.Update(order);
         await _purchaseRepo.SaveAsync();
 
@@ -164,12 +176,11 @@ public class OrderService : IOrderService
         if (order.Product == null || order.Product.UserId != userId)
             throw new UnauthorizedAccessException("只有卖家可以确认订单");
 
-        if (order.Status != "pending")
-            throw new InvalidOperationException("只有待付款状态的订单可以确认");
+        if (order.Status != "paid")
+            throw new InvalidOperationException("只有已付款状态的订单可以确认");
 
         var oldStatus = order.Status;
-        order.Status = "paid";
-        order.PayTime = DateTime.Now;
+        order.Status = "confirmed";
         _purchaseRepo.Update(order);
         await _purchaseRepo.SaveAsync();
 
@@ -177,7 +188,7 @@ public class OrderService : IOrderService
         {
             PurchaseId = orderId,
             OldStatus = oldStatus,
-            NewStatus = "paid",
+            NewStatus = "confirmed",
             ChangeTime = DateTime.Now,
             OperatorId = userId,
             Note = "卖家确认订单"
@@ -195,12 +206,20 @@ public class OrderService : IOrderService
         if (order.Product == null || order.Product.UserId != userId)
             throw new UnauthorizedAccessException("只有卖家可以拒绝订单");
 
-        if (order.Status != "pending")
-            throw new InvalidOperationException("只有待付款状态的订单可以拒绝");
+        if (order.Status != "paid")
+            throw new InvalidOperationException("只有已付款状态的订单可以拒绝");
 
         var oldStatus = order.Status;
         order.Status = "cancel";
         order.CancelTime = DateTime.Now;
+
+        // 拒绝已付款订单：恢复商品在售（退款另见后续处理）
+        if (order.Product != null)
+        {
+            order.Product.Status = ProductStatus.Available;
+            _productRepo.Update(order.Product);
+        }
+
         _purchaseRepo.Update(order);
         await _purchaseRepo.SaveAsync();
 
@@ -227,7 +246,7 @@ public class OrderService : IOrderService
         if (order.BuyerId != userId && (order.Product == null || order.Product.UserId != userId))
             throw new UnauthorizedAccessException("无权修改该订单的配送信息");
 
-        if (order.Status == "shipping" || order.Status == "success" || order.Status == "cancel")
+        if (order.Status == "confirmed" || order.Status == "shipping" || order.Status == "success" || order.Status == "cancel")
             throw new InvalidOperationException("当前订单状态不允许修改配送信息");
 
         if (dto.ShippingMethod != null)
@@ -253,8 +272,8 @@ public class OrderService : IOrderService
         if (order.Product == null || order.Product.UserId != userId)
             throw new UnauthorizedAccessException("只有卖家可以确认发货");
 
-        if (order.Status != "paid")
-            throw new InvalidOperationException("只有已付款状态的订单可以发货");
+        if (order.Status != "confirmed")
+            throw new InvalidOperationException("只有已确认状态的订单可以发货");
 
         var oldStatus = order.Status;
         order.Status = "shipping";

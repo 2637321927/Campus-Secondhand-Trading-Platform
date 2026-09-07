@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
     createOrder,
-    getPaymentMethods,
     purchaseCheck
 } from '../../api/modules/order'
 import { getProductDetail, getProductImages } from '../../api/modules/product'
@@ -28,8 +27,6 @@ const addressList = ref<AddressDto[]>([])
 const selectedAddressId = ref<number>(0)
 const shippingMethod = ref('')
 const note = ref('')
-const paymentMethods = ref<Array<{ value: string; label: string }>>([])
-const selectedPaymentMethod = ref('')
 
 const productId = computed(() => Number(route.params.productId))
 
@@ -71,12 +68,11 @@ async function loadData(): Promise<void> {
     errorMessage.value = ''
 
     try {
-        const [productResponse, checkResponse, addressResponse, methodsResponse] =
+        const [productResponse, checkResponse, addressResponse] =
             await Promise.allSettled([
                 getProductDetail(id),
                 purchaseCheck(id),
-                getMyAddresses(),
-                getPaymentMethods()
+                getMyAddresses()
             ])
 
         if (productResponse.status === 'fulfilled') {
@@ -97,13 +93,6 @@ async function loadData(): Promise<void> {
             addressList.value = addressResponse.value.data ?? []
             const defaultAddr = addressList.value.find(a => a.isDefault)
             selectedAddressId.value = defaultAddr?.addressId ?? addressList.value[0]?.addressId ?? 0
-        }
-
-        if (methodsResponse.status === 'fulfilled') {
-            paymentMethods.value = methodsResponse.value.data ?? []
-            if (paymentMethods.value.length > 0) {
-                selectedPaymentMethod.value = paymentMethods.value[0].value
-            }
         }
     } catch (error) {
         errorMessage.value = getApiErrorMessage(error, '商品信息加载失败，请稍后重试')
@@ -275,20 +264,6 @@ onMounted(() => {
                             />
                         </el-form-item>
                     </el-form>
-                </section>
-
-                <!-- 支付方式 -->
-                <section class="purchase-panel" v-if="paymentMethods.length > 0">
-                    <h2 class="panel-title">支付方式</h2>
-                    <el-radio-group v-model="selectedPaymentMethod">
-                        <el-radio
-                            v-for="method in paymentMethods"
-                            :key="method.value"
-                            :value="method.value"
-                        >
-                            {{ method.label }}
-                        </el-radio>
-                    </el-radio-group>
                 </section>
 
                 <!-- 价格汇总 -->

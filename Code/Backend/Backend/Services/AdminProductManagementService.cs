@@ -124,8 +124,8 @@ public class AdminProductManagementService : IAdminProductManagementService
         var product = await _productRepo.GetByIdAsync(productId);
         if (product == null) return null;
 
-        if (product.Status == ProductStatus.Sold)
-            throw new InvalidOperationException("已售商品不能强制下架");
+        if (product.Status == ProductStatus.Sold || product.Status == ProductStatus.Reserved)
+            throw new InvalidOperationException("已售或交易中的商品不能强制下架");
 
         var oldStatus = product.Status;
         product.Status = ProductStatus.Removed;

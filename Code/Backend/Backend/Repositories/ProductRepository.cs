@@ -20,6 +20,7 @@ public class ProductRepository : IProductRepository
 
     public async Task<List<Product>> GetAllAsync()
         => await _context.Products
+            .Where(p => p.Status == ProductStatus.Available)
             .Include(p => p.Images)
             .Include(p => p.Category)
             .Include(p => p.Seller)
@@ -35,7 +36,7 @@ public class ProductRepository : IProductRepository
 
     public async Task<List<Product>> GetByCategoryIdsAsync(IReadOnlyCollection<long> categoryIds)
         => await _context.Products
-            .Where(p => categoryIds.Contains(p.CategoryId))
+            .Where(p => categoryIds.Contains(p.CategoryId) && p.Status == ProductStatus.Available)
             .Include(p => p.Images)
             .Include(p => p.Category)
             .Include(p => p.Seller)
