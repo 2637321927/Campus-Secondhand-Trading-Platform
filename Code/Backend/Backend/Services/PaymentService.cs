@@ -52,7 +52,7 @@ public class PaymentService : IPaymentService
         {
             Status = PaymentStatus.Pending,
             PaymentMethod = dto.PaymentMethod,
-            Amount = order.Product?.Price ?? 0 + order.ShippingFees,
+            Amount = (order.Product?.Price ?? 0) + order.ShippingFees,
             CreateTime = DateTime.Now,
             PurchaseId = dto.PurchaseId
         };

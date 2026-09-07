@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Backend.Models.Enums;
 
 namespace Backend.Dtos.Payment;
@@ -15,6 +16,7 @@ public class CreatePaymentDto
     /// <summary>
     /// 支付方式：alipay/wechat/cash/other
     /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Alipay;
 }
 

@@ -87,9 +87,22 @@ public class CategoryService : ICategoryService
 
     public async Task<List<ProductDto>> GetProductsByCategoryAsync(long categoryId)
     {
-        var products = await _productRepo.GetByCategoryAsync(categoryId);
-        var ids = products.Select(p => p.ProductId);
-        var viewCounts = await _productViewRepo.GetViewCountsAsync(ids);
+        // 商品只挂在末级（小）分类：若给的是大分类，需同时覆盖其全部子分类下的商品
+        var ids = new List<long>();
+        var category = await _categoryRepo.GetByIdAsync(categoryId);
+        if (category != null)
+        {
+            ids.Add(categoryId);
+            if (category.ParentId == null)
+            {
+                var children = await _categoryRepo.GetChildrenAsync(categoryId);
+                ids.AddRange(children.Select(c => c.CategoryId));
+            }
+        }
+
+        var products = await _productRepo.GetByCategoryIdsAsync(ids);
+        var ids2 = products.Select(p => p.ProductId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(ids2);
         return products.Select(p => new ProductDto
         {
             ProductId = p.ProductId,

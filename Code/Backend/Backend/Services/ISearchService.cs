@@ -10,5 +10,7 @@ public interface ISearchService
     Task NotifyProductCreatedAsync(long productId);
 
     Task RebuildGraphAsync();
+
+    Task RefreshSimilarityAsync(CancellationToken cancellationToken = default);
     
 }

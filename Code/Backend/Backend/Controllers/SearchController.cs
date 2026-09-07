@@ -1,5 +1,6 @@
 using Backend.Dtos.Product;
 using Backend.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers;
@@ -29,7 +30,8 @@ public class SearchController : ControllerBase
         [FromQuery] string? searchId = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] string? sortBy = null)
+        [FromQuery] string? sortBy = null,
+        [FromQuery] long? categoryId = null)
     {
         if (string.IsNullOrWhiteSpace(keyword) && string.IsNullOrWhiteSpace(searchId))
             return BadRequest(new { message = "keyword 和 searchId 不能同时为空" });
@@ -44,20 +46,43 @@ public class SearchController : ControllerBase
             Keyword = (keyword ?? "").Trim(),
             Page = page,
             PageSize = pageSize,
-            SortBy = sortBy
+            SortBy = sortBy,
+            CategoryId = categoryId
         };
 
-        var result = await _searchService.SearchProductAsync(request);
-        return Ok(result);
+        try
+        {
+            return Ok(await _searchService.SearchProductAsync(request));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        
     }
 
     /// <summary>
     /// 全量重建TermGraph
     /// </summary>
     [HttpPost("rebuild-graph")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> RebuildGraph()
     {
         await _searchService.RebuildGraphAsync();
         return Ok(new { message = "TermGraph rebuild completed" });
+    }
+
+    /// <summary>仅根据当前共现图刷新近似词库。</summary>
+    [HttpPost("refresh-similarity")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> RefreshSimilarity(
+        [FromServices] ITermSimilarityRefreshService refreshService,
+        CancellationToken cancellationToken)
+    {
+        if (refreshService.IsRunning)
+            return Conflict(new { message = "相似度刷新任务正在运行" });
+
+        await refreshService.RefreshAsync(cancellationToken);
+        return Ok(new { message = "Search term similarity refresh completed" });
     }
 }

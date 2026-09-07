@@ -22,6 +22,28 @@ public class ProductViewRepository : IProductViewRepository
             .Select(g => new { ProductId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.ProductId, x => x.Count);
 
+    public async Task<List<ProductView>> GetByUserIdAsync(int userId)
+        => await _context.ProductViews
+            .Where(v => v.UserId == userId)
+            .Include(v => v.Product)
+            .ThenInclude(p => p!.Images)
+            .OrderByDescending(v => v.ViewTime)
+            .ToListAsync();
+
+    public async Task DeleteByUserIdAsync(int userId)
+    {
+        var views = await _context.ProductViews.Where(v => v.UserId == userId).ToListAsync();
+        _context.ProductViews.RemoveRange(views);
+    }
+
+    public async Task DeleteByUserIdAndProductIdAsync(int userId, long productId)
+    {
+        var views = await _context.ProductViews
+            .Where(v => v.UserId == userId && v.ProductId == productId)
+            .ToListAsync();
+        _context.ProductViews.RemoveRange(views);
+    }
+
     public async Task SaveAsync()
         => await _context.SaveChangesAsync();
 }

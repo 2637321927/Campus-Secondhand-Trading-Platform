@@ -20,6 +20,7 @@ export interface ProductCardDto{
 export interface SearchProductParams {
     keyword: string
     searchId?: string
+    categoryId?: number | null
     page?: number
     pageSize?: number
     sortBy?: 'relevance' | 'latest' | 'price_asc' | 'price_desc'

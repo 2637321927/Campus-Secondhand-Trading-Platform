@@ -9,6 +9,8 @@ namespace Backend.Utilities;
 public partial class TermExtractionService : ITermExtractionService
 {
     private readonly JiebaSegmenter _segmenter;
+    private readonly JiebaNet.Segmenter.PosSeg.PosSegmenter _posSegmenter;
+    private readonly object _segmentLock = new();
     private readonly HashSet<string> _stopwords;
     private readonly HashSet<string> _singleCharWhitelist;
     private readonly Dictionary<string, string> _synonymMap;
@@ -33,6 +35,7 @@ public partial class TermExtractionService : ITermExtractionService
         var dictDir = Path.Combine(AppContext.BaseDirectory, "Dictionaries");
 
         TryLoadUserDict(Path.Combine(dictDir, "dict.txt"));
+        _posSegmenter = new JiebaNet.Segmenter.PosSeg.PosSegmenter(_segmenter);
 
         _stopwords = LoadLines("Dictionaries/stopwords.txt");
         _singleCharWhitelist = LoadLines("Dictionaries/single_char_whitelist.txt");
@@ -104,35 +107,15 @@ public partial class TermExtractionService : ITermExtractionService
     /// <summary>
     /// 调用jieba PosSegmenter分词
     /// </summary>
-    private static List<(string word, string? posTag)> Segment(string text)
+    private List<(string word, string? posTag)> Segment(string text)
     {
-        var segmenter = new JiebaNet.Segmenter.PosSeg.PosSegmenter();
-        var segments = segmenter.Cut(text);
-
-        var result = new List<(string word, string? posTag)>();
-
-        foreach (var t in segments)
+        lock (_segmentLock)
         {
-
-            var raw = t.ToString()!;
-            var idx = raw.LastIndexOf('/');
-            if (idx > 0 && idx < raw.Length - 1)
-            {
-                var word = raw[..idx].Trim();
-                var tag  = raw[(idx + 1)..].Trim();
-                if (!string.IsNullOrEmpty(word))
-                    result.Add((word, tag));
-            }
-            else
-            {
-                var word = raw.Trim();
-                if (!string.IsNullOrEmpty(word))
-                    result.Add((word, null));
-            }
-            
+            return _posSegmenter.Cut(text)
+                .Select(token => (word: token.Word.Trim(), posTag: (string?)token.Flag))
+                .Where(token => token.word.Length > 0)
+                .ToList();
         }
-
-        return result;
     }
 
     /// <summary>过滤停用词</summary>

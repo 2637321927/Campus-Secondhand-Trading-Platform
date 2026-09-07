@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useMessageStore } from '../../stores/message'
 import { ElMessage } from 'element-plus'
+import {
+  ArrowDown,
+  SwitchButton,
+  User
+} from '@element-plus/icons-vue'
 
 const keyword = ref('')
 const router = useRouter()
 const authStore=useAuthStore()
+const messageStore=useMessageStore()
 
 function handleSearch():void{
     const trimmedKeyword=keyword.value.trim()
@@ -63,9 +70,51 @@ async function goFavorites():Promise <void> {
   })
 }
 
-function goMessages(): void {
-  ElMessage.info('消息功能正在开发中')
+async function goMessages(): Promise<void> {
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录')
+
+    await router.push({
+      name: 'login',
+      query: {
+        redirect: '/messages'
+      }
+    })
+
+    return
+  }
+
+  await router.push({
+    name: 'message-list'
+  })
 }
+
+async function handleUserCommand(command: string): Promise<void> {
+  if (command === 'profile') {
+    await router.push({ name: 'user-overview' })
+    return
+  }
+
+  if (command === 'logout') {
+    await handleLogout()
+  }
+}
+
+async function handleLogout(): Promise<void> {
+  await authStore.logoutAction().catch((error) => {
+    console.error('退出登录失败：', error)
+  })
+
+  ElMessage.success('已退出登录')
+
+  await router.push('/')
+}
+
+onMounted(() => {
+  if (authStore.isLoggedIn) {
+    void messageStore.loadUnreadCount()
+  }
+})
 </script>
 
 <template>
@@ -112,9 +161,16 @@ function goMessages(): void {
             收藏
         </el-button>
 
-        <el-button text @click="goMessages">
-            消息
-        </el-button>
+        <el-badge
+          :value="messageStore.unreadCount"
+          :max="99"
+          :hidden="!messageStore.hasUnread"
+          class="message-badge"
+        >
+          <el-button text @click="goMessages">
+              消息
+          </el-button>
+        </el-badge>
 
         <el-button
           class="publish-button"
@@ -139,9 +195,38 @@ function goMessages(): void {
             我的商品
           </el-button>
 
-          <div class="user-entry">
-            {{ authStore.currentUser?.userName }}
-          </div>
+          <el-dropdown
+            trigger="hover"
+            class="user-dropdown"
+            @command="handleUserCommand"
+          >
+            <div class="user-entry">
+              <span class="user-entry-name">
+                {{ authStore.currentUser?.userName }}
+              </span>
+
+              <el-icon class="user-entry-arrow">
+                <ArrowDown />
+              </el-icon>
+            </div>
+
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>
+                  个人中心
+                </el-dropdown-item>
+
+                <el-dropdown-item
+                  command="logout"
+                  divided
+                >
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </template>
 
       </nav>
@@ -214,16 +299,34 @@ function goMessages(): void {
   white-space: nowrap;
 }
 
+.user-dropdown {
+  outline: none;
+}
+
 .user-entry {
-  max-width: 120px;
+  display: flex;
+  max-width: 150px;
   padding: 8px 12px;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
   color: #24735b;
   background: #eef7f3;
   border-radius: 10px;
   font-weight: 600;
+  cursor: pointer;
+}
+
+.user-entry-name {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-entry-arrow {
+  flex-shrink: 0;
+  color: #3e9b79;
+  font-size: 12px;
 }
 
 /* 搜索区域 */

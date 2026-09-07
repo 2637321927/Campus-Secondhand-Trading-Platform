@@ -29,5 +29,10 @@ public class WorkOrderConfig : IEntityTypeConfiguration<WorkOrder>
             .WithMany()
             .HasForeignKey(w => w.AdminId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(w => w.AppealAgainst)
+            .WithMany()
+            .HasForeignKey(w => w.AppealAgainstWorkOrderId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

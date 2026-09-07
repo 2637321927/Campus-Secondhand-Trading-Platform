@@ -20,9 +20,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SearchChecks" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TermTest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Utilities\Dictionaries\**\*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <LinkBase>Dictionaries\</LinkBase>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <TargetPath>Dictionaries\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
     </Content>
   </ItemGroup>
 

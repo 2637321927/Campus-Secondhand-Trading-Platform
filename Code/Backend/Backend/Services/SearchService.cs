@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using Backend.Data;
 using Backend.Dtos.Product;
@@ -18,43 +17,42 @@ public class SearchService : ISearchService
     private readonly TermGraph _termGraph;
     private readonly IProductViewRepository _productViewRepo;
     private readonly ILogger<SearchService> _logger;
-    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(15);
-    private const int MaxCacheCount = 200;
-    private readonly ConcurrentDictionary<string, CachedSearch> _cache = new();
-
-    private class CachedSearch
-    {
-        public ProductCardDto[] Items { get; init; } = [];
-        public int TotalCount { get; init; }
-        public List<string> ExpandedTerms { get; init; } = [];
-        public DateTime CreatedAt { get; set; }
-    }
+    private readonly SearchResultCache _cache;
+    private readonly ITermSimilarityStore _similarityStore;
+    private readonly ITermSimilarityRefreshService _similarityRefresh;
 
     public SearchService(
         AppDbContext db,
         ITermExtractionService termExtraction,
         TermGraph termGraph,
         IProductViewRepository productViewRepo,
-        ILogger<SearchService> logger)
+        ILogger<SearchService> logger,
+        SearchResultCache cache,
+        ITermSimilarityStore similarityStore,
+        ITermSimilarityRefreshService similarityRefresh)
     {
         _db = db;
         _termExtraction = termExtraction;
         _termGraph = termGraph;
         _productViewRepo = productViewRepo;
         _logger = logger;
+        _cache = cache;
+        _similarityStore = similarityStore;
+        _similarityRefresh = similarityRefresh;
     }
 
     public async Task<SearchResultDto> SearchProductAsync(SearchRequestDto request)
     {
-        // 每次请求先清理全部过期缓存
-        PurgeExpiredCache();
+        request.Page = Math.Max(1, request.Page);
+        request.PageSize = request.PageSize < 1 ? 20 : Math.Min(50, request.PageSize);
+        if ((long)(request.Page - 1) * request.PageSize > int.MaxValue)
+            throw new ArgumentException("页码超出支持范围");
 
-        // 翻页请求直接切片返回
-        if (!string.IsNullOrEmpty(request.SearchId) &&
-            _cache.TryGetValue(request.SearchId, out var cached))
-        {
-            return SliceFromCache(cached, request);
-        }
+        var cached = _cache.TryGet(request);
+        if (cached != null)
+            return await BuildCachedResultAsync(cached, request);
+        if (string.IsNullOrWhiteSpace(request.Keyword))
+            throw new ArgumentException("搜索缓存已过期、无效或与查询条件不匹配，请携带 keyword 重新搜索");
 
         // 分词
         var rawTerms = _termExtraction.Extract(request.Keyword);
@@ -63,146 +61,89 @@ public class SearchService : ISearchService
             return NewEmptyResult(request);
         }
 
-        // 查询扩展
-        List<(string term, double weight)> expandedTerms;
-        if (_termGraph.IsInitialized)
-            expandedTerms = _termGraph.ExpandQuery(rawTerms);
-        else
-        {
-            expandedTerms = rawTerms.Select(t => (t, 1.0)).ToList();
-            _logger.LogWarning("TermGraph not initialized, using raw terms only");
-        }
-
-        var termList = expandedTerms.Select(t => t.term).ToList();
-        var filter = BuildKeywordFilter(termList);
+        var originalTerms = rawTerms.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var similarTerms = MergeSimilarTerms(originalTerms, _similarityStore.Current);
+        var displayTerms = originalTerms
+            .Concat(similarTerms.Select(x => x.Term))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var filter = BuildKeywordFilter(originalTerms);
 
         // 执行搜索
         if (string.IsNullOrEmpty(request.SortBy) || request.SortBy == "relevance")
         {
-            return await SearchWithRelevanceSort(filter, expandedTerms, termList, request);
+            return await SearchWithRelevanceSort(filter, originalTerms, similarTerms, displayTerms, request);
         }
         else
         {
-            return await SearchWithDbSort(filter, termList, request);
+            return await SearchWithDbSort(filter, displayTerms, request);
         }
     }
 
     public async Task NotifyProductCreatedAsync(long productId)
     {
-        if (!_termGraph.IsInitialized)
+        try
         {
-            _logger.LogInformation("TermGraph not initialized, skipping product notification");
-            return;
+            await _termGraph.ProcessAndSaveProductAsync(productId, _termExtraction);
         }
-
-        var product = await _db.Products
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.ProductId == productId);
-
-        if (product == null) return;
-
-        var text = $"{product.Name} {product.Info ?? ""}";
-        var terms = _termExtraction.Extract(text);
-
-        if (terms.Count == 0) return;
-
-        var (affectedTerms, affectedEdges) = _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
-        await _termGraph.SaveIncrementalAsync(affectedTerms, affectedEdges);
-
-        _logger.LogDebug("Processed new product {ProductId} with {TermCount} terms", productId, terms.Count);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update TermGraph for product {ProductId}; rebuild required", productId);
+        }
     }
 
     public async Task RebuildGraphAsync()
     {
         _logger.LogInformation("Starting full TermGraph rebuild...");
 
-        var products = await _db.Products
-            .AsNoTracking()
-            .Where(p => p.Status != ProductStatus.Removed)
-            .Select(p => new { p.ProductId, p.Name, p.Info, p.UserId, p.CategoryId })
-            .ToListAsync();
-
-        var allTerms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var allEdges = new List<EdgeKey>();
-
-        foreach (var product in products)
-        {
-            var text = $"{product.Name} {product.Info ?? ""}";
-            var terms = _termExtraction.Extract(text);
-
-            if (terms.Count > 0)
-            {
-                var (affectedTerms, affectedEdges) = _termGraph.ProcessNewProduct(terms, product.UserId, product.CategoryId);
-                allTerms.UnionWith(affectedTerms);
-                allEdges.AddRange(affectedEdges);
-            }
-        }
+        await _termGraph.RebuildAsync(_termExtraction);
+        await _similarityRefresh.RefreshAsync();
 
         _logger.LogInformation("Full TermGraph rebuild completed: {Nodes} nodes, {Edges} edges",
             _termGraph.NodeCount, _termGraph.EdgeCount);
-
-        await _termGraph.SaveIncrementalAsync(allTerms.ToList(), allEdges);
     }
+
+    public Task RefreshSimilarityAsync(CancellationToken cancellationToken = default) =>
+        _similarityRefresh.RefreshAsync(cancellationToken);
 
     /// <summary>
     /// 相关性排序
     /// </summary>
     private async Task<SearchResultDto> SearchWithRelevanceSort(
         Expression<Func<Product, bool>>? filter,
-        List<(string term, double weight)> expandedTerms,
-        List<string> termList,
+        List<string> originalTerms,
+        List<WeightedTerm> similarTerms,
+        List<string> displayTerms,
         SearchRequestDto request)
     {
-
-        var baseQuery = _db.Products
+        var baseQuery = _db.Products.AsNoTracking()
             .Where(p => p.Status == ProductStatus.Available);
-
+        if (request.UserId.HasValue)
+            baseQuery = baseQuery.Where(p => p.UserId == request.UserId.Value);
+        if (request.CategoryId.HasValue)
+            baseQuery = ApplyCategoryFilter(baseQuery, request.CategoryId.Value);
         if (filter != null)
             baseQuery = baseQuery.Where(filter);
 
-        var products = await baseQuery
-            .Include(p => p.Images)
-            .Include(p => p.Seller)
+        var candidates = await baseQuery
+            .Select(p => new { p.ProductId, p.Name, p.Info })
             .ToListAsync();
 
-        var productIds = products.Select(p => p.ProductId).ToList();
-        var viewCounts = await _productViewRepo.GetViewCountsAsync(productIds);
-
-        var allItems = products
+        var orderedIds = candidates
             .Select(p => new
             {
-                Card = ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)),
-                Score = ComputeRelevanceScore(p, expandedTerms)
+                p.ProductId,
+                OriginalTermCoverage = originalTerms.Count(term => Contains(p.Name, p.Info, term)),
+                SimilarTermScore = ComputeSimilarTermScore(p.Name, p.Info, similarTerms)
             })
-            .OrderByDescending(x => x.Score)
-            .Select(x => x.Card)
+            .OrderByDescending(x => x.OriginalTermCoverage)
+            .ThenByDescending(x => x.SimilarTermScore)
+            .ThenBy(x => x.ProductId)
+            .Select(x => x.ProductId)
             .ToArray();
 
-        // 缓存排序结果
-        var searchId = Guid.NewGuid().ToString("N")[..12];
-        _cache[searchId] = new CachedSearch
-        {
-            Items = allItems,
-            TotalCount = allItems.Length,
-            ExpandedTerms = termList,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var pageItems = allItems
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToList();
-
-        return new SearchResultDto
-        {
-            SearchId = searchId,
-            Items = pageItems,
-            TotalCount = allItems.Length,
-            Page = request.Page,
-            PageSize = request.PageSize,
-            ExpandedTerms = termList
-        };
-
+        var searchId = _cache.Store(request, orderedIds, displayTerms);
+        return await BuildResultFromIdsAsync(searchId, orderedIds, displayTerms, request);
     }
 
     /// <summary>
@@ -215,6 +156,12 @@ public class SearchService : ISearchService
     {
         var baseQuery = _db.Products
             .Where(p => p.Status == ProductStatus.Available);
+
+        if (request.UserId.HasValue)
+            baseQuery = baseQuery.Where(p => p.UserId == request.UserId.Value);
+
+        if (request.CategoryId.HasValue)
+            baseQuery = ApplyCategoryFilter(baseQuery, request.CategoryId.Value);
 
         if (filter != null)
             baseQuery = baseQuery.Where(filter);
@@ -247,58 +194,102 @@ public class SearchService : ISearchService
         };
     }
 
-    private SearchResultDto SliceFromCache(CachedSearch cached, SearchRequestDto request)
+    /// <summary>
+    /// 命中分类自身或其直接子分类下的商品（一级分类可覆盖其二级子分类）
+    /// </summary>
+    private static IQueryable<Product> ApplyCategoryFilter(IQueryable<Product> query, long categoryId)
+        => query.Where(p => p.CategoryId == categoryId
+            || (p.Category != null && p.Category.ParentId == categoryId));
+
+    private SearchResultDto NewEmptyResult(SearchRequestDto request) => new()
     {
-        // 每次访问刷新 TTL
-        cached.CreatedAt = DateTime.UtcNow;
-
-        var items = cached.Items
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToList();
-
-        return new SearchResultDto
-        {
-            SearchId = request.SearchId!,
-            Items = items,
-            TotalCount = cached.TotalCount,
-            Page = request.Page,
-            PageSize = request.PageSize,
-            ExpandedTerms = cached.ExpandedTerms
-        };
-    }
-
-    private void PurgeExpiredCache()
-    {
-        var cutoff = DateTime.UtcNow - CacheTtl;
-        foreach (var key in _cache.Keys)
-        {
-            if (_cache.TryGetValue(key, out var entry) && entry.CreatedAt < cutoff)
-                _cache.TryRemove(key, out _);
-        }
-
-        // 超出数量上限时移除最旧的
-        if (_cache.Count > MaxCacheCount)
-        {
-            var toRemove = _cache
-                .OrderBy(kv => kv.Value.CreatedAt)
-                .Take(_cache.Count - MaxCacheCount)
-                .Select(kv => kv.Key)
-                .ToList();
-
-            foreach (var key in toRemove)
-                _cache.TryRemove(key, out _);
-        }
-    }
-
-    private static SearchResultDto NewEmptyResult(SearchRequestDto request) => new()
-    {
-        SearchId = Guid.NewGuid().ToString("N")[..12],
+        SearchId = string.IsNullOrEmpty(request.SortBy) || request.SortBy == "relevance"
+            ? _cache.Store(request, [], []) : "",
         Items = new(),
         TotalCount = 0,
         Page = request.Page,
         PageSize = request.PageSize
     };
+
+    private async Task<SearchResultDto> BuildCachedResultAsync(SearchResultCache.Snapshot snapshot,
+        SearchRequestDto request)
+        => await BuildResultFromIdsAsync(snapshot.SearchId, snapshot.ProductIds,
+            snapshot.ExpandedTerms, request);
+
+    private async Task<SearchResultDto> BuildResultFromIdsAsync(
+        string searchId, IReadOnlyList<long> allIds, IReadOnlyList<string> expandedTerms,
+        SearchRequestDto request)
+    {
+        var pageIds = allIds.Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize).ToList();
+        var items = await LoadCardsAsync(pageIds);
+        return new SearchResultDto
+        {
+            SearchId = searchId,
+            Items = items,
+            TotalCount = allIds.Count,
+            Page = request.Page,
+            PageSize = request.PageSize,
+            ExpandedTerms = expandedTerms.ToList()
+        };
+    }
+
+    private async Task<List<ProductCardDto>> LoadCardsAsync(IReadOnlyList<long> ids)
+    {
+        if (ids.Count == 0) return new List<ProductCardDto>();
+        var products = await _db.Products.AsNoTracking()
+            .Where(p => ids.Contains(p.ProductId))
+            .Include(p => p.Images)
+            .Include(p => p.Seller)
+            .ToListAsync();
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(products.Select(p => p.ProductId));
+        var order = ids.Select((id, index) => new { id, index })
+            .ToDictionary(x => x.id, x => x.index);
+        return products
+            .OrderBy(p => order[p.ProductId])
+            .Select(p => ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
+    }
+
+    private static List<WeightedTerm> MergeSimilarTerms(
+        IReadOnlyList<string> originalTerms, SimilaritySnapshot snapshot)
+    {
+        var originalSet = originalTerms.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var merged = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        foreach (var original in originalTerms)
+        {
+            if (!snapshot.Terms.TryGetValue(original, out var terms)) continue;
+            foreach (var term in terms)
+            {
+                if (originalSet.Contains(term.Term)) continue;
+                if (!double.IsFinite(term.Similarity) || term.Similarity <= 0) continue;
+                merged[term.Term] = Math.Max(merged.GetValueOrDefault(term.Term), term.Similarity);
+            }
+        }
+        return merged
+            .OrderByDescending(x => x.Value)
+            .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(x => new WeightedTerm(x.Key, x.Value))
+            .ToList();
+    }
+
+    private static bool Contains(string? name, string? info, string term) =>
+        (name?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (info?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    private static double ComputeSimilarTermScore(string? name, string? info,
+        IReadOnlyList<WeightedTerm> similarTerms)
+    {
+        var score = 0.0;
+        foreach (var term in similarTerms)
+        {
+            if (name?.Contains(term.Term, StringComparison.OrdinalIgnoreCase) == true)
+                score += 2.0 * term.Similarity;
+            if (info?.Contains(term.Term, StringComparison.OrdinalIgnoreCase) == true)
+                score += term.Similarity;
+        }
+        return score;
+    }
 
     /// <summary>
     /// 构造关键词
@@ -337,28 +328,9 @@ public class SearchService : ISearchService
 
     private static IOrderedQueryable<Product> ApplySorting(IQueryable<Product> query, string sortBy) => sortBy switch
     {
-        "price_asc" => query.OrderBy(p => p.Price),
-        "price_desc" => query.OrderByDescending(p => p.Price),
-        _ => query.OrderByDescending(p => p.ReleaseDate), // latest
+        "price_asc" => query.OrderBy(p => p.Price).ThenBy(p => p.ProductId),
+        "price_desc" => query.OrderByDescending(p => p.Price).ThenBy(p => p.ProductId),
+        _ => query.OrderByDescending(p => p.ReleaseDate).ThenBy(p => p.ProductId), // latest
     };
 
-    /// <summary>
-    /// 相关性分数：扩展词条加权求和。Name 命中权重 2.0，Info 命中权重 1.0。
-    /// </summary>
-    private static int ComputeRelevanceScore(Product product, List<(string term, double weight)> expandedTerms)
-    {
-        double score = 0;
-        var name = product.Name ?? "";
-        var info = product.Info ?? "";
-
-        foreach (var (term, weight) in expandedTerms)
-        {
-            if (name.Contains(term, StringComparison.OrdinalIgnoreCase))
-                score += 2.0 * weight;
-            if (info.Contains(term, StringComparison.OrdinalIgnoreCase))
-                score += 1.0 * weight;
-        }
-
-        return (int)(score * 100);
-    }
 }

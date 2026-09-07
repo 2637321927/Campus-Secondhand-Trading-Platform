@@ -20,6 +20,8 @@ import type {
 } from '../../types/api/product'
 import { getPublicUser } from '../../api/modules/user'
 import type { PublicUserDto } from '../../types/api/user'
+import { createConversation } from '../../api/modules/conversation'
+import { getApiErrorMessage } from '../../utils/error'
 import {
   getCollectionStatus,
   toggleCollection
@@ -57,6 +59,7 @@ const authStore=useAuthStore()
 
 const isCollected = ref(false)
 const collectionLoading = ref(false)
+const contactLoading = ref(false)
 
 const comments = ref<ProductCommentDto[]>([])
 const commentsLoading = ref(false)
@@ -150,16 +153,102 @@ function selectImage(fileId: number): void {
 }
 
 function handleBuy(): void {
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再购买')
+    return
+  }
+
   if (product.value?.status !== 0) {
     ElMessage.warning('当前商品不可购买')
     return
   }
 
-  ElMessage.info('购买功能将在订单模块中开放')
+  if (!product.value) return
+
+  router.push({
+    name: 'purchase-confirm',
+    params: { productId: product.value.productId }
+  })
 }
 
-function handleContactSeller(): void {
-  ElMessage.info('联系卖家功能将在消息模块中开放')
+async function handleContactSeller(): Promise<void> {
+  if (contactLoading.value) {
+    return
+  }
+
+  if (!product.value) {
+    return
+  }
+
+  if (!authStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再联系卖家')
+
+    await router.push({
+      name: 'login',
+      query: {
+        redirect: route.fullPath
+      }
+    })
+
+    return
+  }
+
+  if (authStore.currentUser?.userId === product.value.userId) {
+    ElMessage.warning('不能联系自己发布的商品')
+    return
+  }
+
+  contactLoading.value = true
+
+  try {
+    const response = await createConversation({
+      productId: product.value.productId
+    })
+
+    const conversation = response.data
+
+    if (conversation?.conversationId) {
+      await router.push({
+        name: 'message-chat',
+        params: {
+          conversationId: String(conversation.conversationId)
+        }
+      })
+    } else {
+      ElMessage.warning('会话创建失败，请稍后重试')
+    }
+  } catch (error) {
+    ElMessage.error(
+      getApiErrorMessage(error, '联系卖家失败，请稍后重试')
+    )
+
+    console.error('联系卖家失败：', error)
+  } finally {
+    contactLoading.value = false
+  }
+}
+
+function handleViewSellerHome(): void {
+  if (!seller.value) {
+    return
+  }
+
+  void router.push({
+    name: 'user-home',
+    params: {
+      userId: seller.value.userId
+    }
+  })
+}
+
+function goToReport(type: string, id: number): void {
+  void router.push({
+    name: 'report-create',
+    query: {
+      type,
+      id: String(id)
+    }
+  })
 }
 
 async function handleFavorite(): Promise<void> {
@@ -920,6 +1009,7 @@ onBeforeUnmount(() => {
             <el-button
               size="large"
               class="contact-button"
+              :loading="contactLoading"
               @click="handleContactSeller"
             >
               联系卖家
@@ -946,6 +1036,16 @@ onBeforeUnmount(() => {
               <template v-else>
                 {{ isCollected ? '取消收藏' : '收藏商品' }}
               </template>
+            </el-button>
+
+            <el-button
+              v-if="authStore.currentUser?.userId !== product.userId"
+              size="large"
+              type="danger"
+              plain
+              @click="goToReport('product', product.productId)"
+            >
+              举报商品
             </el-button>
           </div>
 
@@ -1055,9 +1155,18 @@ onBeforeUnmount(() => {
             </span>
           </div>
 
-          <el-button @click="handleContactSeller">
-            联系卖家
-          </el-button>
+          <div class="seller-actions">
+            <el-button @click="handleViewSellerHome">
+              查看主页
+            </el-button>
+
+            <el-button
+              :loading="contactLoading"
+              @click="handleContactSeller"
+            >
+              联系卖家
+            </el-button>
+          </div>
         </div>
 
         <!-- 卖家信息为空 -->
@@ -1257,6 +1366,15 @@ onBeforeUnmount(() => {
                   回复
                 </el-button>
 
+                <el-button
+                  v-if="comment.userId !== authStore.currentUser?.userId"
+                  text
+                  type="danger"
+                  @click="goToReport('comment', comment.commentId)"
+                >
+                  举报
+                </el-button>
+
                  <el-button
                   v-if="canDeleteComment(comment)"
                   text
@@ -1363,10 +1481,19 @@ onBeforeUnmount(() => {
                     </p>
 
                     <div
-                      v-if="canDeleteComment(reply)"
                       class="reply-actions"
                     >
                       <el-button
+                        v-if="reply.userId !== authStore.currentUser?.userId"
+                        text
+                        type="danger"
+                        @click="goToReport('comment', reply.commentId)"
+                      >
+                        举报
+                      </el-button>
+
+                      <el-button
+                        v-if="canDeleteComment(reply)"
                         text
                         type="danger"
                         :loading="
@@ -1913,6 +2040,13 @@ onBeforeUnmount(() => {
 .seller-info span {
   color: #84908b;
   font-size: 13px;
+}
+
+.seller-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
 }
 
 .comment-section {

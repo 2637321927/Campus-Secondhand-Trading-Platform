@@ -10,7 +10,8 @@ import type {
     ProductStatus
  } from '../../types/api/product'
 import ProductListCard from '../../components/product/ProductListCard.vue'
-import { getCategoryProducts } from '../../api/modules/category'
+import { getCategoryProducts, getCategories } from '../../api/modules/category'
+import type { CategoryDto } from '../../types/api/category'
 import { Loading } from '@element-plus/icons-vue'
 import { useProductImages } from '../../composables/useProductImages'
 
@@ -31,6 +32,35 @@ const {
   loadProductImages,
   getProductImageUrl
 } = useProductImages()
+
+// 商品分类筛选（级联选择一级/二级分类）
+const categories = ref<CategoryDto[]>([])
+const selectedCategoryId = ref<number | null>(null)
+
+const categoryTree = computed(() => {
+  const roots = categories.value.filter((category) => category.parentId === null)
+
+  return roots.map((root) => ({
+    value: root.categoryId,
+    label: root.categoryName,
+    children: categories.value
+      .filter((category) => category.parentId === root.categoryId)
+      .map((child) => ({
+        value: child.categoryId,
+        label: child.categoryName
+      }))
+  }))
+})
+
+const categoryNameMap = computed(() => {
+  const map = new Map<number, string>()
+
+  for (const category of categories.value) {
+    map.set(category.categoryId, category.categoryName)
+  }
+
+  return map
+})
 
 function getCoverFileId(product: ProductListItemDto): number | null {
   if (product.coverImageFileId !== undefined) {
@@ -63,6 +93,21 @@ const categoryId=computed<number|null>(()=>{
     return id
 })
 
+// 实际生效的分类：优先用户在筛选栏手动选择的分类，其次路由进入的分类
+const effectiveCategoryId = computed<number | null>(() =>
+  selectedCategoryId.value ?? categoryId.value
+)
+
+async function loadCategories(): Promise<void> {
+  try {
+    const response = await getCategories()
+    categories.value = response.data ?? []
+  } catch (error) {
+    console.error('商品分类加载失败：', error)
+  }
+}
+
+
 const priceRangeError = computed(() => {
   return (
     minPrice.value !== null &&
@@ -78,13 +123,13 @@ function isCurrentProductListLoad(
 ): boolean {
   return (
     version === productListLoadVersion &&
-    categoryId.value === requestedCategoryId &&
+    effectiveCategoryId.value === requestedCategoryId &&
     keyword.value === requestedKeyword
   )
 }
 
 async function loadProducts(): Promise<void> {
-  const requestedCategoryId = categoryId.value
+  const requestedCategoryId = effectiveCategoryId.value
   const requestedKeyword = keyword.value
   const currentVersion = ++productListLoadVersion
 
@@ -97,6 +142,7 @@ async function loadProducts(): Promise<void> {
     if (requestedKeyword) {
       const response = await searchProducts({
         keyword: requestedKeyword,
+        categoryId: requestedCategoryId ?? undefined,
         page: 1,
         pageSize: 50,
         sortBy: 'relevance'
@@ -225,10 +271,12 @@ function resetFilters(): void {
   minPrice.value = null
   maxPrice.value = null
   sortOption.value = 'default'
+  selectedCategoryId.value = null
 }
 
 
 onMounted(() => {
+  void loadCategories()
   loadProducts()
 })
 
@@ -241,6 +289,10 @@ watch(
     loadProducts()
   }
 )
+
+watch(selectedCategoryId, () => {
+  loadProducts()
+})
 
 onBeforeUnmount(() => {
   productListLoadVersion += 1
@@ -290,6 +342,20 @@ onBeforeUnmount(() => {
             <el-button text type="primary" @click="resetFilters">
               重置
             </el-button>
+          </div>
+
+          <!-- 商品分类 -->
+          <div class="filter-group">
+            <h3>商品分类</h3>
+
+            <el-cascader
+              v-model="selectedCategoryId"
+              :options="categoryTree"
+              :props="{ checkStrictly: true, emitPath: false }"
+              placeholder="全部分类"
+              clearable
+              class="category-filter"
+            />
           </div>
 
           <!-- 商品状态 -->
@@ -353,7 +419,7 @@ onBeforeUnmount(() => {
 
           <!-- 当前搜索条件 -->
           <div
-            v-if="keyword || categoryId"
+            v-if="keyword || effectiveCategoryId"
             class="filter-group current-condition"
           >
             <h3>当前条件</h3>
@@ -368,11 +434,11 @@ onBeforeUnmount(() => {
               </el-tag>
 
               <el-tag
-                v-if="categoryId"
+                v-if="effectiveCategoryId"
                 type="info"
                 effect="plain"
               >
-                分类 ID：{{ categoryId }}
+                分类：{{ categoryNameMap.get(effectiveCategoryId) ?? effectiveCategoryId }}
               </el-tag>
             </div>
           </div>
@@ -604,6 +670,17 @@ onBeforeUnmount(() => {
   background: #3e9b79;
   border-color: #3e9b79;
   box-shadow: none;
+}
+
+/* 分类筛选 */
+
+.category-filter {
+  width: 100%;
+}
+
+.category-filter :deep(.el-cascader__wrapper) {
+  border: 1px solid #dfe7e3;
+  border-radius: 9px;
 }
 
 /* 价格筛选 */

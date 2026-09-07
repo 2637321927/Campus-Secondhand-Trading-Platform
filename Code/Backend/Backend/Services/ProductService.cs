@@ -14,14 +14,22 @@ public class ProductService : IProductService
     private readonly IProductViewRepository _productViewRepo;
     private readonly IProdImageService _prodImage;
     private readonly ISearchService _searchService;
+    private readonly IBaseUserRepository _baseUserRepo;
 
-    public ProductService(IProductRepository productRepo, ICategoryRepository categoryRepo, IProductViewRepository productViewRepo, IProdImageService prodImageService, ISearchService searchService)
+    public ProductService(
+        IProductRepository productRepo,
+        ICategoryRepository categoryRepo,
+        IProductViewRepository productViewRepo,
+        IProdImageService prodImageService,
+        ISearchService searchService,
+        IBaseUserRepository baseUserRepo)
     {
         _productRepo = productRepo;
         _categoryRepo = categoryRepo;
         _productViewRepo = productViewRepo;
         _prodImage = prodImageService;
         _searchService = searchService;
+        _baseUserRepo = baseUserRepo;
     }
 
     public async Task<ProductDto?> GetByIdAsync(long productId, int userId)
@@ -70,15 +78,44 @@ public class ProductService : IProductService
             .ToList();
     }
 
+    public async Task<List<ProductDto>> GetProductsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetByUserIdAsync(userId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(p => p.ProductId));
+
+        return products
+            .OrderByDescending(p => p.ReleaseDate)
+            .Select(p => ToDto(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
+    }
+
+    public async Task<List<ProductDto>> GetSoldProductsByUserIdAsync(int userId)
+    {
+        var products = await _productRepo.GetSoldByUserIdAsync(userId);
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(
+            products.Select(p => p.ProductId));
+
+        return products
+            .OrderByDescending(p => p.ReleaseDate)
+            .Select(p => ToDto(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+            .ToList();
+    }
+
     public async Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto)
     {
+        var user = await _baseUserRepo.GetByIdAsync(userId);
+        if (user == null)
+            throw new ArgumentException("用户不存在");
 
-        if (await _categoryRepo.GetByIdAsync(dto.CategoryId) == null)
-        {
-            
-            throw new ArgumentException("Category does not exist.");
+        if (user.AccountStatus == AccountStatus.Banned ||
+            user.AccountStatus == AccountStatus.PublishRestricted)
+            throw new UnauthorizedAccessException("当前账号状态不允许发布商品");
 
-        }
+        var category = await _categoryRepo.GetByIdAsync(dto.CategoryId)
+            ?? throw new ArgumentException("分类不存在");
+        if (category.ParentId == null)
+            throw new ArgumentException("商品必须发布到具体小分类，不能直接选择一级大分类");
 
         var product = new Product
         {
@@ -99,7 +136,7 @@ public class ProductService : IProductService
         await _productRepo.AddAsync(product);
         await _productRepo.SaveAsync();
 
-        _ = _searchService.NotifyProductCreatedAsync(product.ProductId);
+        await _searchService.NotifyProductCreatedAsync(product.ProductId);
 
         if (dto.Images != null && dto.Images.Count > 0)
         {
@@ -122,6 +159,11 @@ public class ProductService : IProductService
             throw new UnauthorizedAccessException("You do not have permission to update this product.");
 
         }
+
+        var targetCategory = await _categoryRepo.GetByIdAsync(dto.CategoryId)
+            ?? throw new ArgumentException("分类不存在");
+        if (targetCategory.ParentId == null)
+            throw new ArgumentException("商品分类必须是小分类，不能直接选择一级大分类");
 
         product.Name = dto.Name;
         product.Price = dto.Price;

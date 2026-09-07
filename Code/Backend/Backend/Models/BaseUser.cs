@@ -48,6 +48,12 @@ public class BaseUser
     [Column("banned_until")]
     public DateTime? BannedUntil { get; set; }
 
+    /// <summary>
+    /// 账号状态：0=正常，1=禁言，2=限制发布，3=封禁
+    /// </summary>
+    [Column("account_status")]
+    public Backend.Models.Enums.AccountStatus AccountStatus { get; set; } = Backend.Models.Enums.AccountStatus.Normal;
+
     [Column("register_time")]
     public DateTime RegisterTime { get; set; } = DateTime.Now;
 
