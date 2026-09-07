@@ -26,6 +26,7 @@ import type {
   MessageDto
 } from '../../types/api/conversation'
 import { useProductImages } from '../../composables/useProductImages'
+import { useFileImages } from '../../composables/useFileImages'
 import { getApiErrorMessage } from '../../utils/error'
 
 const route = useRoute()
@@ -54,6 +55,9 @@ const messagesContainer = ref<HTMLElement>()
 
 const { getProductImageUrl, loadProductImages } =
   useProductImages()
+/** 聊天图片附件走通用文件通道 /api/files/{id}（与商品图片不同） */
+const { getFileImageUrl, loadFileImages } =
+  useFileImages()
 
 const currentUserId = computed(
   () => authStore.currentUser?.userId
@@ -137,6 +141,13 @@ async function loadConversation(): Promise<void> {
         messages.value = []
         console.warn('消息记录加载失败：', messagesResult.reason)
       }
+
+      // 图片附件走通用文件通道，按 fileId 逐张加载为 Blob URL
+      void loadFileImages(
+        messages.value
+          .filter((message) => message.messageType === 1)
+          .map((message) => message.fileId)
+      )
 
       if (otherUserResult.status === 'fulfilled') {
         otherUserName.value = otherUserResult.value.data.userName
@@ -225,6 +236,13 @@ async function handleUploadAttachment(
 
     if (sentMessage) {
       messages.value = [...messages.value, sentMessage]
+
+      if (
+        sentMessage.messageType === 1 &&
+        sentMessage.fileId
+      ) {
+        void loadFileImages([sentMessage.fileId])
+      }
     }
 
     ElMessage.success('附件已发送')
@@ -414,9 +432,9 @@ onMounted(() => {
                 class="message-attachment"
               >
                 <img
-                  v-if="getProductImageUrl(message.fileId)"
+                  v-if="getFileImageUrl(message.fileId)"
                   class="message-image"
-                  :src="getProductImageUrl(message.fileId)"
+                  :src="getFileImageUrl(message.fileId)"
                   alt="图片消息"
                 />
 
