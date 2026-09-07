@@ -59,6 +59,23 @@ const { getProductImageUrl, loadProductImages } =
 const { getFileImageUrl, loadFileImages } =
   useFileImages()
 
+/** 会话内全部图片附件的可预览 URL（按消息出现顺序），供 el-image 大图预览 */
+const attachmentPreviewUrls = computed(() =>
+  messages.value
+    .filter((message) => message.messageType === 1)
+    .map((message) => getFileImageUrl(message.fileId))
+    .filter((url) => url !== '')
+)
+
+function attachmentPreviewIndex(
+  fileId: number | null | undefined
+): number {
+  const url = getFileImageUrl(fileId)
+  const index = attachmentPreviewUrls.value.indexOf(url)
+
+  return index >= 0 ? index : 0
+}
+
 const currentUserId = computed(
   () => authStore.currentUser?.userId
 )
@@ -431,10 +448,16 @@ onMounted(() => {
                 v-else
                 class="message-attachment"
               >
-                <img
+                <el-image
                   v-if="getFileImageUrl(message.fileId)"
                   class="message-image"
                   :src="getFileImageUrl(message.fileId)"
+                  :initial-index="
+                    attachmentPreviewIndex(message.fileId)
+                  "
+                  :preview-src-list="attachmentPreviewUrls"
+                  preview-teleported
+                  fit="contain"
                   alt="图片消息"
                 />
 
@@ -687,8 +710,19 @@ onMounted(() => {
 }
 
 .message-image {
+  display: block;
+  width: fit-content;
   max-width: 220px;
   max-height: 220px;
+  cursor: zoom-in;
+}
+
+.message-image :deep(.el-image__inner) {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 8px;
 }
 
