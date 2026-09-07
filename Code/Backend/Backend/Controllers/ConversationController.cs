@@ -200,8 +200,8 @@ public class ConversationController : ControllerBase
     public async Task<ActionResult<MessageDto>> Attach(int conversationId, IFormFile file, [FromForm] string? content = null)
     {
         var c = await _db.Conversations.FindAsync(conversationId);
-        if (c == null || !await CanAccess(c)) return NotFound();
-
+        if (c == null || !await CanAccess(c)) 
+            return NotFound();
         return await SendCore(conversationId, new SendMessageDto { Content = content }, file);
     }
 
