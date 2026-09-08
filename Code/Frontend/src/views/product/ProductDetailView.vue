@@ -24,7 +24,8 @@ import { createConversation } from '../../api/modules/conversation'
 import { getApiErrorMessage } from '../../utils/error'
 import {
   getCollectionStatus,
-  toggleCollection
+  toggleCollection,
+  getProductCollectionCount
 } from '../../api/modules/collection'
 import { useAuthStore } from '../../stores/auth'
 import { 
@@ -37,6 +38,7 @@ import type {
   CreateProductCommentRequest
 } from '../../types/api/comment'
 import { formatDate } from '../../utils/format'
+import UserAvatar from '../../components/common/UserAvatar.vue'
 import { useProductImages } from '../../composables/useProductImages'
 
 const route = useRoute()
@@ -59,6 +61,7 @@ const authStore=useAuthStore()
 
 const isCollected = ref(false)
 const collectionLoading = ref(false)
+const favoriteCount = ref(0)
 const contactLoading = ref(false)
 
 const comments = ref<ProductCommentDto[]>([])
@@ -251,6 +254,25 @@ function goToReport(type: string, id: number): void {
   })
 }
 
+async function loadFavoriteCount(
+  requestedProductId: number,
+  version = detailLoadVersion
+): Promise<void> {
+  try {
+    const response = await getProductCollectionCount(
+      requestedProductId
+    )
+
+    if (version !== detailLoadVersion) {
+      return
+    }
+
+    favoriteCount.value = response.data.count ?? 0
+  } catch (error) {
+    console.error('收藏人数加载失败：', error)
+  }
+}
+
 async function handleFavorite(): Promise<void> {
   if(!product.value){
     return
@@ -279,6 +301,10 @@ async function handleFavorite(): Promise<void> {
   try{
     const response=await toggleCollection(product.value.productId)
     isCollected.value=response.data.isCollected
+    favoriteCount.value = Math.max(
+      0,
+      favoriteCount.value + (isCollected.value ? 1 : -1)
+    )
 
     ElMessage.success(
       isCollected.value ? '收藏成功' : '已取消收藏'
@@ -717,6 +743,11 @@ async function loadProduct(): Promise<void> {
       currentVersion
     )
 
+    void loadFavoriteCount(
+      requestedProductId,
+      currentVersion
+    )
+
     void loadComments(
       requestedProductId,
       currentVersion
@@ -947,6 +978,16 @@ onBeforeUnmount(() => {
 
             <div class="meta-item">
               <span class="meta-label">
+                收藏人数
+              </span>
+
+              <span class="meta-value">
+                {{ favoriteCount }} 人
+              </span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">
                 卖家编号
               </span>
 
@@ -1138,12 +1179,12 @@ onBeforeUnmount(() => {
           v-else-if="seller"
           class="seller-card"
         >
-          <el-avatar
+          <UserAvatar
             :size="56"
-            class="seller-avatar"
-          >
-            {{ seller.userName?.slice(0, 1) || '卖' }}
-          </el-avatar>
+            :name="seller.userName"
+            :file-id="seller.avatarFileId"
+            className="seller-avatar"
+          />
 
           <div class="seller-info">
             <strong>
@@ -1198,15 +1239,12 @@ onBeforeUnmount(() => {
         <div class="comment-composer">
           <template v-if="authStore.isLoggedIn">
             <div class="composer-user">
-              <el-avatar
+              <UserAvatar
                 :size="40"
-                class="composer-avatar"
-              >
-                {{
-                  authStore.currentUser?.userName
-                    ?.slice(0, 1) || '我'
-                }}
-              </el-avatar>
+                :name="authStore.currentUser?.userName"
+                :file-id="authStore.currentUser?.avatarFileId"
+                className="composer-avatar"
+              />
 
               <div class="composer-input">
                 <el-input
@@ -1324,12 +1362,12 @@ onBeforeUnmount(() => {
             class="comment-item"
           >
             <!-- 留言用户头像 -->
-            <el-avatar
+            <UserAvatar
               :size="44"
-              class="comment-avatar"
-            >
-              {{ comment.userName?.slice(0, 1) || '用' }}
-            </el-avatar>
+              :name="comment.userName"
+              :file-id="comment.avatarFileId"
+              className="comment-avatar"
+            />
 
             <!-- 留言主体 -->
             <div class="comment-body">
@@ -1454,12 +1492,12 @@ onBeforeUnmount(() => {
                   :key="reply.commentId"
                   class="reply-item"
                 >
-                  <el-avatar
+                  <UserAvatar
                     :size="34"
-                    class="reply-avatar"
-                  >
-                    {{ reply.userName?.slice(0, 1) || '用' }}
-                  </el-avatar>
+                    :name="reply.userName"
+                    :file-id="reply.avatarFileId"
+                    className="reply-avatar"
+                  />
 
                   <div class="reply-body">
                     <div class="reply-header">

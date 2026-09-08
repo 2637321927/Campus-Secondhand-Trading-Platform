@@ -101,6 +101,7 @@ public class ProductCommentService : IProductCommentService
         CommentId = c.CommentId,
         UserId = c.UserId,
         UserName = c.User?.UserName ?? "",
+        AvatarFileId = c.User?.BaseUser?.AvatarFileId,
         Content = c.Content,
         Index = c.Index,
         ResponseToId = c.ResponseToId,

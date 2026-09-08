@@ -27,6 +27,7 @@ import type {
 } from '../../types/api/conversation'
 import { useProductImages } from '../../composables/useProductImages'
 import { useFileImages } from '../../composables/useFileImages'
+import UserAvatar from '../../components/common/UserAvatar.vue'
 import { getApiErrorMessage } from '../../utils/error'
 
 const route = useRoute()
@@ -41,6 +42,7 @@ const messages = ref<MessageDto[]>([])
 /** 对方用户名（后端会话接口不含用户信息，按对方 ID 单独请求） */
 const otherUserName = ref('')
 const otherUserId = ref<number | null>(null)
+const otherAvatarFileId = ref<number | null>(null)
 /** 商品价格与封面（后端会话接口不含，按商品 ID 单独请求） */
 const productPrice = ref<number | null>(null)
 const productCoverFileId = ref<number | null>(null)
@@ -168,6 +170,7 @@ async function loadConversation(): Promise<void> {
 
       if (otherUserResult.status === 'fulfilled') {
         otherUserName.value = otherUserResult.value.data.userName
+        otherAvatarFileId.value = otherUserResult.value.data.avatarFileId ?? null
       } else {
         console.warn('对方用户信息加载失败：', otherUserResult.reason)
       }
@@ -333,12 +336,12 @@ onMounted(() => {
           v-if="conversation"
           class="chat-partner"
         >
-          <el-avatar
+          <UserAvatar
             class="partner-avatar"
             :size="40"
-          >
-            {{ otherUserName?.charAt(0) ?? '对' }}
-          </el-avatar>
+            :name="otherUserName"
+            :file-id="otherAvatarFileId"
+          />
 
           <div class="partner-info">
             <span class="partner-name">

@@ -28,6 +28,11 @@ public interface ICollectionService
     Task<int> GetCollectionCountAsync(int userId);
 
     ///<summary>
+    ///获取某商品被收藏的人数
+    ///</summary>
+    Task<int> GetProductCollectionCountAsync(long productId);
+
+    ///<summary>
     ///批量取消收藏，返回成功删除的数量
     ///</summary>
     Task<int> BatchDeleteAsync(int userId, List<long> productIds);

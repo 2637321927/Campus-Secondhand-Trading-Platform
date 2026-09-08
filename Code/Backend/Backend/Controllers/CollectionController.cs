@@ -89,4 +89,15 @@ public class CollectionController : ControllerBase
 
         return Ok(new { count });
     }
+
+    ///<summary>
+    ///获取某商品被收藏的人数（公开）
+    ///</summary>
+    [HttpGet("product/{productId}/count")]
+    public async Task<ActionResult> GetProductCollectionCount(long productId)
+    {
+        var count = await _collectionService.GetProductCollectionCountAsync(productId);
+
+        return Ok(new { count });
+    }
 }
