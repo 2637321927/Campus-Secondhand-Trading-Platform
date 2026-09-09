@@ -210,12 +210,10 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { getAdminProductDetail } from '../../../api/modules/admin'
 import { getPublicUser } from '../../../api/modules/user'
 import { useProductImages } from '../../../composables/useProductImages'
 import UserAvatar from '../../../components/common/UserAvatar.vue'
-import { getApiErrorMessage } from '../../../utils/error'
 
 const route = useRoute()
 const router = useRouter()
@@ -227,7 +225,11 @@ const seller = ref<any>(null)
 const auditLogs = ref<any[]>([])
 const selectedImageFileId = ref<number | null>(null)
 
-const { getProductImageUrl, clearProductImages } = useProductImages()
+const {
+  getProductImageUrl,
+  loadProductImages,
+  clearProductImages
+} = useProductImages()
 
 const productId = computed(() => {
   const id = Number(route.params.productId)
@@ -261,7 +263,8 @@ const statusMap: Record<number, { text: string; class: string }> = {
   1: { text: '已售', class: 'status-sold' },
   2: { text: '已下架', class: 'status-removed' },
   3: { text: '待审核', class: 'status-draft' },
-  4: { text: '已驳回', class: 'status-removed' }
+  4: { text: '已驳回', class: 'status-removed' },
+  5: { text: '交易中', class: 'status-draft' }
 }
 
 function getStatusText(status: number): string {
@@ -315,17 +318,23 @@ async function loadProduct(): Promise<void> {
     const data = res?.data || res || {}
     product.value = data
 
+    await loadProductImages(
+      (data.images ?? []).map((image: { fileId: number }) => image.fileId)
+    ).catch((error) => {
+      console.error('管理员商品图片加载失败:', error)
+    })
+
     // 设置默认图片
     if (data.images?.length) {
       const firstImage = data.images[0]
-      selectedImageFileId.value = firstImage.imgFileId || firstImage.fileId || firstImage.imgId
+      selectedImageFileId.value = firstImage.fileId
     }
 
     // 加载审核日志
     auditLogs.value = data.auditLogs || []
 
     // 加载卖家信息
-    const sellerId = data.userId || data.sellerId
+    const sellerId = data.userId
     if (sellerId) {
       try {
         const userRes = await getPublicUser(sellerId)

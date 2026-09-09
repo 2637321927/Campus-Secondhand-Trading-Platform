@@ -3,7 +3,7 @@
 
 export interface AdminProductListParams {
   keyword?: string
-  status?: 0 | 1 | 2 | 3 | 4  // 0=在售 1=已售 2=下架 3=待审核 4=驳回
+  status?: 0 | 1 | 2 | 3 | 4 | 5  // 0=在售 1=已售 2=下架 3=待审核 4=驳回 5=交易中
   categoryId?: number
   sellerId?: number
   page?: number
@@ -15,7 +15,7 @@ export interface AdminProductListItem {
   name: string
   price: number
   info: string | null
-  status: 0 | 1 | 2 | 3 | 4
+  status: 0 | 1 | 2 | 3 | 4 | 5
   sellerName: string
   categoryName: string | null
   viewCount: number
@@ -33,8 +33,7 @@ export interface AdminProductDetail extends AdminProductListItem {
 }
 
 export interface AdminProductImage {
-  imgId: number
-  imgUrl: string
+  fileId: number
   imgIndex: number
 }
 
