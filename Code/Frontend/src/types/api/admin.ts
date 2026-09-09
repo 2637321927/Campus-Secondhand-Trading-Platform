@@ -16,6 +16,9 @@ export interface AdminProductListItem {
   price: number
   info: string | null
   status: 0 | 1 | 2 | 3 | 4 | 5
+  releaseDate: string
+  userId: number
+  categoryId: number
   sellerName: string
   categoryName: string | null
   viewCount: number
