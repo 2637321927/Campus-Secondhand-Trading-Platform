@@ -1,4 +1,5 @@
 using Backend.Dtos.Product;
+using Backend.Models.Enums;
 using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,12 +20,20 @@ public class ProductController : ControllerBase
     }
 
     /// <summary>
-    /// 获取全部商品
+    /// 获取商品列表（按状态筛选）
+    /// status：缺省或 0 = 在售；1 = 已售；-1 = 在售+已售
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<ProductDto>>> GetAll()
+    public async Task<ActionResult<List<ProductDto>>> GetAll([FromQuery] int? status = null)
     {
-        return Ok(await _productService.GetAllAsync());
+        var statuses = status switch
+        {
+            -1 => new[] { ProductStatus.Available, ProductStatus.Sold },
+            1 => new[] { ProductStatus.Sold },
+            _ => new[] { ProductStatus.Available }
+        };
+
+        return Ok(await _productService.GetByStatusesAsync(statuses));
     }
 
     /// <summary>
@@ -112,6 +121,34 @@ public class ProductController : ControllerBase
         if (!result) return NotFound();
         return NoContent();
 
+    }
+
+    /// <summary>
+    /// 修改商品状态（在售/已售/已下架之间的流转）
+    /// </summary>
+    [HttpPatch("{id}/status")]
+    [Authorize]
+    public async Task<ActionResult<ProductDto>> UpdateStatus(long id, [FromBody] UpdateProductStatusDto dto)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var product = await _productService.UpdateStatusAsync(id, userId, dto.Status);
+            if (product == null) return NotFound();
+            return Ok(product);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { error = ex.Message });
+        }
     }
 
     /// <summary>

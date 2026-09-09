@@ -1,4 +1,5 @@
 using Backend.Models;
+using Backend.Models.Enums;
 
 namespace Backend.Repositories;
 
@@ -6,6 +7,7 @@ public interface IProductRepository
 {
     Task<Product?> GetByIdAsync(long productId);
     Task<List<Product>> GetAllAsync();
+    Task<List<Product>> GetByStatusesAsync(IEnumerable<ProductStatus> statuses);
     Task<List<Product>> GetByCategoryAsync(long categoryId);
     Task<List<Product>> GetByCategoryIdsAsync(IReadOnlyCollection<long> categoryIds);
     Task<List<Product>> GetByUserIdAsync(int userId);

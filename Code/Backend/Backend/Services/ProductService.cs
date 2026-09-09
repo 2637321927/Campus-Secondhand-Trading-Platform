@@ -45,7 +45,12 @@ public class ProductService : IProductService
 
     public async Task<List<ProductDto>> GetAllAsync()
     {
-        var products = await _productRepo.GetAllAsync();
+        return await GetByStatusesAsync(new[] { ProductStatus.Available });
+    }
+
+    public async Task<List<ProductDto>> GetByStatusesAsync(IEnumerable<ProductStatus> statuses)
+    {
+        var products = await _productRepo.GetByStatusesAsync(statuses);
         var viewCounts = await _productViewRepo.GetViewCountsAsync(
             products.Select(product => product.ProductId));
 
@@ -172,7 +177,6 @@ public class ProductService : IProductService
         product.ShippingType = dto.ShippingType;
         product.ShippingFee = dto.ShippingFee;
         product.AllowPickup = dto.AllowPickup;
-        product.Status = dto.Status;
 
         if (dto.toRemoveImageIds != null && dto.toRemoveImageIds.Count > 0)
         {
@@ -206,6 +210,48 @@ public class ProductService : IProductService
 
         return ToDto(product);
 
+    }
+
+    public async Task<ProductDto?> UpdateStatusAsync(long productId, int userId, ProductStatus target)
+    {
+        var product = await _productRepo.GetByIdAsync(productId);
+        if (product == null) return null;
+
+        if (product.UserId != userId)
+            throw new UnauthorizedAccessException("You do not have permission to update this product.");
+
+        // 用户端只允许在 在售/已售/已下架 之间流转，待审核/驳回/交易中由审核或订单流程管理
+        if (target is not (ProductStatus.Available or ProductStatus.Sold or ProductStatus.Removed))
+            throw new ArgumentException("不允许设置该状态");
+
+        var current = product.Status;
+        var allowed = (current, target) switch
+        {
+            (ProductStatus.Available, ProductStatus.Sold) => true,
+            (ProductStatus.Available, ProductStatus.Removed) => true,
+            (ProductStatus.Sold, ProductStatus.Available) => true,
+            (ProductStatus.Removed, ProductStatus.Available) => true,
+            _ => false
+        };
+
+        if (!allowed)
+            throw new InvalidOperationException("当前状态不允许该操作");
+
+        // 重新上架前检查账号状态
+        if (target == ProductStatus.Available && current != ProductStatus.Available)
+        {
+            var user = await _baseUserRepo.GetByIdAsync(userId);
+            if (user != null &&
+                (user.AccountStatus == AccountStatus.Banned ||
+                 user.AccountStatus == AccountStatus.PublishRestricted))
+                throw new UnauthorizedAccessException("当前账号状态不允许发布商品");
+        }
+
+        product.Status = target;
+        _productRepo.Update(product);
+        await _productRepo.SaveAsync();
+
+        return ToDto(product);
     }
 
     public async Task<List<ProductCardDto>> QueryProductCardsAsync(
