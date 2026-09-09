@@ -1,4 +1,3 @@
-// 数据概览
 <template>
   <div class="dashboard">
     <el-row :gutter="20" class="stats-row">
@@ -131,18 +130,24 @@
       </template>
       <el-empty v-if="!moderationTasks.recentTasks?.length" description="暂无待处理任务" />
       <el-table v-else :data="moderationTasks.recentTasks" border>
-        <el-table-column prop="workOrderId" label="工单ID" width="90" />
-        <el-table-column prop="type" label="类型" width="100">
+        <el-table-column label="工单ID" width="90">
           <template #default="{ row }">
-            <el-tag :type="row.type === 1 ? 'danger' : 'warning'">
-              {{ row.type === 1 ? '举报' : '申诉' }}
+            {{ row.workOrderId || row.id }}
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.type === 'report' || row.type === 1 ? 'danger' : 'warning'">
+              {{ getTypeText(row) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="reason" label="发起原因" min-width="180">
-          <template #default="{ row }">{{ row.reason }}</template>
+        <el-table-column label="标题/原因" min-width="180">
+          <template #default="{ row }">
+            {{ row.title || row.reason || '-' }}
+          </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'waiting' ? 'warning' : 'primary'">
               {{ row.status === 'waiting' ? '待处理' : '处理中' }}
@@ -172,7 +177,6 @@ import {
   getUserStatistics,
   getModerationTasks
 } from '../../../api/modules/admin'
-import type { ModerationTasks } from '../../../types/api/admin'
 
 const router = useRouter()
 
@@ -197,13 +201,13 @@ const userStats = ref({
   totalWarnings: 0
 })
 
-const moderationTasks = ref<ModerationTasks>({
+const moderationTasks = ref({
   totalPending: 0,
   waitingCount: 0,
   processingCount: 0,
   reportCount: 0,
   appealCount: 0,
-  recentTasks: []
+  recentTasks: [] as any[]
 })
 
 const getPercent = (value: number, total: number) => {
@@ -211,6 +215,15 @@ const getPercent = (value: number, total: number) => {
   return `${(value / total * 100).toFixed(1)}%`
 }
 
+// ========== 获取类型文本（兼容不同数据格式） ==========
+const getTypeText = (row: any) => {
+  const type = row.type
+  if (type === 'report' || type === 1) return '举报'
+  if (type === 'appeal' || type === 2) return '申诉'
+  return '未知'
+}
+
+// ========== 加载数据 ==========
 const loadData = async () => {
   try {
     const [products, users, tasks] = await Promise.all([
@@ -218,18 +231,33 @@ const loadData = async () => {
       getUserStatistics(),
       getModerationTasks()
     ])
-    productStats.value = products.data
-    userStats.value = users.data
-    moderationTasks.value = tasks.data
+    
+    // 适配响应格式（与 WorkOrderManageView 保持一致）
+    const productData = products?.data || products || {}
+    const userData = users?.data || users || {}
+    const taskData = tasks?.data || tasks || {}
+    
+    productStats.value = productData
+    userStats.value = userData
+    moderationTasks.value = {
+      totalPending: taskData.totalPending ?? 0,
+      waitingCount: taskData.waitingCount ?? 0,
+      processingCount: taskData.processingCount ?? 0,
+      reportCount: taskData.reportCount ?? 0,
+      appealCount: taskData.appealCount ?? 0,
+      recentTasks: taskData.recentTasks ?? []
+    }
   } catch (error) {
     console.error('加载仪表盘数据失败', error)
   }
 }
 
-const goToDetail = (row: { workOrderId: number }) => {
+// ========== 跳转到工单详情（与 WorkOrderManageView 保持一致） ==========
+const goToDetail = (row: any) => {
+  const id = row.workOrderId || row.id
   router.push({
     name: 'AdminWorkOrderManage',
-    query: { focusId: String(row.workOrderId) }
+    query: { focusId: String(id) }
   })
 }
 

@@ -49,11 +49,14 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="全部状态" clearable>
-            <el-option label="待确认" value="pending" />
+            <!-- 根据对接说明，使用后端状态枚举 -->
+            <el-option label="待付款" value="pending" />
+            <el-option label="已付款" value="paid" />
             <el-option label="已确认" value="confirmed" />
-            <el-option label="已发货" value="shipped" />
-            <el-option label="已完成" value="completed" />
-            <el-option label="已取消" value="cancelled" />
+            <el-option label="已发货" value="shipping" />
+            <el-option label="已完成" value="success" />
+            <el-option label="已取消" value="cancel" />
+            <el-option label="退款中" value="refund" />
           </el-select>
         </el-form-item>
         <el-form-item label="时间范围">
@@ -82,13 +85,17 @@
           <template #default="{ row }">
             <div class="product-info">
               <el-image
-                :src="row.productImage || '/default-image.png'"
+                :src="getProductImageUrl(row.productCoverImageId)"
                 class="product-thumb"
                 fit="cover"
-              />
+              >
+                <template #error>
+                  <div class="image-placeholder">暂无图片</div>
+                </template>
+              </el-image>
               <div>
                 <div class="product-name">{{ row.productName }}</div>
-                <div class="product-price">¥{{ row.totalAmount }}</div>
+                <div class="product-price">¥{{ Number(row.totalAmount).toFixed(2) }}</div>
               </div>
             </div>
           </template>
@@ -118,7 +125,7 @@
               查看
             </el-button>
             <el-button
-              v-if="row.status === 'pending' || row.status === 'confirmed'"
+              v-if="row.status === 'pending' || row.status === 'paid' || row.status === 'confirmed'"
               size="small"
               type="warning"
               @click="handleCancel(row)"
@@ -126,7 +133,7 @@
               取消
             </el-button>
             <el-button
-              v-if="row.status === 'shipped'"
+              v-if="row.status === 'shipping'"
               size="small"
               type="success"
               @click="handleComplete(row)"
@@ -160,7 +167,7 @@
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="商品名称">{{ currentOrder.productName }}</el-descriptions-item>
-          <el-descriptions-item label="总金额">¥{{ currentOrder.totalAmount }}</el-descriptions-item>
+          <el-descriptions-item label="总金额">¥{{ Number(currentOrder.totalAmount).toFixed(2) }}</el-descriptions-item>
           <el-descriptions-item label="买家">{{ currentOrder.buyerName }}</el-descriptions-item>
           <el-descriptions-item label="卖家">{{ currentOrder.sellerName }}</el-descriptions-item>
           <el-descriptions-item label="支付方式">{{ currentOrder.paymentMethod || '在线支付' }}</el-descriptions-item>
@@ -195,7 +202,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-// 导入 API
 import { getOrderList, getOrderStatistics, cancelOrder, completeOrder } from '../../../api/modules/admin'
 
 const loading = ref(false)
@@ -220,23 +226,31 @@ const statistics = ref({
   completedCount: 0
 })
 
-// 状态映射
-const statusMap: Record<string, { text: string; type: string }> = {
-  pending: { text: '待确认', type: 'warning' },
-  confirmed: { text: '已确认', type: 'primary' },
-  shipped: { text: '已发货', type: 'info' },
-  completed: { text: '已完成', type: 'success' },
-  cancelled: { text: '已取消', type: 'danger' }
+// ========== 获取商品图片 URL ==========
+// 根据对接说明，订单列表使用 productCoverImageId
+const getProductImageUrl = (fileId: number | null | undefined) => {
+  if (!fileId) return '/default-product.png'
+  return `/api/files/${fileId}`
 }
 
-const getStatusText = (status: string) => statusMap[status]?.text || '未知'
+// ========= 状态映射 ==========
+const statusMap: Record<string, { text: string; type: string }> = {
+  pending: { text: '待付款', type: 'warning' },
+  paid: { text: '已付款', type: 'primary' },
+  confirmed: { text: '已确认', type: 'primary' },
+  shipping: { text: '已发货', type: 'info' },
+  success: { text: '已完成', type: 'success' },
+  cancel: { text: '已取消', type: 'danger' },
+  refund: { text: '退款中', type: 'warning' }
+}
+
+const getStatusText = (status: string) => statusMap[status]?.text || status || '未知'
 const getStatusType = (status: string) => statusMap[status]?.type || 'info'
 
 // ========== 加载数据 ==========
 const loadData = async () => {
   loading.value = true
   try {
-    // 构建请求参数
     const params: any = {
       page: page.value,
       pageSize: pageSize.value
@@ -248,12 +262,13 @@ const loadData = async () => {
       params.endDate = queryParams.dateRange[1]
     }
 
-    // 调用真实 API
     const res = await getOrderList(params)
-    orderList.value = res.data.items || []
-    total.value = res.data.totalCount || 0
-  } catch (error) {
-    ElMessage.error('加载订单列表失败')
+    const data = res.data
+    orderList.value = data.items || []
+    total.value = data.totalCount || 0
+  } catch (error: any) {
+    console.error('加载订单列表失败:', error)
+    ElMessage.error(error?.message || '加载订单列表失败')
   } finally {
     loading.value = false
   }
@@ -286,10 +301,7 @@ const resetSearch = () => {
 // ========== 查看详情 ==========
 const viewDetail = async (row: any) => {
   try {
-    // 调用详情 API 获取完整信息
-    // const res = await getOrderDetail(row.orderId)
-    // currentOrder.value = res
-    currentOrder.value = row  // 临时用行数据
+    currentOrder.value = row
     detailDialogVisible.value = true
   } catch (error) {
     ElMessage.error('加载订单详情失败')
@@ -379,7 +391,20 @@ onMounted(() => {
   width: 50px;
   height: 50px;
   border-radius: 8px;
+  flex-shrink: 0;
+  background: #f5f7f6;
   object-fit: cover;
+}
+.image-placeholder {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7f6;
+  color: #ccc;
+  font-size: 12px;
+  border-radius: 8px;
 }
 .product-name {
   font-weight: 500;
