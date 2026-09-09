@@ -4,12 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
     createReport,
+    getCommentReportInfo,
     getProductReportInfo,
     getReportReasons,
     getUserReportInfo
 } from '../../api/modules/report'
 import type {
     CreateReportDto,
+    ReportCommentInfoDto,
     ReportProductInfoDto,
     ReportReason,
     ReportUserInfoDto
@@ -25,6 +27,7 @@ const targetId = computed(() => Number(route.query.id) || 0)
 const submitting = ref(false)
 const reasons = ref<ReportReason[]>([])
 const productInfo = ref<ReportProductInfoDto | null>(null)
+const commentInfo = ref<ReportCommentInfoDto | null>(null)
 const userInfo = ref<ReportUserInfoDto | null>(null)
 
 const reason = ref('')
@@ -59,6 +62,13 @@ async function loadTargetInfo(): Promise<void> {
         } catch (error) {
             console.error('被举报用户信息加载失败：', error)
         }
+    } else if (targetType.value === 'comment') {
+        try {
+            const response = await getCommentReportInfo(targetId.value)
+            commentInfo.value = response.data
+        } catch (error) {
+            console.error('被举报评论信息加载失败：', error)
+        }
     }
 }
 
@@ -70,6 +80,11 @@ async function handleSubmit(): Promise<void> {
 
     if (!targetType.value || !targetId.value) {
         ElMessage.warning('举报对象信息缺失')
+        return
+    }
+
+    if (targetType.value === 'comment' && !commentInfo.value) {
+        ElMessage.warning('举报对象信息缺失，请返回后重试')
         return
     }
 
@@ -87,6 +102,9 @@ async function handleSubmit(): Promise<void> {
             data.productId = targetId.value
         } else if (targetType.value === 'user' && userInfo.value) {
             data.accusedId = userInfo.value.userId
+        } else if (targetType.value === 'comment' && commentInfo.value) {
+            data.accusedId = commentInfo.value.userId
+            data.productId = commentInfo.value.productId
         }
 
         await createReport(data)
@@ -121,12 +139,18 @@ onMounted(() => {
             </header>
 
             <!-- 举报对象信息 -->
-            <section class="report-panel" v-if="productInfo || userInfo">
+            <section class="report-panel" v-if="productInfo || userInfo || commentInfo">
                 <h2 class="panel-title">举报对象</h2>
                 <div class="target-info" v-if="productInfo">
                     <p><strong>商品名称：</strong>{{ productInfo.name }}</p>
                     <p><strong>卖家ID：</strong>{{ productInfo.sellerId }}</p>
                     <p><strong>商品状态：</strong>{{ productInfo.status }}</p>
+                </div>
+                <div class="target-info" v-else-if="commentInfo">
+                    <p><strong>评论用户：</strong>{{ commentInfo.userName }}</p>
+                    <p><strong>评论用户ID：</strong>{{ commentInfo.userId }}</p>
+                    <p><strong>评论内容：</strong>{{ commentInfo.content }}</p>
+                    <p><strong>商品ID：</strong>{{ commentInfo.productId }}</p>
                 </div>
                 <div class="target-info" v-else-if="userInfo">
                     <p><strong>用户名：</strong>{{ userInfo.userName }}</p>

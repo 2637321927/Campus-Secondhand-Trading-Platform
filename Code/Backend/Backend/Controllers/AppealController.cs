@@ -3,6 +3,7 @@ using Backend.Models;
 using Backend.Models.Enums;
 using Backend.Repositories;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers;
@@ -114,19 +115,35 @@ public class AppealController : ControllerBase
     }
 
     /// <summary>
-    /// 上传申诉附件：文件存到文件服务，文件 ID/名 以文本形式追加到工单 Info 字段
+    /// 为申诉绑定附件：上传走文件模块拿到 fileId 后，将文件 ID/名追加到工单 Info 字段；
+    /// 为兼容旧的直接上传方式，仍允许直接传 multipart 文件
     /// </summary>
     [HttpPost("{appealId:long}/attachments")]
-    public async Task<ActionResult<WorkOrderDto>> Attachment(long appealId, IFormFile file)
+    public async Task<ActionResult<WorkOrderDto>> Attachment(
+        long appealId,
+        [FromForm] long? fileId = null,
+        IFormFile? file = null)
     {
         var w = await Own(appealId);
         if (w == null) return NotFound();
 
-        if (file == null || file.Length == 0)
+        if (fileId == null && (file == null || file.Length == 0))
             return BadRequest("附件不能为空");
 
-        var uploaded = await _files.UploadMultipleAsync(new List<IFormFile> { file }, Uid);
-        var f = uploaded.Single();
+        UpdatedFile f;
+        if (fileId.HasValue)
+        {
+            var meta = await _files.GetActiveByIdAsync(fileId.Value);
+            if (meta == null || meta.UploaderId != Uid)
+                return BadRequest("附件不存在或不是当前用户上传");
+
+            f = meta;
+        }
+        else
+        {
+            var uploaded = await _files.UploadMultipleAsync(new List<IFormFile> { file! }, Uid);
+            f = uploaded.Single();
+        }
 
         w.Info = ((w.Info ?? string.Empty) + $"\n[附件:{f.FileId}:{f.FileName}]").Trim();
         _orders.Update(w);

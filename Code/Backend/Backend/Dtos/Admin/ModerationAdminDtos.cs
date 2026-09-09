@@ -43,6 +43,16 @@ public class AdminModerationWorkOrderDto
 public class AdminModerationDetailDto : AdminModerationWorkOrderDto
 {
     public List<AdminWorkOrderTimelineDto> Timeline { get; set; } = new();
+    public List<AdminWorkOrderAttachmentDto> Attachments { get; set; } = new();
+}
+
+/// <summary>
+/// 管理员工单附件
+/// </summary>
+public class AdminWorkOrderAttachmentDto
+{
+    public long FileId { get; set; }
+    public string FileName { get; set; } = string.Empty;
 }
 
 public class AdminWorkOrderTimelineDto

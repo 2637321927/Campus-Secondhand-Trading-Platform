@@ -284,6 +284,7 @@ public class AdminModerationService : IAdminModerationService
 
         var dto = ToListItem(workOrder);
         var timeline = await _timelineRepo.GetByWorkOrderIdAsync(workOrderId);
+        var (_, attachments) = ExtractAttachments(workOrder.Info);
 
         return new AdminModerationDetailDto
         {
@@ -315,6 +316,7 @@ public class AdminModerationService : IAdminModerationService
             AppealAgainstWorkOrderId = dto.AppealAgainstWorkOrderId,
             AppealAgainstReason = dto.AppealAgainstReason,
             AdminId = dto.AdminId,
+            Attachments = attachments,
             Timeline = timeline.Select(t => new AdminWorkOrderTimelineDto
             {
                 TimelineId = t.TimelineId,
@@ -488,37 +490,74 @@ public class AdminModerationService : IAdminModerationService
         });
     }
 
-    private static AdminModerationWorkOrderDto ToListItem(WorkOrder w) => new()
+    private static AdminModerationWorkOrderDto ToListItem(WorkOrder w)
     {
-        WorkOrderId = w.WorkOrderId,
-        ReportId = w.WorkOrderId,
-        AppealId = w.WorkOrderId,
-        Type = w.Type,
-        TargetType = w.TargetType,
-        TargetId = w.TargetId,
-        TargetName = ResolveTargetName(w),
-        Reason = w.Reason,
-        Info = w.Info,
-        Description = w.Info,
-        Content = string.IsNullOrWhiteSpace(w.Info) ? w.Reason : w.Info,
-        Status = w.Status,
-        Result = w.Result,
-        HandleAction = w.HandleAction,
-        CreateTime = w.CreateTime,
-        Response = w.Response,
-        ResponseTime = w.ResponseTime,
-        InitiatorId = w.InitiatorId,
-        InitiatorName = w.Initiator?.UserName ?? "",
-        ReporterName = w.Initiator?.UserName ?? "",
-        UserName = w.Initiator?.UserName ?? "",
-        AccusedId = w.AccusedId,
-        AccusedName = w.Accused?.UserName,
-        ProductId = w.ProductId,
-        ProductName = w.Product?.Name,
-        AppealAgainstWorkOrderId = w.AppealAgainstWorkOrderId,
-        AppealAgainstReason = w.AppealAgainst?.Reason,
-        AdminId = w.AdminId
-    };
+        var (cleanInfo, _) = ExtractAttachments(w.Info);
+        return new AdminModerationWorkOrderDto
+        {
+            WorkOrderId = w.WorkOrderId,
+            ReportId = w.WorkOrderId,
+            AppealId = w.WorkOrderId,
+            Type = w.Type,
+            TargetType = w.TargetType,
+            TargetId = w.TargetId,
+            TargetName = ResolveTargetName(w),
+            Reason = w.Reason,
+            Info = cleanInfo,
+            Description = cleanInfo,
+            Content = string.IsNullOrWhiteSpace(cleanInfo) ? w.Reason : cleanInfo,
+            Status = w.Status,
+            Result = w.Result,
+            HandleAction = w.HandleAction,
+            CreateTime = w.CreateTime,
+            Response = w.Response,
+            ResponseTime = w.ResponseTime,
+            InitiatorId = w.InitiatorId,
+            InitiatorName = w.Initiator?.UserName ?? "",
+            ReporterName = w.Initiator?.UserName ?? "",
+            UserName = w.Initiator?.UserName ?? "",
+            AccusedId = w.AccusedId,
+            AccusedName = w.Accused?.UserName,
+            ProductId = w.ProductId,
+            ProductName = w.Product?.Name,
+            AppealAgainstWorkOrderId = w.AppealAgainstWorkOrderId,
+            AppealAgainstReason = w.AppealAgainst?.Reason,
+            AdminId = w.AdminId
+        };
+    }
+
+    private static (string? Info, List<AdminWorkOrderAttachmentDto> Attachments) ExtractAttachments(string? info)
+    {
+        var attachments = new List<AdminWorkOrderAttachmentDto>();
+        if (string.IsNullOrWhiteSpace(info)) return (info, attachments);
+
+        var lines = info.Split('\n').ToList();
+        for (var i = lines.Count - 1; i >= 0; i--)
+        {
+            var line = lines[i].Trim();
+            if (!line.StartsWith("[附件:", StringComparison.Ordinal) || !line.EndsWith("]"))
+                continue;
+
+            var inner = line[4..^1];
+            var separator = inner.IndexOf(':');
+            if (separator <= 0 || !long.TryParse(inner[..separator], out var fileId))
+                continue;
+
+            var fileName = inner[(separator + 1)..];
+            if (string.IsNullOrWhiteSpace(fileName))
+                continue;
+
+            attachments.Add(new AdminWorkOrderAttachmentDto
+            {
+                FileId = fileId,
+                FileName = fileName
+            });
+            lines.RemoveAt(i);
+        }
+
+        var cleanInfo = string.Join("\n", lines).Trim();
+        return (string.IsNullOrEmpty(cleanInfo) ? null : cleanInfo, attachments);
+    }
 
     private static string? ResolveTargetName(WorkOrder w)
     {
