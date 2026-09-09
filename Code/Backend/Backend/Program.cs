@@ -57,6 +57,7 @@ builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
 builder.Services.AddScoped<IProdImageService, ProdImageService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IProductCommentService, ProductCommentService>();
+builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
