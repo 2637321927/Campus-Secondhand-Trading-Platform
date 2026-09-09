@@ -11,6 +11,59 @@ import type {
   ReportDetail
 } from '@/types/api/admin'
 
+// ==================== Mock 数据开关 ====================
+// 当后端接口未实现时，设置为 true 启用 Mock 数据
+const USE_MOCK = true
+
+// ==================== Mock 数据 ====================
+let mockAnnouncements: any[] = [
+  {
+    id: 1,
+    title: '🎉 平台正式上线公告',
+    content: '欢迎使用校园二手交易平台！本平台旨在为在校师生提供安全、便捷的二手物品交易服务。\n\n平台特色：\n1. 校内实名认证，交易更安全\n2. 支持校内当面交易\n3. 商品分类清晰，查找方便\n4. 内置聊天功能，沟通更便捷',
+    status: 'published',
+    isPinned: true,
+    publishTime: '2026-09-01T10:00:00',
+    createdAt: '2026-09-01T10:00:00',
+    updatedAt: '2026-09-01T10:00:00'
+  },
+  {
+    id: 2,
+    title: '🔒 交易安全提醒',
+    content: '为了保障您的交易安全，请注意以下事项：\n\n1. 建议选择校内公共场所进行当面交易\n2. 交易前请仔细检查商品实际情况\n3. 请勿脱离平台进行转账或付款\n4. 如遇可疑情况，请及时举报',
+    status: 'published',
+    isPinned: false,
+    publishTime: '2026-09-05T14:30:00',
+    createdAt: '2026-09-05T14:30:00',
+    updatedAt: '2026-09-05T14:30:00'
+  },
+  {
+    id: 3,
+    title: '📱 发布商品功能已上线',
+    content: '现在你可以在平台上发布自己的闲置物品了！\n\n发布步骤：\n1. 点击右上角"发布闲置"按钮\n2. 填写商品标题、描述、价格\n3. 上传商品图片\n4. 选择商品分类\n5. 点击发布即可',
+    status: 'published',
+    isPinned: false,
+    publishTime: '2026-09-08T09:00:00',
+    createdAt: '2026-09-08T09:00:00',
+    updatedAt: '2026-09-08T09:00:00'
+  },
+  {
+    id: 4,
+    title: '公告功能开发中（草稿）',
+    content: '这是一个草稿公告，用于测试编辑和发布功能。',
+    status: 'draft',
+    isPinned: false,
+    publishTime: null,
+    createdAt: '2026-09-09T08:00:00',
+    updatedAt: '2026-09-09T08:00:00'
+  }
+]
+
+let mockIdCounter = 100
+
+// 模拟延迟
+const mockDelay = () => new Promise(resolve => setTimeout(resolve, 300))
+
 // ==================== 商品管理 ====================
 
 // 管理员商品列表
@@ -236,11 +289,18 @@ export function getAnnouncements(params: {
   page?: number
   pageSize?: number
 }) {
+  // 如果启用 Mock，返回模拟数据
+  if (USE_MOCK) {
+    return mockGetAnnouncements(params)
+  }
   return request.get('/api/admin/announcements', { params })
 }
 
 // 公告统计
 export function getAnnouncementStatistics() {
+  if (USE_MOCK) {
+    return mockGetAnnouncementStatistics()
+  }
   return request.get('/api/admin/announcements/statistics')
 }
 
@@ -251,6 +311,9 @@ export function createAnnouncement(data: {
   isPinned: boolean
   status: 'draft' | 'published'
 }) {
+  if (USE_MOCK) {
+    return mockCreateAnnouncement(data)
+  }
   return request.post('/api/admin/announcements', data)
 }
 
@@ -261,27 +324,223 @@ export function updateAnnouncement(id: number, data: {
   isPinned?: boolean
   status?: 'draft' | 'published'
 }) {
+  if (USE_MOCK) {
+    return mockUpdateAnnouncement(id, data)
+  }
   return request.put(`/api/admin/announcements/${id}`, data)
 }
 
 // 发布公告
 export function publishAnnouncement(id: number) {
+  if (USE_MOCK) {
+    return mockPublishAnnouncement(id)
+  }
   return request.patch(`/api/admin/announcements/${id}/publish`)
 }
 
 // 下架公告
 export function archiveAnnouncement(id: number) {
+  if (USE_MOCK) {
+    return mockArchiveAnnouncement(id)
+  }
   return request.patch(`/api/admin/announcements/${id}/archive`)
 }
 
 // 删除公告
 export function deleteAnnouncement(id: number) {
+  if (USE_MOCK) {
+    return mockDeleteAnnouncement(id)
+  }
   return request.delete(`/api/admin/announcements/${id}`)
 }
 
 // 公告详情
 export function getAnnouncementDetail(id: number) {
+  if (USE_MOCK) {
+    return mockGetAnnouncementDetail(id)
+  }
   return request.get(`/api/admin/announcements/${id}`)
+}
+
+// ==================== Mock 函数 ====================
+
+async function mockGetAnnouncements(params: {
+  keyword?: string
+  status?: string
+  page?: number
+  pageSize?: number
+}) {
+  await mockDelay()
+  
+  let list = [...mockAnnouncements]
+  
+  // 关键词过滤
+  if (params.keyword) {
+    const keyword = params.keyword.toLowerCase()
+    list = list.filter(item => 
+      item.title.toLowerCase().includes(keyword) ||
+      item.content.toLowerCase().includes(keyword)
+    )
+  }
+  
+  // 状态过滤
+  if (params.status) {
+    list = list.filter(item => item.status === params.status)
+  }
+  
+  // 按创建时间降序排列
+  list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  
+  const page = params.page || 1
+  const pageSize = params.pageSize || 20
+  const start = (page - 1) * pageSize
+  const end = start + pageSize
+  const paginatedList = list.slice(start, end)
+  
+  return {
+    data: {
+      items: paginatedList,
+      totalCount: list.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(list.length / pageSize)
+    }
+  }
+}
+
+async function mockGetAnnouncementStatistics() {
+  await mockDelay()
+  
+  const published = mockAnnouncements.filter(item => item.status === 'published').length
+  const draft = mockAnnouncements.filter(item => item.status === 'draft').length
+  const archived = mockAnnouncements.filter(item => item.status === 'archived').length
+  
+  return {
+    data: {
+      total: mockAnnouncements.length,
+      published,
+      draft,
+      archived
+    }
+  }
+}
+
+async function mockCreateAnnouncement(data: {
+  title: string
+  content: string
+  isPinned: boolean
+  status: 'draft' | 'published'
+}) {
+  await mockDelay()
+  
+  const now = new Date().toISOString()
+  const newAnnouncement = {
+    id: mockIdCounter++,
+    ...data,
+    publishTime: data.status === 'published' ? now : null,
+    createdAt: now,
+    updatedAt: now
+  }
+  
+  mockAnnouncements.unshift(newAnnouncement)
+  
+  return {
+    data: newAnnouncement
+  }
+}
+
+async function mockUpdateAnnouncement(id: number, data: {
+  title?: string
+  content?: string
+  isPinned?: boolean
+  status?: 'draft' | 'published'
+}) {
+  await mockDelay()
+  
+  const index = mockAnnouncements.findIndex(item => item.id === id)
+  if (index === -1) {
+    throw new Error('公告不存在')
+  }
+  
+  const oldItem = mockAnnouncements[index]
+  const updatedItem = {
+    ...oldItem,
+    ...data,
+    updatedAt: new Date().toISOString()
+  }
+  
+  mockAnnouncements[index] = updatedItem
+  
+  return {
+    data: updatedItem
+  }
+}
+
+async function mockPublishAnnouncement(id: number) {
+  await mockDelay()
+  
+  const index = mockAnnouncements.findIndex(item => item.id === id)
+  if (index === -1) {
+    throw new Error('公告不存在')
+  }
+  
+  mockAnnouncements[index] = {
+    ...mockAnnouncements[index],
+    status: 'published',
+    publishTime: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+  
+  return {
+    data: mockAnnouncements[index]
+  }
+}
+
+async function mockArchiveAnnouncement(id: number) {
+  await mockDelay()
+  
+  const index = mockAnnouncements.findIndex(item => item.id === id)
+  if (index === -1) {
+    throw new Error('公告不存在')
+  }
+  
+  mockAnnouncements[index] = {
+    ...mockAnnouncements[index],
+    status: 'archived',
+    updatedAt: new Date().toISOString()
+  }
+  
+  return {
+    data: mockAnnouncements[index]
+  }
+}
+
+async function mockDeleteAnnouncement(id: number) {
+  await mockDelay()
+  
+  const index = mockAnnouncements.findIndex(item => item.id === id)
+  if (index === -1) {
+    throw new Error('公告不存在')
+  }
+  
+  mockAnnouncements.splice(index, 1)
+  
+  return {
+    data: { success: true }
+  }
+}
+
+async function mockGetAnnouncementDetail(id: number) {
+  await mockDelay()
+  
+  const item = mockAnnouncements.find(item => item.id === id)
+  if (!item) {
+    throw new Error('公告不存在')
+  }
+  
+  return {
+    data: item
+  }
 }
 
 // ==================== 类型定义 ====================

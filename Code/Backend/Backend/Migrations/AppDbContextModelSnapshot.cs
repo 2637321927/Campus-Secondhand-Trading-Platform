@@ -1007,7 +1007,7 @@ namespace Backend.Migrations
                         .HasColumnName("file_size");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("BOOLEAN")
+                        .HasColumnType("NUMBER(1)")
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("MimeType")

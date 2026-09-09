@@ -36,9 +36,8 @@ public class UpdatedFile
 
     [Column("uploader_id")]
     public int UploaderId { get; set; }
-
-    [Column("is_deleted")]
-    public bool IsDeleted { get; set; } = false;
+[Column("is_deleted", TypeName = "NUMBER(1)")]
+public bool IsDeleted { get; set; } = false;
 
     [Column("deleted_time")]
     public DateTime? DeletedTime { get; set; }

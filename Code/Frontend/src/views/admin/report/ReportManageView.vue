@@ -1,4 +1,3 @@
-// 举报管理
 <template>
   <div class="report-manage">
     <!-- 统计卡片 -->
@@ -6,7 +5,7 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.totalPending || 0 }}</div>
+            <div class="stat-number">{{ statsData.totalPending || 0 }}</div>
             <div class="stat-label">待处理总数</div>
           </div>
         </el-card>
@@ -14,7 +13,7 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.waitingCount || 0 }}</div>
+            <div class="stat-number">{{ statsData.waitingCount || 0 }}</div>
             <div class="stat-label">待处理</div>
           </div>
         </el-card>
@@ -22,7 +21,7 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.processingCount || 0 }}</div>
+            <div class="stat-number">{{ statsData.processingCount || 0 }}</div>
             <div class="stat-label">处理中</div>
           </div>
         </el-card>
@@ -30,7 +29,7 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.reportCount || 0 }}</div>
+            <div class="stat-number">{{ statsData.reportCount || 0 }}</div>
             <div class="stat-label">举报总数</div>
           </div>
         </el-card>
@@ -75,18 +74,34 @@
     <!-- 举报列表 -->
     <el-card class="table-card">
       <el-table :data="reportList" v-loading="loading" border>
-        <el-table-column prop="reportId" label="ID" width="70" />
-        <el-table-column prop="reporterName" label="举报人" width="100" />
+        <el-table-column prop="reportId" label="ID" width="70">
+          <template #default="{ row }">
+            {{ row.reportId || row.id }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="reporterName" label="举报人" width="100">
+          <template #default="{ row }">
+            {{ row.reporterName || row.userName || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="举报对象" min-width="150">
           <template #default="{ row }">
             <div>
-              <el-tag size="small" type="info">{{ row.targetType }}</el-tag>
-              <span>{{ row.targetName }}</span>
+              <el-tag size="small" type="info">{{ row.targetType || '未知' }}</el-tag>
+              <span style="margin-left: 8px;">{{ row.targetName || row.targetId || '-' }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="reason" label="原因" min-width="150" />
-        <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
+        <el-table-column label="原因" min-width="120">
+          <template #default="{ row }">
+            {{ row.reason || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column label="描述" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.description || row.content || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
@@ -102,7 +117,7 @@
           </template>
         </el-table-column>
         <el-table-column label="举报时间" width="160">
-          <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
+          <template #default="{ row }">{{ formatDate(row.createTime || row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
@@ -202,11 +217,15 @@ const pageSize = ref(20)
 
 const queryParams = reactive({
   keyword: '',
+<<<<<<< Updated upstream
   status: undefined as string | undefined,
+=======
+  status: undefined as 'waiting' | 'processing' | 'done' | undefined,
+>>>>>>> Stashed changes
   targetType: undefined as string | undefined
 })
 
-const moderationTasks = ref({
+const statsData = ref({
   totalPending: 0,
   waitingCount: 0,
   processingCount: 0,
@@ -215,17 +234,15 @@ const moderationTasks = ref({
   recentTasks: []
 })
 
-// 状态映射
-const statusMap = {
+const statusMap: Record<string, { text: string; type: string }> = {
   waiting: { text: '待处理', type: 'warning' },
   processing: { text: '处理中', type: 'primary' },
   done: { text: '已完成', type: 'success' }
 }
 
-const getStatusText = (status: string) => statusMap[status as keyof typeof statusMap]?.text || '未知'
-const getStatusType = (status: string) => statusMap[status as keyof typeof statusMap]?.type || 'info'
+const getStatusText = (status: string) => statusMap[status]?.text || '未知'
+const getStatusType = (status: string) => statusMap[status]?.type || 'info'
 
-// 综合处理
 const actionDialogVisible = ref(false)
 const actionType = ref('')
 const actionReason = ref('')
@@ -239,10 +256,23 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
+<<<<<<< Updated upstream
     reportList.value = res.items || []
     total.value = res.totalCount || 0
   } catch (error) {
     ElMessage.error('加载举报列表失败')
+=======
+    
+    console.log('举报列表响应:', res)
+    
+    const responseData = res?.data || res || {}
+    reportList.value = responseData.items || responseData.list || responseData.records || []
+    total.value = responseData.totalCount || responseData.total || 0
+    
+  } catch (error: any) {
+    console.error('加载举报列表失败:', error)
+    ElMessage.error(error?.message || '加载举报列表失败')
+>>>>>>> Stashed changes
   } finally {
     loading.value = false
   }
@@ -250,7 +280,14 @@ const loadData = async () => {
 
 const loadTasks = async () => {
   try {
+<<<<<<< Updated upstream
     moderationTasks.value = await getModerationTasks()
+=======
+    const res = await getModerationTasks()
+    console.log('待办任务响应:', res)
+    const data = res?.data || res || {}
+    statsData.value = data
+>>>>>>> Stashed changes
   } catch (error) {
     console.error('加载任务统计失败', error)
   }
@@ -270,7 +307,8 @@ const resetSearch = () => {
 }
 
 const viewDetail = (row: any) => {
-  router.push(`/admin/reports/${row.reportId}`)
+  const id = row.reportId || row.id
+  router.push(`/admin/reports/${id}`)
 }
 
 const handleAccept = async (row: any) => {
@@ -278,12 +316,14 @@ const handleAccept = async (row: any) => {
     await ElMessageBox.confirm(`确定认定此举报成立吗？`, '举报成立', {
       type: 'success'
     })
-    await acceptReport(row.reportId)
+    const id = row.reportId || row.id
+    await acceptReport(id)
     ElMessage.success('已认定举报成立')
     loadData()
     loadTasks()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('举报成立失败:', error)
       ElMessage.error('操作失败')
     }
   }
@@ -294,12 +334,14 @@ const handleReject = async (row: any) => {
     await ElMessageBox.confirm(`确定驳回此举报吗？`, '举报驳回', {
       type: 'warning'
     })
-    await rejectReport(row.reportId)
+    const id = row.reportId || row.id
+    await rejectReport(id)
     ElMessage.success('已驳回举报')
     loadData()
     loadTasks()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('举报驳回失败:', error)
       ElMessage.error('操作失败')
     }
   }
@@ -322,7 +364,8 @@ const confirmAction = async () => {
     return
   }
   try {
-    await handleReport(currentReport.value.reportId, {
+    const id = currentReport.value.reportId || currentReport.value.id
+    await handleReport(id, {
       action: actionType.value as any,
       reason: actionReason.value
     })
@@ -331,6 +374,7 @@ const confirmAction = async () => {
     loadData()
     loadTasks()
   } catch (error) {
+    console.error('处理举报失败:', error)
     ElMessage.error('操作失败')
   }
 }
@@ -347,37 +391,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.report-manage {
-  padding: 20px;
-}
-.stats-row {
-  margin-bottom: 20px;
-}
-.stat-item {
-  text-align: center;
-}
-.stat-number {
-  font-size: 28px;
-  font-weight: bold;
-  color: #24735b;
-}
-.stat-label {
-  color: #666;
-  margin-top: 5px;
-}
-.filter-card {
-  margin-bottom: 20px;
-}
-.filter-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.table-card {
-  margin-top: 20px;
-}
-.pagination {
-  margin-top: 20px;
-  justify-content: flex-end;
-}
+.report-manage { padding: 20px; }
+.stats-row { margin-bottom: 20px; }
+.stat-item { text-align: center; }
+.stat-number { font-size: 28px; font-weight: bold; color: #24735b; }
+.stat-label { color: #666; margin-top: 5px; }
+.filter-card { margin-bottom: 20px; }
+.filter-form { display: flex; flex-wrap: wrap; align-items: center; }
+.table-card { margin-top: 20px; }
+.pagination { margin-top: 20px; justify-content: flex-end; }
 </style>

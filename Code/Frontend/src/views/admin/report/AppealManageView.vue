@@ -1,4 +1,3 @@
-// 申诉管理
 <template>
   <div class="appeal-manage">
     <!-- 统计卡片 -->
@@ -6,7 +5,7 @@
       <el-col :span="8">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.totalPending || 0 }}</div>
+            <div class="stat-number">{{ statsData.totalPending || 0 }}</div>
             <div class="stat-label">待处理总数</div>
           </div>
         </el-card>
@@ -14,7 +13,7 @@
       <el-col :span="8">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.appealCount || 0 }}</div>
+            <div class="stat-number">{{ statsData.appealCount || 0 }}</div>
             <div class="stat-label">申诉总数</div>
           </div>
         </el-card>
@@ -22,7 +21,7 @@
       <el-col :span="8">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.waitingCount || 0 }}</div>
+            <div class="stat-number">{{ statsData.waitingCount || 0 }}</div>
             <div class="stat-label">待处理申诉</div>
           </div>
         </el-card>
@@ -58,9 +57,21 @@
     <!-- 申诉列表 -->
     <el-card class="table-card">
       <el-table :data="appealList" v-loading="loading" border>
-        <el-table-column prop="appealId" label="ID" width="70" />
-        <el-table-column prop="userName" label="申诉人" width="120" />
-        <el-table-column prop="content" label="申诉内容" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="appealId" label="ID" width="70">
+          <template #default="{ row }">
+            {{ row.appealId || row.id }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="userName" label="申诉人" width="120">
+          <template #default="{ row }">
+            {{ row.userName || row.reporterName || '-' }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="content" label="申诉内容" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ row.content || row.reason || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
@@ -76,7 +87,7 @@
           </template>
         </el-table-column>
         <el-table-column label="提交时间" width="160">
-          <template #default="{ row }">{{ formatDate(row.createTime) }}</template>
+          <template #default="{ row }">{{ formatDate(row.createTime || row.createdAt) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
@@ -167,7 +178,7 @@ const queryParams = reactive({
   status: undefined as string | undefined
 })
 
-const moderationTasks = ref({
+const statsData = ref({
   totalPending: 0,
   waitingCount: 0,
   processingCount: 0,
@@ -176,17 +187,15 @@ const moderationTasks = ref({
   recentTasks: []
 })
 
-// 状态映射
-const statusMap = {
+const statusMap: Record<string, { text: string; type: string }> = {
   waiting: { text: '待处理', type: 'warning' },
   processing: { text: '处理中', type: 'primary' },
   done: { text: '已完成', type: 'success' }
 }
 
-const getStatusText = (status: string) => statusMap[status as keyof typeof statusMap]?.text || '未知'
-const getStatusType = (status: string) => statusMap[status as keyof typeof statusMap]?.type || 'info'
+const getStatusText = (status: string) => statusMap[status]?.text || '未知'
+const getStatusType = (status: string) => statusMap[status]?.type || 'info'
 
-// 回复
 const replyDialogVisible = ref(false)
 const replyContent = ref('')
 const currentAppeal = ref<any>(null)
@@ -199,10 +208,24 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
+<<<<<<< Updated upstream
     appealList.value = res.items || []
     total.value = res.totalCount || 0
   } catch (error) {
     ElMessage.error('加载申诉列表失败')
+=======
+    
+    console.log('申诉列表响应:', res)
+    
+    // 适配响应格式
+    const responseData = res?.data || res || {}
+    appealList.value = responseData.items || responseData.list || responseData.records || []
+    total.value = responseData.totalCount || responseData.total || 0
+    
+  } catch (error: any) {
+    console.error('加载申诉列表失败:', error)
+    ElMessage.error(error?.message || '加载申诉列表失败')
+>>>>>>> Stashed changes
   } finally {
     loading.value = false
   }
@@ -210,7 +233,14 @@ const loadData = async () => {
 
 const loadTasks = async () => {
   try {
+<<<<<<< Updated upstream
     moderationTasks.value = await getModerationTasks()
+=======
+    const res = await getModerationTasks()
+    console.log('待办任务响应:', res)
+    const data = res?.data || res || {}
+    statsData.value = data
+>>>>>>> Stashed changes
   } catch (error) {
     console.error('加载任务统计失败', error)
   }
@@ -229,7 +259,8 @@ const resetSearch = () => {
 }
 
 const viewDetail = (row: any) => {
-  router.push(`/admin/appeals/${row.appealId}`)
+  const id = row.appealId || row.id
+  router.push(`/admin/appeals/${id}`)
 }
 
 const handleApprove = async (row: any) => {
@@ -237,12 +268,14 @@ const handleApprove = async (row: any) => {
     await ElMessageBox.confirm(`确定通过此申诉吗？`, '申诉通过', {
       type: 'success'
     })
-    await approveAppeal(row.appealId)
+    const id = row.appealId || row.id
+    await approveAppeal(id)
     ElMessage.success('申诉已通过')
     loadData()
     loadTasks()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('申诉通过失败:', error)
       ElMessage.error('操作失败')
     }
   }
@@ -253,12 +286,14 @@ const handleReject = async (row: any) => {
     await ElMessageBox.confirm(`确定驳回此申诉吗？`, '申诉驳回', {
       type: 'warning'
     })
-    await rejectAppeal(row.appealId)
+    const id = row.appealId || row.id
+    await rejectAppeal(id)
     ElMessage.success('已驳回申诉')
     loadData()
     loadTasks()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('申诉驳回失败:', error)
       ElMessage.error('操作失败')
     }
   }
@@ -276,13 +311,13 @@ const confirmReply = async () => {
     return
   }
   try {
-    await replyAppeal(currentAppeal.value.appealId, {
-      reply: replyContent.value
-    })
+    const id = currentAppeal.value.appealId || currentAppeal.value.id
+    await replyAppeal(id, { reply: replyContent.value })
     ElMessage.success('回复已发送')
     replyDialogVisible.value = false
     loadData()
   } catch (error) {
+    console.error('回复失败:', error)
     ElMessage.error('发送失败')
   }
 }
@@ -299,37 +334,13 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.appeal-manage {
-  padding: 20px;
-}
-.stats-row {
-  margin-bottom: 20px;
-}
-.stat-item {
-  text-align: center;
-}
-.stat-number {
-  font-size: 28px;
-  font-weight: bold;
-  color: #24735b;
-}
-.stat-label {
-  color: #666;
-  margin-top: 5px;
-}
-.filter-card {
-  margin-bottom: 20px;
-}
-.filter-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.table-card {
-  margin-top: 20px;
-}
-.pagination {
-  margin-top: 20px;
-  justify-content: flex-end;
-}
+.appeal-manage { padding: 20px; }
+.stats-row { margin-bottom: 20px; }
+.stat-item { text-align: center; }
+.stat-number { font-size: 28px; font-weight: bold; color: #24735b; }
+.stat-label { color: #666; margin-top: 5px; }
+.filter-card { margin-bottom: 20px; }
+.filter-form { display: flex; flex-wrap: wrap; align-items: center; }
+.table-card { margin-top: 20px; }
+.pagination { margin-top: 20px; justify-content: flex-end; }
 </style>

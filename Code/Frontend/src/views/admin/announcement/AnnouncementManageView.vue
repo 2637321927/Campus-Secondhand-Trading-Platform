@@ -1,3 +1,246 @@
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
+import {
+  getAnnouncements,
+  getAnnouncementStatistics,
+  createAnnouncement,
+  updateAnnouncement,
+  publishAnnouncement,
+  archiveAnnouncement,
+  deleteAnnouncement
+} from '../../../api/modules/admin'
+
+const loading = ref(false)
+const submitLoading = ref(false)
+const announcementList = ref<any[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
+
+const dialogVisible = ref(false)
+const detailDialogVisible = ref(false)
+const dialogTitle = ref('')
+const currentAnnouncement = ref<any>(null)
+const formRef = ref()
+
+const queryParams = reactive({
+  keyword: '',
+  status: undefined as string | undefined
+})
+
+const statistics = ref({
+  total: 0,
+  published: 0,
+  draft: 0
+})
+
+const statusMap: Record<string, { text: string; type: string }> = {
+  draft: { text: '草稿', type: 'info' },
+  published: { text: '已发布', type: 'success' },
+  archived: { text: '已下架', type: 'danger' }
+}
+
+const getStatusText = (status: string) => statusMap[status]?.text || '未知'
+const getStatusType = (status: string) => statusMap[status]?.type || 'info'
+
+const formData = reactive({
+  id: undefined as number | undefined,
+  title: '',
+  content: '',
+  isPinned: false,
+  status: 'draft' as 'draft' | 'published'
+})
+
+const formRules = {
+  title: [
+    { required: true, message: '请输入公告标题', trigger: 'blur' },
+    { min: 2, max: 100, message: '标题长度在 2 到 100 个字符', trigger: 'blur' }
+  ],
+  content: [
+    { required: true, message: '请输入公告内容', trigger: 'blur' },
+    { min: 10, max: 2000, message: '内容长度在 10 到 2000 个字符', trigger: 'blur' }
+  ]
+}
+
+const loadData = async () => {
+  loading.value = true
+  try {
+    const params: any = {
+      page: page.value,
+      pageSize: pageSize.value
+    }
+    if (queryParams.keyword) params.keyword = queryParams.keyword
+    if (queryParams.status) params.status = queryParams.status
+
+    const res = await getAnnouncements(params)
+    console.log('公告列表响应:', res)
+    
+    const responseData = res?.data || res || {}
+    announcementList.value = responseData.items || responseData.list || responseData.records || []
+    total.value = responseData.totalCount || responseData.total || 0
+    
+  } catch (error: any) {
+    console.error('加载公告列表失败:', error)
+    ElMessage.error(error?.message || '加载公告列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadStatistics = async () => {
+  try {
+    const res = await getAnnouncementStatistics()
+    console.log('公告统计响应:', res)
+    const data = res?.data || res || {}
+    statistics.value = {
+      total: data.total || data.totalCount || 0,
+      published: data.published || 0,
+      draft: data.draft || 0
+    }
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
+
+const handleSearch = () => {
+  page.value = 1
+  loadData()
+}
+
+const resetSearch = () => {
+  queryParams.keyword = ''
+  queryParams.status = undefined
+  page.value = 1
+  loadData()
+}
+
+const resetForm = () => {
+  formData.id = undefined
+  formData.title = ''
+  formData.content = ''
+  formData.isPinned = false
+  formData.status = 'draft'
+}
+
+const openCreateDialog = () => {
+  resetForm()
+  dialogTitle.value = '发布公告'
+  dialogVisible.value = true
+}
+
+const openEditDialog = (row: any) => {
+  formData.id = row.id
+  formData.title = row.title
+  formData.content = row.content
+  formData.isPinned = row.isPinned || false
+  formData.status = row.status === 'published' ? 'published' : 'draft'
+  dialogTitle.value = '编辑公告'
+  dialogVisible.value = true
+}
+
+const submitForm = async () => {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  submitLoading.value = true
+  try {
+    const data = {
+      title: formData.title,
+      content: formData.content,
+      isPinned: formData.isPinned,
+      status: formData.status
+    }
+    
+    console.log('提交公告数据:', data)
+
+    if (formData.id) {
+      await updateAnnouncement(formData.id, data)
+      ElMessage.success('公告已更新')
+    } else {
+      await createAnnouncement(data)
+      ElMessage.success('公告已发布')
+    }
+    dialogVisible.value = false
+    loadData()
+    loadStatistics()
+  } catch (error: any) {
+    console.error('操作失败:', error)
+    const msg = error?.response?.data?.message || error?.message || '操作失败'
+    ElMessage.error(msg)
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const viewDetail = (row: any) => {
+  currentAnnouncement.value = row
+  detailDialogVisible.value = true
+}
+
+const handlePublish = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要发布公告 "${row.title}" 吗？`, '发布公告', {
+      type: 'success'
+    })
+    await publishAnnouncement(row.id)
+    ElMessage.success('公告已发布')
+    loadData()
+    loadStatistics()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('发布失败:', error)
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleArchive = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要下架公告 "${row.title}" 吗？`, '下架公告', {
+      type: 'warning'
+    })
+    await archiveAnnouncement(row.id)
+    ElMessage.success('公告已下架')
+    loadData()
+    loadStatistics()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('下架失败:', error)
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleDelete = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除公告 "${row.title}" 吗？此操作不可恢复！`, '删除公告', {
+      type: 'error'
+    })
+    await deleteAnnouncement(row.id)
+    ElMessage.success('公告已删除')
+    loadData()
+    loadStatistics()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除失败:', error)
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const formatDate = (date: string) => {
+  if (!date) return '-'
+  return new Date(date).toLocaleString('zh-CN')
+}
+
+onMounted(() => {
+  loadData()
+  loadStatistics()
+})
+</script>
+
 <template>
   <div class="announcement-manage">
     <!-- 统计卡片 -->
@@ -197,6 +440,7 @@
   </div>
 </template>
 
+<<<<<<< Updated upstream
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -436,8 +680,9 @@ onMounted(() => {
 })
 </script>
 
+=======
+>>>>>>> Stashed changes
 <style scoped>
-/* ... 样式保持不变 ... */
 .announcement-manage {
   padding: 20px;
 }

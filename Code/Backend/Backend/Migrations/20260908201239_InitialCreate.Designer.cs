@@ -12,8 +12,8 @@ using Oracle.EntityFrameworkCore.Metadata;
 namespace Backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260818115032_AddWorkOrderModerationFields")]
-    partial class AddWorkOrderModerationFields
+    [Migration("20260908201239_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -952,6 +952,48 @@ namespace Backend.Migrations
                     b.ToTable("search_term_edge");
                 });
 
+            modelBuilder.Entity("Backend.Models.SearchTermSimilarity", b =>
+                {
+                    b.Property<long>("SimilarityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("similarity_id");
+
+                    OraclePropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("SimilarityId"));
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("rank");
+
+                    b.Property<long>("SimilarTermId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("similar_term_id");
+
+                    b.Property<double>("Similarity")
+                        .HasColumnType("BINARY_DOUBLE")
+                        .HasColumnName("similarity");
+
+                    b.Property<long>("SourceTermId")
+                        .HasColumnType("NUMBER(19)")
+                        .HasColumnName("source_term_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("SimilarityId");
+
+                    b.HasIndex("SimilarTermId");
+
+                    b.HasIndex("SourceTermId", "Rank")
+                        .IsUnique();
+
+                    b.HasIndex("SourceTermId", "SimilarTermId")
+                        .IsUnique();
+
+                    b.ToTable("search_term_similarity");
+                });
+
             modelBuilder.Entity("Backend.Models.SysInfo", b =>
                 {
                     b.Property<int>("SysInfoId")
@@ -1010,7 +1052,7 @@ namespace Backend.Migrations
                         .HasColumnName("file_size");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("BOOLEAN")
+                        .HasColumnType("NUMBER(1)")
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("MimeType")
@@ -1567,6 +1609,25 @@ namespace Backend.Migrations
                     b.Navigation("Term1");
 
                     b.Navigation("Term2");
+                });
+
+            modelBuilder.Entity("Backend.Models.SearchTermSimilarity", b =>
+                {
+                    b.HasOne("Backend.Models.SearchTerm", "SimilarTerm")
+                        .WithMany()
+                        .HasForeignKey("SimilarTermId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.SearchTerm", "SourceTerm")
+                        .WithMany()
+                        .HasForeignKey("SourceTermId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SimilarTerm");
+
+                    b.Navigation("SourceTerm");
                 });
 
             modelBuilder.Entity("Backend.Models.SysInfo", b =>

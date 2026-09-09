@@ -1,4 +1,218 @@
-// 商品管理
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getAdminProducts,
+  getProductStatistics,
+  approveProduct,
+  rejectProduct,
+  removeProduct,
+  restoreProduct
+} from '../../../api/modules/admin' 
+import { getCategories } from '../../../api/modules/category'
+
+const router = useRouter()
+const loading = ref(false)
+const productList = ref<any[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
+const categories = ref<any[]>([])
+
+const queryParams = reactive({
+  keyword: '',
+  status: undefined as 0 | 1 | 2 | 3 | 4 | undefined,
+  categoryId: undefined as number | undefined
+})
+
+const statistics = ref({
+  totalProducts: 0,
+  availableCount: 0,
+  soldCount: 0,
+  removedCount: 0,
+  pendingReviewCount: 0,
+  rejectedCount: 0,
+  newProductsToday: 0
+})
+
+const rejectDialogVisible = ref(false)
+const rejectReason = ref('')
+const currentProduct = ref<any>(null)
+
+const removeDialogVisible = ref(false)
+const removeReason = ref('')
+const removeTarget = ref<any>(null)
+
+const statusMap: Record<number, { text: string; type: string }> = {
+  0: { text: '在售', type: 'success' },
+  1: { text: '已售', type: 'info' },
+  2: { text: '已下架', type: 'danger' },
+  3: { text: '待审核', type: 'warning' },
+  4: { text: '已驳回', type: 'danger' }
+}
+
+const getStatusText = (status: number) => statusMap[status]?.text || '未知'
+const getStatusType = (status: number) => statusMap[status]?.type || 'info'
+
+const loadData = async () => {
+  loading.value = true
+  try {
+    const res = await getAdminProducts({
+      ...queryParams,
+      page: page.value,
+      pageSize: pageSize.value
+    })
+    
+    console.log('商品列表响应:', res)
+    
+    const responseData = res?.data || res || {}
+    productList.value = responseData.items || responseData.list || responseData.records || []
+    total.value = responseData.totalCount || responseData.total || 0
+    
+  } catch (error: any) {
+    console.error('加载商品列表失败:', error)
+    ElMessage.error(error?.message || '加载商品列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadStatistics = async () => {
+  try {
+    const res = await getProductStatistics()
+    console.log('商品统计响应:', res)
+    const data = res?.data || res || {}
+    statistics.value = data
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    const res = await getCategories()
+    categories.value = res?.data || []
+  } catch (error) {
+    console.error('加载分类失败', error)
+  }
+}
+
+const handleSearch = () => {
+  page.value = 1
+  loadData()
+}
+
+const resetSearch = () => {
+  queryParams.keyword = ''
+  queryParams.status = undefined
+  queryParams.categoryId = undefined
+  page.value = 1
+  loadData()
+}
+
+const viewDetail = (row: any) => {
+  router.push(`/admin/products/${row.productId}`)
+}
+
+const handleApprove = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要通过商品 "${row.name}" 的审核吗？`, '审核通过', {
+      type: 'success'
+    })
+    await approveProduct(row.productId)
+    ElMessage.success('审核通过')
+    loadData()
+    loadStatistics()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('审核通过失败:', error)
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+const handleReject = (row: any) => {
+  currentProduct.value = row
+  rejectReason.value = ''
+  rejectDialogVisible.value = true
+}
+
+const confirmReject = async () => {
+  if (!rejectReason.value.trim()) {
+    ElMessage.warning('请填写驳回原因')
+    return
+  }
+  try {
+    await rejectProduct(currentProduct.value.productId, {
+      reason: rejectReason.value
+    })
+    ElMessage.success('已驳回')
+    rejectDialogVisible.value = false
+    loadData()
+    loadStatistics()
+  } catch (error) {
+    console.error('驳回失败:', error)
+    ElMessage.error('操作失败')
+  }
+}
+
+const handleRemove = (row: any) => {
+  removeTarget.value = row
+  removeReason.value = ''
+  removeDialogVisible.value = true
+}
+
+const confirmRemove = async () => {
+  if (!removeReason.value.trim()) {
+    ElMessage.warning('请填写下架原因')
+    return
+  }
+  try {
+    console.log('下架商品参数:', {
+      productId: removeTarget.value.productId,
+      reason: removeReason.value
+    })
+    
+    await removeProduct(removeTarget.value.productId, {
+      reason: removeReason.value
+    })
+    
+    ElMessage.success('已下架')
+    removeDialogVisible.value = false
+    loadData()
+    loadStatistics()
+  } catch (error: any) {
+    console.error('下架失败:', error)
+    const msg = error?.response?.data?.message || error?.message || '操作失败'
+    ElMessage.error(msg)
+  }
+}
+
+const handleRestore = async (row: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要恢复商品 "${row.name}" 吗？`, '恢复商品', {
+      type: 'warning'
+    })
+    await restoreProduct(row.productId)
+    ElMessage.success('已恢复')
+    loadData()
+    loadStatistics()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('恢复失败:', error)
+      ElMessage.error('操作失败')
+    }
+  }
+}
+
+onMounted(() => {
+  loadData()
+  loadStatistics()
+  loadCategories()
+})
+</script>
+
 <template>
   <div class="product-manage">
     <!-- 统计卡片 -->
@@ -219,6 +433,7 @@
   </div>
 </template>
 
+<<<<<<< Updated upstream
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -415,6 +630,8 @@ onMounted(() => {
 })
 </script>
 
+=======
+>>>>>>> Stashed changes
 <style scoped>
 .product-manage {
   padding: 20px;
