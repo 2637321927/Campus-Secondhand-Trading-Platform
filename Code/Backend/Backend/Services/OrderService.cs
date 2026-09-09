@@ -345,8 +345,8 @@ public class OrderService : IOrderService
         if (order.BuyerId != userId && (order.Product == null || order.Product.UserId != userId))
             throw new UnauthorizedAccessException("无权操作该订单");
 
-        if (order.Status == "cancel" || order.Status == "success")
-            throw new InvalidOperationException("订单已结束，无法重复完成");
+        if (order.Status != "shipping")
+            throw new InvalidOperationException("只有运输中的订单可以完成");
 
         var oldStatus = order.Status;
         order.Status = "success";

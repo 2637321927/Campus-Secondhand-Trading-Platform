@@ -12,6 +12,7 @@ public class ProductService : IProductService
     private readonly IProductRepository _productRepo;
     private readonly ICategoryRepository _categoryRepo;
     private readonly IProductViewRepository _productViewRepo;
+    private readonly IPurchaseRepository _purchaseRepo;
     private readonly IProdImageService _prodImage;
     private readonly ISearchService _searchService;
     private readonly IBaseUserRepository _baseUserRepo;
@@ -20,6 +21,7 @@ public class ProductService : IProductService
         IProductRepository productRepo,
         ICategoryRepository categoryRepo,
         IProductViewRepository productViewRepo,
+        IPurchaseRepository purchaseRepo,
         IProdImageService prodImageService,
         ISearchService searchService,
         IBaseUserRepository baseUserRepo)
@@ -27,6 +29,7 @@ public class ProductService : IProductService
         _productRepo = productRepo;
         _categoryRepo = categoryRepo;
         _productViewRepo = productViewRepo;
+        _purchaseRepo = purchaseRepo;
         _prodImage = prodImageService;
         _searchService = searchService;
         _baseUserRepo = baseUserRepo;
@@ -237,6 +240,20 @@ public class ProductService : IProductService
         if (!allowed)
             throw new InvalidOperationException("当前状态不允许该操作");
 
+        // 存在未取消订单的商品不能被手工改成已售；完成订单的商品也不能重新上架，
+        // 否则会造成同一商品被重复出售。
+        if (target == ProductStatus.Sold ||
+            (current == ProductStatus.Sold && target == ProductStatus.Available))
+        {
+            var orders = await _purchaseRepo.GetByProductIdAsync(productId);
+            if (target == ProductStatus.Sold &&
+                orders.Any(o => o.Status != "cancel"))
+                throw new InvalidOperationException("该商品已有订单，不能手工标记为已售");
+            if (current == ProductStatus.Sold && target == ProductStatus.Available &&
+                orders.Any(o => o.Status == "success"))
+                throw new InvalidOperationException("该商品已有完成订单，不能重新上架");
+        }
+
         // 重新上架前检查账号状态
         if (target == ProductStatus.Available && current != ProductStatus.Available)
         {
@@ -297,13 +314,28 @@ public class ProductService : IProductService
 
         }
 
+        // purchase.product_id 使用 Restrict 外键。先检查关联订单，避免先删图片
+        // 再因商品删除失败，造成“商品还在但图片没了”的半删除状态。
+        var relatedOrders = await _purchaseRepo.GetByProductIdAsync(productId);
+        if (relatedOrders.Count > 0)
+            throw new InvalidOperationException("商品存在关联订单，无法删除；如需停止展示，请将商品下架");
+
         var imageIds = product.Images.Select(i => i.ImgFileId).ToList();
+        // 先删除商品并让数据库级联删除图片关联记录；只有商品删除成功后才清理文件，
+        // 这样外键冲突不会留下“商品还在但图片已被清掉”的不一致状态。
+        _productRepo.Delete(product);
+        try
+        {
+            await _productRepo.SaveAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // 订单可能在预检查后并发创建，保持商品和图片完整并返回可理解的业务错误。
+            throw new InvalidOperationException("商品存在关联订单，无法删除；如需停止展示，请将商品下架");
+        }
+
         if (imageIds.Count > 0)
             await _prodImage.DeleteProductImagesAsync(imageIds);
-        product.Images.Clear();
-
-        _productRepo.Delete(product);
-        await _productRepo.SaveAsync();
         return true;
 
     }

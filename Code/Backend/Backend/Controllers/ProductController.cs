@@ -115,11 +115,21 @@ public class ProductController : ControllerBase
     [Authorize]
     public async Task<ActionResult> Delete(long id)
     {
-
-        var userId = int.Parse(User.FindFirst("userId")!.Value);
-        var result = await _productService.DeleteAsync(id, userId);
-        if (!result) return NotFound();
-        return NoContent();
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var result = await _productService.DeleteAsync(id, userId);
+            if (!result) return NotFound();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+        }
 
     }
 
@@ -147,7 +157,7 @@ public class ProductController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Unauthorized(new { error = ex.Message });
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
         }
     }
 

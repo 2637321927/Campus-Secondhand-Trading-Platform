@@ -31,6 +31,13 @@ export const adminRoutes: RouteRecordRaw[] = [
         component: () => import('../../views/admin/product/ProductManageView.vue'),
         meta: { title: '商品管理' }
       },
+      // ========== 管理员专用商品详情页 ==========
+      {
+        path: 'products/:productId',
+        name: 'AdminProductDetail',
+        component: () => import('../../views/admin/product/AdminProductDetailView.vue'),
+        meta: { title: '商品详情' }
+      },
       // 用户管理
       {
         path: 'users',

@@ -45,6 +45,7 @@ import type {
 import { formatDate } from '../../utils/format'
 import UserAvatar from '../../components/common/UserAvatar.vue'
 import { useProductImages } from '../../composables/useProductImages'
+import { getProductStatusText } from '../../utils/productStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -124,35 +125,21 @@ const sellerLoading = ref(false)
 const sellerErrorMessage = ref('')
 
 function getStatusText(status: ProductStatus): string {
-  if (status === 0) {
-    return '在售'
-  }
-
-  if (status === 1) {
-    return '已售'
-  }
-
-  if (status === 2) {
-    return '已下架'
-  }
-
-  return '未知状态'
+  return getProductStatusText(status)
 }
 
 function getStatusClass(status: ProductStatus): string {
-  if (status === 0) {
-    return 'status-available'
+  switch (status) {
+    case 0:
+      return 'status-available'
+    case 1:
+      return 'status-sold'
+    case 3:
+    case 5:
+      return 'status-pending'
+    default:
+      return 'status-removed'
   }
-
-  if (status === 1) {
-    return 'status-sold'
-  }
-
-  if (status === 2) {
-    return 'status-removed'
-  }
-
-  return 'status-removed'
 }
 
 function getShippingTypeText(shippingType: number): string {
@@ -2046,6 +2033,11 @@ onBeforeUnmount(() => {
 .status-removed {
   color: #69746f;
   background: #edf0ef;
+}
+
+.status-pending {
+  color: #b25e20;
+  background: #fdf0e3;
 }
 
 .status-draft {
