@@ -104,6 +104,7 @@ public class SearchService : ISearchService
 
         var baseQuery = _db.Products.AsNoTracking()
             .Where(p => p.UserId == request.UserId!.Value)
+            .Where(p => p.Status == ProductStatus.Available)
             .Where(p => p.Name.Contains(keyword)
                 || (p.Info != null && p.Info.Contains(keyword)));
 
