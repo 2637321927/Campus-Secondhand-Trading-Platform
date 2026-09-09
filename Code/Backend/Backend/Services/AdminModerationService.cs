@@ -16,6 +16,7 @@ public class AdminModerationService : IAdminModerationService
     private const string RestrictPublish = "restrict_publish";
     private const string UnbanUser = "unban_user";
     private const string WarnUser = "warn_user";
+    private const string Approve = "approve";
 
     private readonly IWorkOrderRepository _workOrderRepo;
     private readonly IWorkOrderTimelineRepository _timelineRepo;
@@ -61,11 +62,23 @@ public class AdminModerationService : IAdminModerationService
         int pageSize)
         => await GetPageAsync((int)WorkOrderType.Appeal, keyword, status, targetType, page, pageSize);
 
+    public async Task<AdminModerationPageDto> GetWorkOrdersAsync(
+        string? type,
+        string? keyword,
+        string? status,
+        string? targetType,
+        int page,
+        int pageSize)
+        => await GetPageAsync(ParseWorkOrderType(type), keyword, status, targetType, page, pageSize);
+
     public async Task<AdminModerationDetailDto?> GetReportDetailAsync(long reportId)
         => await GetDetailAsync(reportId, (int)WorkOrderType.Report);
 
     public async Task<AdminModerationDetailDto?> GetAppealDetailAsync(long appealId)
         => await GetDetailAsync(appealId, (int)WorkOrderType.Appeal);
+
+    public async Task<AdminModerationDetailDto?> GetWorkOrderDetailAsync(long workOrderId)
+        => await GetDetailAsync(workOrderId, null);
 
     public async Task<AdminModerationDetailDto?> AcceptReportAsync(long reportId, int adminId)
     {
@@ -157,6 +170,45 @@ public class AdminModerationService : IAdminModerationService
         return await GetAppealDetailAsync(appealId);
     }
 
+    public async Task<AdminModerationDetailDto?> RejectWorkOrderAsync(long workOrderId, int adminId)
+    {
+        var workOrder = await GetWorkOrderForActionAsync(workOrderId);
+        if (workOrder == null) return null;
+
+        workOrder.Status = "done";
+        workOrder.Result = "rejected";
+        workOrder.AdminId = adminId;
+        workOrder.ResponseTime = DateTime.Now;
+
+        var note = workOrder.Type == (int)WorkOrderType.Report ? "举报不成立" : "申诉驳回";
+        await AddTimelineAsync(workOrderId, "reject", note, adminId);
+        await _workOrderRepo.SaveAsync();
+        return await GetWorkOrderDetailAsync(workOrderId);
+    }
+
+    public async Task<AdminModerationDetailDto?> ProcessWorkOrderAsync(
+        long workOrderId,
+        HandleWorkOrderDto dto,
+        int adminId)
+    {
+        var workOrder = await GetWorkOrderForActionAsync(workOrderId);
+        if (workOrder == null) return null;
+
+        if (workOrder.Type == (int)WorkOrderType.Report)
+        {
+            await ProcessReportInternalAsync(workOrder, dto, adminId);
+            return await GetWorkOrderDetailAsync(workOrderId);
+        }
+
+        if (workOrder.Type == (int)WorkOrderType.Appeal)
+        {
+            await ProcessAppealInternalAsync(workOrder, dto, adminId);
+            return await GetWorkOrderDetailAsync(workOrderId);
+        }
+
+        throw new ArgumentException("不支持的工单类型");
+    }
+
     public async Task<AdminModerationDetailDto?> ReplyAppealAsync(
         long appealId,
         WorkOrderReplyDto dto,
@@ -195,7 +247,7 @@ public class AdminModerationService : IAdminModerationService
     }
 
     private async Task<AdminModerationPageDto> GetPageAsync(
-        int type,
+        int? type,
         string? keyword,
         string? status,
         string? targetType,
@@ -218,10 +270,10 @@ public class AdminModerationService : IAdminModerationService
         };
     }
 
-    private async Task<AdminModerationDetailDto?> GetDetailAsync(long workOrderId, int expectedType)
+    private async Task<AdminModerationDetailDto?> GetDetailAsync(long workOrderId, int? expectedType)
     {
         var workOrder = await _workOrderRepo.GetDetailAsync(workOrderId);
-        if (workOrder == null || workOrder.Type != expectedType) return null;
+        if (workOrder == null || (expectedType.HasValue && workOrder.Type != expectedType.Value)) return null;
 
         var dto = ToListItem(workOrder);
         var timeline = await _timelineRepo.GetByWorkOrderIdAsync(workOrderId);
@@ -260,10 +312,65 @@ public class AdminModerationService : IAdminModerationService
         };
     }
 
+    private async Task ProcessReportInternalAsync(WorkOrder workOrder, HandleWorkOrderDto dto, int adminId)
+    {
+        if (!AllowedHandleActions.Contains(dto.Action.Trim()))
+            throw new ArgumentException("不支持的处理动作");
+
+        await ApplyHandleActionAsync(workOrder, dto.Action.Trim(), dto.Reason.Trim(), adminId);
+
+        workOrder.Status = "done";
+        workOrder.Result = "handled";
+        workOrder.HandleAction = dto.Action.Trim();
+        workOrder.Response = dto.Reason.Trim();
+        workOrder.AdminId = adminId;
+        workOrder.ResponseTime = DateTime.Now;
+
+        await AddTimelineAsync(workOrder.WorkOrderId, "handle", dto.Reason.Trim(), adminId);
+        await _workOrderRepo.SaveAsync();
+    }
+
+    private async Task ProcessAppealInternalAsync(WorkOrder workOrder, HandleWorkOrderDto dto, int adminId)
+    {
+        if (!string.Equals(dto.Action.Trim(), Approve, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("申诉处理动作仅支持 approve");
+
+        var reversal = GetReversalAction(workOrder.AppealAgainst?.HandleAction);
+        if (reversal != None)
+            await ApplyHandleActionAsync(workOrder, reversal, dto.Reason.Trim(), adminId);
+
+        workOrder.Status = "done";
+        workOrder.Result = "approved";
+        workOrder.HandleAction = reversal;
+        workOrder.Response = dto.Reason.Trim();
+        workOrder.AdminId = adminId;
+        workOrder.ResponseTime = DateTime.Now;
+
+        await AddTimelineAsync(workOrder.WorkOrderId, "handle", dto.Reason.Trim(), adminId);
+        await _workOrderRepo.SaveAsync();
+    }
+
+    private static int? ParseWorkOrderType(string? type)
+        => type?.Trim().ToLowerInvariant() switch
+        {
+            null or "" => null,
+            "report" => (int)WorkOrderType.Report,
+            "appeal" => (int)WorkOrderType.Appeal,
+            _ => throw new ArgumentException("不支持的工单类型")
+        };
+
     private async Task<WorkOrder?> GetWorkOrderForActionAsync(long workOrderId, int expectedType)
     {
         var workOrder = await _workOrderRepo.GetDetailAsync(workOrderId);
         if (workOrder == null || workOrder.Type != expectedType) return null;
+        if (workOrder.Status == "done") throw new InvalidOperationException("该工单已处理完成");
+        return workOrder;
+    }
+
+    private async Task<WorkOrder?> GetWorkOrderForActionAsync(long workOrderId)
+    {
+        var workOrder = await _workOrderRepo.GetDetailAsync(workOrderId);
+        if (workOrder == null) return null;
         if (workOrder.Status == "done") throw new InvalidOperationException("该工单已处理完成");
         return workOrder;
     }

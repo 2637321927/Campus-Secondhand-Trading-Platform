@@ -50,14 +50,16 @@ public class WorkOrderRepository : IWorkOrderRepository
     }
 
     public async Task<(List<WorkOrder> Items, int Total)> GetAdminPageAsync(
-        int type,
+        int? type,
         string? keyword,
         string? status,
         string? targetType,
         int page,
         int pageSize)
     {
-        var query = _context.WorkOrders.Where(w => w.Type == type);
+        var query = type.HasValue
+            ? _context.WorkOrders.Where(w => w.Type == type.Value)
+            : _context.WorkOrders.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
