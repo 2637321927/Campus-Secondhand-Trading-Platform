@@ -155,8 +155,15 @@ public class CreateAnnouncementDto
     public string Title { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "公告内容不能为空")]
-    [MaxLength(500, ErrorMessage = "公告内容最多500个字符")]
-    public string Info { get; set; } = string.Empty;
+    [MaxLength(2000, ErrorMessage = "公告内容最多2000个字符")]
+    public string Content { get; set; } = string.Empty;
+
+    public bool IsPinned { get; set; }
+
+    /// <summary>
+    /// draft=草稿，published=发布
+    /// </summary>
+    public string Status { get; set; } = "published";
 }
 
 /// <summary>
@@ -165,8 +172,42 @@ public class CreateAnnouncementDto
 public class AnnouncementDto
 {
     public int AnnouncementId { get; set; }
+    public int Id => AnnouncementId;
     public string Title { get; set; } = string.Empty;
-    public string Info { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public bool IsPinned { get; set; }
+    public string Status { get; set; } = "published";
     public DateTime ReleaseTime { get; set; }
+    public DateTime PublishTime => ReleaseTime;
     public int AdminId { get; set; }
+}
+
+public class AnnouncementPageDto
+{
+    public List<AnnouncementDto> Items { get; set; } = new();
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / Math.Max(1, PageSize));
+}
+
+public class UpdateAnnouncementDto
+{
+    [MaxLength(100)]
+    public string? Title { get; set; }
+
+    [MaxLength(2000)]
+    public string? Content { get; set; }
+
+    public bool? IsPinned { get; set; }
+
+    public string? Status { get; set; }
+}
+
+public class AnnouncementStatisticsDto
+{
+    public int Total { get; set; }
+    public int Published { get; set; }
+    public int Draft { get; set; }
+    public int Archived { get; set; }
 }

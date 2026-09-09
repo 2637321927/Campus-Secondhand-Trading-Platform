@@ -8,11 +8,16 @@ namespace Backend.Dtos.Admin;
 public class AdminModerationWorkOrderDto
 {
     public long WorkOrderId { get; set; }
+    public long ReportId { get; set; }
+    public long AppealId { get; set; }
     public int Type { get; set; }
     public string? TargetType { get; set; }
     public long? TargetId { get; set; }
+    public string? TargetName { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string? Info { get; set; }
+    public string? Description { get; set; }
+    public string? Content { get; set; }
     public string Status { get; set; } = "waiting";
     public string? Result { get; set; }
     public string? HandleAction { get; set; }
@@ -21,6 +26,8 @@ public class AdminModerationWorkOrderDto
     public DateTime? ResponseTime { get; set; }
     public int InitiatorId { get; set; }
     public string InitiatorName { get; set; } = string.Empty;
+    public string ReporterName { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
     public int? AccusedId { get; set; }
     public string? AccusedName { get; set; }
     public long? ProductId { get; set; }
@@ -95,5 +102,14 @@ public class AdminModerationTasksDto
     public int ProcessingCount { get; set; }
     public int ReportCount { get; set; }
     public int AppealCount { get; set; }
-    public List<AdminModerationWorkOrderDto> RecentTasks { get; set; } = new();
+    public List<AdminModerationTaskDto> RecentTasks { get; set; } = new();
+}
+
+public class AdminModerationTaskDto
+{
+    public long Id { get; set; }
+    public string Type { get; set; } = "report";
+    public string Title { get; set; } = string.Empty;
+    public string Status { get; set; } = "waiting";
+    public DateTime CreateTime { get; set; }
 }

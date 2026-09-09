@@ -190,7 +190,14 @@ public class AdminModerationService : IAdminModerationService
             ReportCount = reports.Total,
             AppealCount = appeals.Total,
             TotalPending = await _workOrderRepo.Query().CountAsync(w => w.Status != "done"),
-            RecentTasks = all.Select(ToListItem).ToList()
+            RecentTasks = all.Select(w => new AdminModerationTaskDto
+            {
+                Id = w.WorkOrderId,
+                Type = w.Type == (int)WorkOrderType.Report ? "report" : "appeal",
+                Title = w.Reason,
+                Status = w.Status,
+                CreateTime = w.CreateTime
+            }).ToList()
         };
     }
 
@@ -229,11 +236,16 @@ public class AdminModerationService : IAdminModerationService
         return new AdminModerationDetailDto
         {
             WorkOrderId = dto.WorkOrderId,
+            ReportId = dto.ReportId,
+            AppealId = dto.AppealId,
             Type = dto.Type,
             TargetType = dto.TargetType,
             TargetId = dto.TargetId,
+            TargetName = dto.TargetName,
             Reason = dto.Reason,
             Info = dto.Info,
+            Description = dto.Description,
+            Content = dto.Content,
             Status = dto.Status,
             Result = dto.Result,
             HandleAction = dto.HandleAction,
@@ -242,6 +254,8 @@ public class AdminModerationService : IAdminModerationService
             ResponseTime = dto.ResponseTime,
             InitiatorId = dto.InitiatorId,
             InitiatorName = dto.InitiatorName,
+            ReporterName = dto.ReporterName,
+            UserName = dto.UserName,
             AccusedId = dto.AccusedId,
             AccusedName = dto.AccusedName,
             ProductId = dto.ProductId,
@@ -370,11 +384,16 @@ public class AdminModerationService : IAdminModerationService
     private static AdminModerationWorkOrderDto ToListItem(WorkOrder w) => new()
     {
         WorkOrderId = w.WorkOrderId,
+        ReportId = w.WorkOrderId,
+        AppealId = w.WorkOrderId,
         Type = w.Type,
         TargetType = w.TargetType,
         TargetId = w.TargetId,
+        TargetName = ResolveTargetName(w),
         Reason = w.Reason,
         Info = w.Info,
+        Description = w.Info,
+        Content = string.IsNullOrWhiteSpace(w.Info) ? w.Reason : w.Info,
         Status = w.Status,
         Result = w.Result,
         HandleAction = w.HandleAction,
@@ -383,6 +402,8 @@ public class AdminModerationService : IAdminModerationService
         ResponseTime = w.ResponseTime,
         InitiatorId = w.InitiatorId,
         InitiatorName = w.Initiator?.UserName ?? "",
+        ReporterName = w.Initiator?.UserName ?? "",
+        UserName = w.Initiator?.UserName ?? "",
         AccusedId = w.AccusedId,
         AccusedName = w.Accused?.UserName,
         ProductId = w.ProductId,
@@ -391,4 +412,17 @@ public class AdminModerationService : IAdminModerationService
         AppealAgainstReason = w.AppealAgainst?.Reason,
         AdminId = w.AdminId
     };
+
+    private static string? ResolveTargetName(WorkOrder w)
+    {
+        if (!string.IsNullOrEmpty(w.TargetType))
+        {
+            if (w.TargetType.Equals("product", StringComparison.OrdinalIgnoreCase))
+                return w.Product?.Name;
+            if (w.TargetType.Equals("user", StringComparison.OrdinalIgnoreCase))
+                return w.Accused?.UserName;
+        }
+
+        return w.Product?.Name ?? w.Accused?.UserName;
+    }
 }
