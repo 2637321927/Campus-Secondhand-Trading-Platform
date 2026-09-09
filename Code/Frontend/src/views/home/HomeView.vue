@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getHomeData, getHotProducts } from '../../api/modules/home'
+import { getRecommendedProducts } from '../../api/modules/recommend'
 import type { HomeResponseDto } from '../../types/api/home'
 import type { CategoryDto } from '../../types/api/category'
 import type { ProductCardDto } from '../../types/api/product'
@@ -11,6 +12,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const homeData = ref<HomeResponseDto | null>(null)
 const hotProducts = ref<ProductCardDto[]>([])
+const recommendProducts = ref<ProductCardDto[]>([])
 const router = useRouter()
 
 async function loadHomeData(): Promise<void> {
@@ -28,6 +30,15 @@ async function loadHomeData(): Promise<void> {
     console.error('首页数据加载失败：', error)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadRecommended(): Promise<void> {
+  try {
+    const response = await getRecommendedProducts(8)
+    recommendProducts.value = response.data ?? []
+  } catch (error) {
+    console.error('推荐商品加载失败：', error)
   }
 }
 
@@ -79,6 +90,7 @@ function onParentCategoryClick(category: {
 
 onMounted(() => {
   loadHomeData()
+  void loadRecommended()
 })
 </script>
 
@@ -203,6 +215,24 @@ onMounted(() => {
             <span class="empty-state__icon" aria-hidden="true">□</span>
             <h3>暂时还没有分类</h3>
             <p>分类数据上线后会显示在这里</p>
+          </div>
+        </section>
+
+        <section v-if="recommendProducts.length > 0" class="home-section" aria-labelledby="recommend-title">
+          <div class="section-header">
+            <div>
+              <h2 id="recommend-title">为您推荐</h2>
+              <p>根据您的浏览和收藏推荐</p>
+            </div>
+            <el-button text class="section-more" @click="goToProductList">查看更多 <span aria-hidden="true">→</span></el-button>
+          </div>
+
+          <div class="product-grid">
+            <ProductCard
+              v-for="product in recommendProducts"
+              :key="product.productId"
+              :product="product"
+            />
           </div>
         </section>
 

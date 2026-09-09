@@ -16,8 +16,11 @@ import {
 import { getProductDetail } from '../../api/modules/product'
 import type {
   ProductDto,
-  ProductStatus
+  ProductStatus,
+  ProductCardDto
 } from '../../types/api/product'
+import { getRelatedProducts } from '../../api/modules/recommend'
+import ProductCard from '../../components/product/ProductCard.vue'
 import { getPublicUser } from '../../api/modules/user'
 import type { PublicUserDto } from '../../types/api/user'
 import { createConversation } from '../../api/modules/conversation'
@@ -62,6 +65,7 @@ const authStore=useAuthStore()
 const isCollected = ref(false)
 const collectionLoading = ref(false)
 const favoriteCount = ref(0)
+const relatedProducts = ref<ProductCardDto[]>([])
 const contactLoading = ref(false)
 
 const comments = ref<ProductCommentDto[]>([])
@@ -270,6 +274,23 @@ async function loadFavoriteCount(
     favoriteCount.value = response.data.count ?? 0
   } catch (error) {
     console.error('收藏人数加载失败：', error)
+  }
+}
+
+async function loadRelated(
+  requestedProductId: number,
+  version = detailLoadVersion
+): Promise<void> {
+  try {
+    const response = await getRelatedProducts(requestedProductId, 4)
+
+    if (version !== detailLoadVersion) {
+      return
+    }
+
+    relatedProducts.value = response.data ?? []
+  } catch (error) {
+    console.error('猜你想看加载失败：', error)
   }
 }
 
@@ -744,6 +765,11 @@ async function loadProduct(): Promise<void> {
     )
 
     void loadFavoriteCount(
+      requestedProductId,
+      currentVersion
+    )
+
+    void loadRelated(
       requestedProductId,
       currentVersion
     )
@@ -1605,6 +1631,26 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
+
+      <!-- 猜你想看 -->
+      <section
+        v-if="relatedProducts.length > 0"
+        class="detail-section related-section"
+      >
+        <div class="section-title comment-title">
+          <div>
+            <h2>猜你想看</h2>
+          </div>
+        </div>
+
+        <div class="related-grid">
+          <ProductCard
+            v-for="product in relatedProducts"
+            :key="product.productId"
+            :product="product"
+          />
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -2085,6 +2131,19 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   align-items: center;
   gap: 10px;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+@media (max-width: 1000px) {
+  .related-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .comment-section {

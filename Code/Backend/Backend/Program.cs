@@ -67,6 +67,7 @@ builder.Services.AddScoped<IAddressService, AddressService>();
 builder.Services.AddScoped<IAdminUserManagementService, AdminUserManagementService>();
 builder.Services.AddScoped<IAdminProductManagementService, AdminProductManagementService>();
 builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
+builder.Services.AddScoped<IRecommendService, RecommendService>();
 builder.Services.AddScoped<IAdminOrderService, AdminOrderService>();
 
 // 搜索引擎 — 分词 + 词条图 + 搜索
