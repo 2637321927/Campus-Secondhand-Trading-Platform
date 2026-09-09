@@ -127,6 +127,12 @@ export interface AdminWorkOrder {
 
 export interface AdminWorkOrderDetail extends AdminWorkOrder {
   timeline: AdminWorkOrderTimeline[]
+  attachments: AdminWorkOrderAttachment[]
+}
+
+export interface AdminWorkOrderAttachment {
+  fileId: number
+  fileName: string
 }
 
 export interface AdminWorkOrderTimeline {
