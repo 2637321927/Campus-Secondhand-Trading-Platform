@@ -144,3 +144,29 @@ public class NotificationDto
     public DateTime CreateTime { get; set; }
     public bool IsRead { get; set; }
 }
+
+/// <summary>
+/// 管理员发布公告请求
+/// </summary>
+public class CreateAnnouncementDto
+{
+    [Required(ErrorMessage = "公告标题不能为空")]
+    [MaxLength(100, ErrorMessage = "公告标题最多100个字符")]
+    public string Title { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "公告内容不能为空")]
+    [MaxLength(500, ErrorMessage = "公告内容最多500个字符")]
+    public string Info { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// 公告响应
+/// </summary>
+public class AnnouncementDto
+{
+    public int AnnouncementId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Info { get; set; } = string.Empty;
+    public DateTime ReleaseTime { get; set; }
+    public int AdminId { get; set; }
+}
