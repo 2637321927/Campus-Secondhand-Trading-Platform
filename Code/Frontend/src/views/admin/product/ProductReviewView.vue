@@ -51,7 +51,7 @@
           <template #default="{ row }">
             <div class="product-info">
               <el-image
-                :src="getProductImage(row)"
+                :src="getProductImageUrl(row.coverImageFileId)"
                 class="product-cover"
                 fit="cover"
               >
@@ -144,31 +144,25 @@ const rejectDialogVisible = ref(false)
 const rejectReason = ref('')
 const currentProduct = ref<any>(null)
 
-// ========== 获取商品图片 ==========
-const getProductImage = (row: any) => {
-  if (row.coverImage) return row.coverImage
-  if (row.coverImageUrl) return row.coverImageUrl
-  if (row.imageUrl) return row.imageUrl
-  if (row.image) return row.image
-  
-  if (row.images && Array.isArray(row.images) && row.images.length > 0) {
-    const firstImage = row.images[0]
-    if (typeof firstImage === 'string') return firstImage
-    if (firstImage.imgUrl) return firstImage.imgUrl
-  }
-  
-  return '/default-product.png'
+// ========== 获取商品图片 URL ==========
+// 根据对接说明，使用 /api/files/{fileId} 接口
+const getProductImageUrl = (fileId: number | null | undefined) => {
+  if (!fileId) return '/default-product.png'
+  return `/api/files/${fileId}`
 }
 
+// ========== 加载待审核商品列表 ==========
 const loadData = async () => {
   loading.value = true
   try {
+    // ✅ 使用 getPendingProducts，不是 getAdminProducts
     const res = await getPendingProducts(page.value, pageSize.value)
     console.log('待审核商品响应:', res)
     
-    const responseData = res?.data || res || {}
-    productList.value = responseData.items || responseData.list || responseData.records || []
-    total.value = responseData.totalCount || responseData.total || 0
+    // 直接使用 res.data
+    const data = res.data
+    productList.value = data.items || []
+    total.value = data.totalCount || 0
   } catch (error: any) {
     console.error('加载失败:', error)
     ElMessage.error(error?.message || '加载失败')
@@ -191,7 +185,6 @@ const loadStatistics = async () => {
 // ========== 查看详情 - 跳转到普通用户商品详情页 ==========
 const viewDetail = (row: any) => {
   console.log('查看商品详情:', row.productId)
-  // 跳转到普通用户的商品详情页
   router.push(`/products/${row.productId}`)
 }
 

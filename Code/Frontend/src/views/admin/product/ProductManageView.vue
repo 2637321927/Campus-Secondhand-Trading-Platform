@@ -98,7 +98,7 @@
           <template #default="{ row }">
             <div class="product-info">
               <el-image
-                :src="getProductImage(row)"
+                :src="getProductImageUrl(row.coverImageFileId)"
                 class="product-cover"
                 fit="cover"
               >
@@ -138,7 +138,6 @@
         </el-table-column>
         <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
-            <!-- 详情按钮 - 跳转到普通用户商品详情页 -->
             <el-button size="small" type="primary" @click="viewDetail(row)">
               详情
             </el-button>
@@ -274,20 +273,12 @@ const removeDialogVisible = ref(false)
 const removeReason = ref('')
 const removeTarget = ref<any>(null)
 
-// ========== 获取商品图片 ==========
-const getProductImage = (row: any) => {
-  if (row.coverImage) return row.coverImage
-  if (row.coverImageUrl) return row.coverImageUrl
-  if (row.imageUrl) return row.imageUrl
-  if (row.image) return row.image
-  
-  if (row.images && Array.isArray(row.images) && row.images.length > 0) {
-    const firstImage = row.images[0]
-    if (typeof firstImage === 'string') return firstImage
-    if (firstImage.imgUrl) return firstImage.imgUrl
-  }
-  
-  return '/default-product.png'
+// ========== 获取商品图片 URL ==========
+// 根据对接说明，使用 /api/files/{fileId} 接口
+const getProductImageUrl = (fileId: number | null | undefined) => {
+  if (!fileId) return '/default-product.png'
+  // 使用文件下载接口
+  return `/api/files/${fileId}`
 }
 
 // 状态映射
@@ -313,9 +304,10 @@ const loadData = async () => {
     
     console.log('商品列表响应:', res)
     
-    const responseData = res?.data || res || {}
-    productList.value = responseData.items || responseData.list || responseData.records || []
-    total.value = responseData.totalCount || responseData.total || 0
+    // 根据类型定义，直接使用 items 和 totalCount
+    const data = res.data
+    productList.value = data.items || []
+    total.value = data.totalCount || 0
     
   } catch (error: any) {
     console.error('加载商品列表失败:', error)
@@ -361,7 +353,6 @@ const resetSearch = () => {
 // ========== 查看详情 - 跳转到普通用户商品详情页 ==========
 const viewDetail = (row: any) => {
   console.log('跳转到商品详情:', row.productId)
-  // 跳转到普通用户的商品详情页
   router.push(`/products/${row.productId}`)
 }
 
