@@ -11,7 +11,7 @@ public interface IWorkOrderRepository
     Task<List<WorkOrder>> GetByStatusAsync(string status);
     Task<List<WorkOrder>> GetRelatedByUserIdAsync(int userId, int type, string? status, bool includeAccused);
     Task<(List<WorkOrder> Items, int Total)> GetAdminPageAsync(
-        int type,
+        int? type,
         string? keyword,
         string? status,
         string? targetType,

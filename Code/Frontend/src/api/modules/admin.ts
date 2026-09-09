@@ -7,8 +7,10 @@ import type {
   AdminUserListParams,
   AdminUserListItem,
   AdminUserDetail,
-  ReportListParams,
-  ReportDetail
+  AdminWorkOrderListParams,
+  AdminWorkOrderDetail,
+  AdminWorkOrderPage,
+  ModerationTasks
 } from '../../types/api/admin'
 
 // ==================== 商品管理 ====================
@@ -167,64 +169,34 @@ export function getOrderDetail(orderId: string) {
   return request.get(`/api/admin/orders/${orderId}`)
 }
 
-// ==================== 举报与申诉管理 ====================
+// ==================== 工单管理 ====================
 
-// 举报列表
-export function getReports(params: ReportListParams) {
-  return request.get('/api/admin/reports', { params })
+// 工单列表（统一举报与申诉）
+export function getWorkOrders(params: AdminWorkOrderListParams) {
+  return request.get<AdminWorkOrderPage>('/api/admin/work-orders', { params })
 }
 
-// 举报详情
-export function getReportDetail(reportId: number) {
-  return request.get<ReportDetail>(`/api/admin/reports/${reportId}`)
+// 工单详情
+export function getWorkOrderDetail(workOrderId: number) {
+  return request.get<AdminWorkOrderDetail>(`/api/admin/work-orders/${workOrderId}`)
 }
 
-// 举报成立
-export function acceptReport(reportId: number) {
-  return request.patch(`/api/admin/reports/${reportId}/accept`)
+// 驳回工单
+export function rejectWorkOrder(workOrderId: number) {
+  return request.patch(`/api/admin/work-orders/${workOrderId}/reject`)
 }
 
-// 举报不成立
-export function rejectReport(reportId: number) {
-  return request.patch(`/api/admin/reports/${reportId}/reject`)
-}
-
-// 举报综合处理
-export function handleReport(reportId: number, data: {
-  action: 'none' | 'remove_product' | 'restore_product' | 'ban_user' | 'mute_user' | 'restrict_publish' | 'unban_user' | 'warn_user'
+// 处理工单
+export function processWorkOrder(workOrderId: number, data: {
+  action: 'none' | 'remove_product' | 'restore_product' | 'ban_user' | 'mute_user' | 'restrict_publish' | 'unban_user' | 'warn_user' | 'approve'
   reason: string
 }) {
-  return request.patch(`/api/admin/reports/${reportId}/handle`, data)
-}
-
-// 申诉列表
-export function getAppeals(params: { keyword?: string; status?: string; page?: number; pageSize?: number }) {
-  return request.get('/api/admin/appeals', { params })
-}
-
-// 申诉详情
-export function getAppealDetail(appealId: number) {
-  return request.get(`/api/admin/appeals/${appealId}`)
-}
-
-// 申诉通过
-export function approveAppeal(appealId: number) {
-  return request.patch(`/api/admin/appeals/${appealId}/approve`)
-}
-
-// 申诉驳回
-export function rejectAppeal(appealId: number) {
-  return request.patch(`/api/admin/appeals/${appealId}/reject`)
-}
-
-// 管理员回复申诉
-export function replyAppeal(appealId: number, data: { reply: string }) {
-  return request.post(`/api/admin/appeals/${appealId}/reply`, data)
+  return request.patch<AdminWorkOrderDetail>(`/api/admin/work-orders/${workOrderId}/handle`, data)
 }
 
 // 管理员待办任务
 export function getModerationTasks() {
-  return request.get('/api/admin/moderation/tasks')
+  return request.get<ModerationTasks>('/api/admin/moderation/tasks')
 }
 
 // ==================== 公告管理 ====================
@@ -313,22 +285,4 @@ export interface UserStatistics {
   totalWorkOrders?: number
   pendingWorkOrders?: number
   totalWarnings: number
-}
-
-// 待办任务
-export interface ModerationTasks {
-  totalPending: number
-  waitingCount: number
-  processingCount: number
-  reportCount: number
-  appealCount: number
-  recentTasks: ModerationTask[]
-}
-
-export interface ModerationTask {
-  id: number
-  type: 'report' | 'appeal'
-  title: string
-  status: 'waiting' | 'processing'
-  createTime: string
 }

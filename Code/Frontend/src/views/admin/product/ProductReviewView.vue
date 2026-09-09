@@ -1,5 +1,3 @@
-// Review the products pending listing
-
 <template>
   <div class="product-review">
     <!-- 统计卡片 -->
@@ -7,7 +5,7 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.pendingReviewCount }}</div>
+            <div class="stat-number">{{ statistics.pendingReviewCount || 0 }}</div>
             <div class="stat-label">待审核</div>
           </div>
         </el-card>
@@ -15,12 +13,27 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.totalProducts }}</div>
+            <div class="stat-number">{{ statistics.totalProducts || 0 }}</div>
             <div class="stat-label">商品总数</div>
           </div>
         </el-card>
       </el-col>
-      <!-- 更多统计... -->
+      <el-col :span="6">
+        <el-card>
+          <div class="stat-item">
+            <div class="stat-number">{{ statistics.rejectedCount || 0 }}</div>
+            <div class="stat-label">已驳回</div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card>
+          <div class="stat-item">
+            <div class="stat-number">{{ statistics.availableCount || 0 }}</div>
+            <div class="stat-label">在售</div>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
 
     <!-- 商品列表 -->
@@ -32,15 +45,30 @@
         </div>
       </template>
 
-      <el-table :data="productList" v-loading="loading">
+      <el-table :data="productList" v-loading="loading" border>
         <el-table-column prop="productId" label="ID" width="80" />
-        <el-table-column prop="name" label="商品名称" min-width="150" />
-        <el-table-column prop="price" label="价格" width="100">
-          <template #default="{ row }">¥{{ row.price }}</template>
+        <el-table-column label="商品信息" min-width="200">
+          <template #default="{ row }">
+            <div class="product-info">
+              <el-image
+                :src="getProductImage(row)"
+                class="product-cover"
+                fit="cover"
+              >
+                <template #error>
+                  <div class="image-placeholder">暂无</div>
+                </template>
+              </el-image>
+              <div>
+                <div class="product-name">{{ row.name }}</div>
+                <div class="product-price">¥{{ Number(row.price).toFixed(2) }}</div>
+              </div>
+            </div>
+          </template>
         </el-table-column>
         <el-table-column prop="sellerName" label="卖家" width="120" />
         <el-table-column prop="categoryName" label="分类" width="100" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button type="success" size="small" @click="handleApprove(row)">
               通过
@@ -59,7 +87,11 @@
         v-model:current-page="page"
         v-model:page-size="pageSize"
         :total="total"
+        :page-sizes="[10, 20, 50, 100]"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="loadData"
         @current-change="loadData"
+        class="pagination"
       />
     </el-card>
 
@@ -85,6 +117,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getPendingProducts,
@@ -93,29 +126,52 @@ import {
   getProductStatistics
 } from '../../../api/modules/admin' 
 
+const router = useRouter()
 const loading = ref(false)
-const productList = ref([])
+const productList = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
+
 const statistics = ref({
   totalProducts: 0,
   pendingReviewCount: 0,
-  // ...
+  rejectedCount: 0,
+  availableCount: 0
 })
 
 const rejectDialogVisible = ref(false)
 const rejectReason = ref('')
 const currentProduct = ref<any>(null)
 
+// ========== 获取商品图片 ==========
+const getProductImage = (row: any) => {
+  if (row.coverImage) return row.coverImage
+  if (row.coverImageUrl) return row.coverImageUrl
+  if (row.imageUrl) return row.imageUrl
+  if (row.image) return row.image
+  
+  if (row.images && Array.isArray(row.images) && row.images.length > 0) {
+    const firstImage = row.images[0]
+    if (typeof firstImage === 'string') return firstImage
+    if (firstImage.imgUrl) return firstImage.imgUrl
+  }
+  
+  return '/default-product.png'
+}
+
 const loadData = async () => {
   loading.value = true
   try {
     const res = await getPendingProducts(page.value, pageSize.value)
-    productList.value = res.data.items
-    total.value = res.data.totalCount
-  } catch (error) {
-    ElMessage.error('加载失败')
+    console.log('待审核商品响应:', res)
+    
+    const responseData = res?.data || res || {}
+    productList.value = responseData.items || responseData.list || responseData.records || []
+    total.value = responseData.totalCount || responseData.total || 0
+  } catch (error: any) {
+    console.error('加载失败:', error)
+    ElMessage.error(error?.message || '加载失败')
   } finally {
     loading.value = false
   }
@@ -123,21 +179,34 @@ const loadData = async () => {
 
 const loadStatistics = async () => {
   try {
-    statistics.value = (await getProductStatistics()).data
+    const res = await getProductStatistics()
+    console.log('统计响应:', res)
+    const data = res?.data || res || {}
+    statistics.value = data
   } catch (error) {
     console.error('加载统计失败', error)
   }
 }
 
+// ========== 查看详情 - 跳转到普通用户商品详情页 ==========
+const viewDetail = (row: any) => {
+  console.log('查看商品详情:', row.productId)
+  // 跳转到普通用户的商品详情页
+  router.push(`/products/${row.productId}`)
+}
+
 const handleApprove = async (row: any) => {
   try {
-    await ElMessageBox.confirm(`确定要通过商品 "${row.name}" 的审核吗？`, '提示')
+    await ElMessageBox.confirm(`确定要通过商品 "${row.name}" 的审核吗？`, '审核通过', {
+      type: 'success'
+    })
     await approveProduct(row.productId)
     ElMessage.success('审核通过')
     loadData()
     loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('审核通过失败:', error)
       ElMessage.error('操作失败')
     }
   }
@@ -163,13 +232,9 @@ const confirmReject = async () => {
     loadData()
     loadStatistics()
   } catch (error) {
+    console.error('驳回失败:', error)
     ElMessage.error('操作失败')
   }
-}
-
-const viewDetail = (_row: any) => {
-  // 跳转到商品详情页
-  // router.push(`/admin/products/${_row.productId}`)
 }
 
 onMounted(() => {
@@ -201,5 +266,42 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.product-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.product-cover {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: #f5f7f6;
+}
+.image-placeholder {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7f6;
+  color: #ccc;
+  font-size: 12px;
+  border-radius: 8px;
+}
+.product-name {
+  font-weight: 500;
+}
+.product-price {
+  color: #f56c6c;
+  font-weight: bold;
+}
+.table-card {
+  margin-top: 20px;
+}
+.pagination {
+  margin-top: 20px;
+  justify-content: flex-end;
 }
 </style>

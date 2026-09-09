@@ -1,4 +1,3 @@
-// 商品管理
 <template>
   <div class="product-manage">
     <!-- 统计卡片 -->
@@ -6,7 +5,7 @@
       <el-col :span="4">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.totalProducts }}</div>
+            <div class="stat-number">{{ statistics.totalProducts || 0 }}</div>
             <div class="stat-label">商品总数</div>
           </div>
         </el-card>
@@ -14,7 +13,7 @@
       <el-col :span="4">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.availableCount }}</div>
+            <div class="stat-number">{{ statistics.availableCount || 0 }}</div>
             <div class="stat-label">在售</div>
           </div>
         </el-card>
@@ -22,7 +21,7 @@
       <el-col :span="4">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.pendingReviewCount }}</div>
+            <div class="stat-number">{{ statistics.pendingReviewCount || 0 }}</div>
             <div class="stat-label">待审核</div>
           </div>
         </el-card>
@@ -30,7 +29,7 @@
       <el-col :span="4">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.rejectedCount }}</div>
+            <div class="stat-number">{{ statistics.rejectedCount || 0 }}</div>
             <div class="stat-label">已驳回</div>
           </div>
         </el-card>
@@ -38,7 +37,7 @@
       <el-col :span="4">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.removedCount }}</div>
+            <div class="stat-number">{{ statistics.removedCount || 0 }}</div>
             <div class="stat-label">已下架</div>
           </div>
         </el-card>
@@ -46,7 +45,7 @@
       <el-col :span="4">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ statistics.soldCount }}</div>
+            <div class="stat-number">{{ statistics.soldCount || 0 }}</div>
             <div class="stat-label">已售</div>
           </div>
         </el-card>
@@ -95,17 +94,26 @@
     <el-card class="table-card">
       <el-table :data="productList" v-loading="loading" border>
         <el-table-column prop="productId" label="ID" width="70" />
-        <el-table-column label="商品信息" min-width="200">
+        <el-table-column label="商品信息" min-width="250">
           <template #default="{ row }">
             <div class="product-info">
               <el-image
-                :src="row.coverImage || '/default-image.png'"
+                :src="getProductImage(row)"
                 class="product-cover"
                 fit="cover"
-              />
+              >
+                <template #error>
+                  <div class="image-placeholder">
+                    <span>暂无图片</span>
+                  </div>
+                </template>
+              </el-image>
               <div>
                 <div class="product-name">{{ row.name }}</div>
-                <div class="product-price">¥{{ row.price }}</div>
+                <div class="product-price">¥{{ Number(row.price).toFixed(2) }}</div>
+                <div v-if="row.imageCount" class="product-image-count">
+                  📷 {{ row.imageCount }}张图片
+                </div>
               </div>
             </div>
           </template>
@@ -128,8 +136,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
+            <!-- 详情按钮 - 跳转到普通用户商品详情页 -->
             <el-button size="small" type="primary" @click="viewDetail(row)">
               详情
             </el-button>
@@ -265,8 +274,24 @@ const removeDialogVisible = ref(false)
 const removeReason = ref('')
 const removeTarget = ref<any>(null)
 
+// ========== 获取商品图片 ==========
+const getProductImage = (row: any) => {
+  if (row.coverImage) return row.coverImage
+  if (row.coverImageUrl) return row.coverImageUrl
+  if (row.imageUrl) return row.imageUrl
+  if (row.image) return row.image
+  
+  if (row.images && Array.isArray(row.images) && row.images.length > 0) {
+    const firstImage = row.images[0]
+    if (typeof firstImage === 'string') return firstImage
+    if (firstImage.imgUrl) return firstImage.imgUrl
+  }
+  
+  return '/default-product.png'
+}
+
 // 状态映射
-const statusMap = {
+const statusMap: Record<number, { text: string; type: string }> = {
   0: { text: '在售', type: 'success' },
   1: { text: '已售', type: 'info' },
   2: { text: '已下架', type: 'danger' },
@@ -274,8 +299,8 @@ const statusMap = {
   4: { text: '已驳回', type: 'danger' }
 }
 
-const getStatusText = (status: number) => statusMap[status as keyof typeof statusMap]?.text || '未知'
-const getStatusType = (status: number) => statusMap[status as keyof typeof statusMap]?.type || 'info'
+const getStatusText = (status: number) => statusMap[status]?.text || '未知'
+const getStatusType = (status: number) => statusMap[status]?.type || 'info'
 
 const loadData = async () => {
   loading.value = true
@@ -285,10 +310,16 @@ const loadData = async () => {
       page: page.value,
       pageSize: pageSize.value
     })
-    productList.value = res.data.items || []
-    total.value = res.data.totalCount || 0
-  } catch (error) {
-    ElMessage.error('加载商品列表失败')
+    
+    console.log('商品列表响应:', res)
+    
+    const responseData = res?.data || res || {}
+    productList.value = responseData.items || responseData.list || responseData.records || []
+    total.value = responseData.totalCount || responseData.total || 0
+    
+  } catch (error: any) {
+    console.error('加载商品列表失败:', error)
+    ElMessage.error(error?.message || '加载商品列表失败')
   } finally {
     loading.value = false
   }
@@ -296,7 +327,10 @@ const loadData = async () => {
 
 const loadStatistics = async () => {
   try {
-    statistics.value = (await getProductStatistics()).data
+    const res = await getProductStatistics()
+    console.log('商品统计响应:', res)
+    const data = res?.data || res || {}
+    statistics.value = data
   } catch (error) {
     console.error('加载统计数据失败', error)
   }
@@ -305,7 +339,7 @@ const loadStatistics = async () => {
 const loadCategories = async () => {
   try {
     const res = await getCategories()
-    categories.value = res.data || []
+    categories.value = res?.data || []
   } catch (error) {
     console.error('加载分类失败', error)
   }
@@ -324,8 +358,11 @@ const resetSearch = () => {
   loadData()
 }
 
+// ========== 查看详情 - 跳转到普通用户商品详情页 ==========
 const viewDetail = (row: any) => {
-  router.push(`/admin/products/${row.productId}`)
+  console.log('跳转到商品详情:', row.productId)
+  // 跳转到普通用户的商品详情页
+  router.push(`/products/${row.productId}`)
 }
 
 const handleApprove = async (row: any) => {
@@ -339,6 +376,7 @@ const handleApprove = async (row: any) => {
     loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('审核通过失败:', error)
       ElMessage.error('操作失败')
     }
   }
@@ -364,6 +402,7 @@ const confirmReject = async () => {
     loadData()
     loadStatistics()
   } catch (error) {
+    console.error('驳回失败:', error)
     ElMessage.error('操作失败')
   }
 }
@@ -380,15 +419,23 @@ const confirmRemove = async () => {
     return
   }
   try {
+    console.log('下架商品参数:', {
+      productId: removeTarget.value.productId,
+      reason: removeReason.value
+    })
+    
     await removeProduct(removeTarget.value.productId, {
       reason: removeReason.value
     })
+    
     ElMessage.success('已下架')
     removeDialogVisible.value = false
     loadData()
     loadStatistics()
-  } catch (error) {
-    ElMessage.error('操作失败')
+  } catch (error: any) {
+    console.error('下架失败:', error)
+    const msg = error?.response?.data?.message || error?.message || '操作失败'
+    ElMessage.error(msg)
   }
 }
 
@@ -403,6 +450,7 @@ const handleRestore = async (row: any) => {
     loadStatistics()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('恢复失败:', error)
       ElMessage.error('操作失败')
     }
   }
@@ -445,20 +493,38 @@ onMounted(() => {
 .product-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 .product-cover {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   border-radius: 8px;
-  object-fit: cover;
+  flex-shrink: 0;
+  background: #f5f7f6;
+}
+.image-placeholder {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7f6;
+  color: #ccc;
+  font-size: 12px;
+  border-radius: 8px;
 }
 .product-name {
   font-weight: 500;
+  margin-bottom: 4px;
 }
 .product-price {
   color: #f56c6c;
   font-weight: bold;
+}
+.product-image-count {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
 }
 .stats-badge {
   display: flex;
