@@ -138,19 +138,19 @@
         <el-table-column label="类型" width="100">
           <template #default="{ row }">
             <el-tag :type="row.type === 'report' || row.type === 1 ? 'danger' : 'warning'">
-              {{ getTypeText(row) }}
+              {{ row.type === 'report' || row.type === 1 ? '举报' : '申诉' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="标题/原因" min-width="180">
           <template #default="{ row }">
-            {{ row.title || row.reason || '-' }}
+            {{ getReasonText(row.reason || row.title) }}
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'waiting' ? 'warning' : 'primary'">
-              {{ row.status === 'waiting' ? '待处理' : '处理中' }}
+            <el-tag :type="getStatusType(row.status)">
+              {{ getStatusText(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -210,17 +210,44 @@ const moderationTasks = ref({
   recentTasks: [] as any[]
 })
 
+// ========== 原因映射 ==========
+const reasonTextMap: Record<string, string> = {
+  fraud: '欺诈或虚假信息',
+  counterfeit: '假冒伪劣',
+  illegal: '违禁或违法内容',
+  harassment: '骚扰或恶意行为',
+  spam: '骚扰或垃圾信息',
+  product_removed: '商品被下架',
+  account_restricted: '账号受限',
+  report_result: '举报处理结果',
+  other: '其他'
+}
+
+const getReasonText = (reason: string) => {
+  if (!reason) return '-'
+  return reasonTextMap[reason] || reason
+}
+
+// ========== 状态映射（与 WorkOrderManageView 保持一致） ==========
+const statusTextMap: Record<string, string> = {
+  waiting: '待处理',
+  processing: '处理中',
+  done: '已完成'
+}
+
+const statusTypeMap: Record<string, 'warning' | 'primary' | 'success'> = {
+  waiting: 'warning',
+  processing: 'primary',
+  done: 'success'
+}
+
+const getStatusText = (status: string) => statusTextMap[status] || status || '未知'
+const getStatusType = (status: string) => statusTypeMap[status] || 'info'
+
+// ========== 工具函数 ==========
 const getPercent = (value: number, total: number) => {
   if (!total) return '0%'
   return `${(value / total * 100).toFixed(1)}%`
-}
-
-// ========== 获取类型文本（兼容不同数据格式） ==========
-const getTypeText = (row: any) => {
-  const type = row.type
-  if (type === 'report' || type === 1) return '举报'
-  if (type === 'appeal' || type === 2) return '申诉'
-  return '未知'
 }
 
 // ========== 加载数据 ==========
@@ -232,7 +259,6 @@ const loadData = async () => {
       getModerationTasks()
     ])
     
-    // 适配响应格式（与 WorkOrderManageView 保持一致）
     const productData = products?.data || products || {}
     const userData = users?.data || users || {}
     const taskData = tasks?.data || tasks || {}
@@ -252,7 +278,7 @@ const loadData = async () => {
   }
 }
 
-// ========== 跳转到工单详情（与 WorkOrderManageView 保持一致） ==========
+// ========== 跳转到工单详情 ==========
 const goToDetail = (row: any) => {
   const id = row.workOrderId || row.id
   router.push({
