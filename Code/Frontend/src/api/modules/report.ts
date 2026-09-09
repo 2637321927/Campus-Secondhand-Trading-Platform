@@ -1,6 +1,9 @@
+import type { AxiosResponse } from 'axios'
 import request from '../http'
+import type { FileUploadDto } from '../../types/api/file'
 import type {
     CreateReportDto,
+    ReportCommentInfoDto,
     ReportProductInfoDto,
     ReportReason,
     ReportUserInfoDto,
@@ -58,16 +61,24 @@ export function cancelReport(reportId: number) {
 /**
  * 上传举报附件
  */
-export function uploadReportAttachment(
+export async function uploadReportAttachment(
     reportId: number,
     file: File
-) {
-    const formData = new FormData()
-    formData.append('file', file)
+): Promise<AxiosResponse<WorkOrderDto>> {
+    const uploadFormData = new FormData()
+    uploadFormData.append('file', file)
+
+    const uploadResponse = await request.post<FileUploadDto>(
+        '/api/files/report-attachments',
+        uploadFormData
+    )
+
+    const bindFormData = new FormData()
+    bindFormData.append('fileId', String(uploadResponse.data.fileId))
 
     return request.post<WorkOrderDto>(
         `/api/reports/${reportId}/attachments`,
-        formData
+        bindFormData
     )
 }
 
@@ -77,6 +88,15 @@ export function uploadReportAttachment(
 export function getProductReportInfo(productId: number) {
     return request.get<ReportProductInfoDto>(
         `/api/products/${productId}/report-info`
+    )
+}
+
+/**
+ * 被举报评论的信息摘要
+ */
+export function getCommentReportInfo(commentId: number) {
+    return request.get<ReportCommentInfoDto>(
+        `/api/comments/${commentId}/report-info`
     )
 }
 
