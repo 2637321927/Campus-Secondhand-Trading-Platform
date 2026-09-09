@@ -6,8 +6,7 @@ import {
 } from 'element-plus'
 import {
   deleteProduct,
-  getProductDetail,
-  updateProduct
+  updateProductStatus
 } from '../../api/modules/product'
 import type {
   ProductStatus
@@ -32,25 +31,24 @@ type ActionName =
 
 const actionLoading = ref<ActionName | null>(null)
 
+function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as {
+      response?: { data?: { error?: unknown } }
+    }).response
+    if (typeof response?.data?.error === 'string') {
+      return response.data.error
+    }
+  }
+  return fallback
+}
+
 function isActionLoading(action: ActionName): boolean {
   return actionLoading.value === action
 }
 
 async function updateStatus(status: ProductStatus): Promise<void> {
-  const product = (await getProductDetail(props.productId)).data
-
-  await updateProduct(props.productId, {
-    name: product.name,
-    price: product.price,
-    info: product.info ?? '',
-    categoryId: product.categoryId,
-    status,
-    newImages: [],
-    toRemoveImageIds: [],
-    shippingType: product.shippingType,
-    shippingFee: product.shippingFee ?? null,
-    allowPickup: product.allowPickup
-  })
+  await updateProductStatus(props.productId, status)
 }
 
 async function confirmAction(
@@ -99,7 +97,7 @@ async function handleDelete(): Promise<void> {
     emit('deleted')
   } catch (error) {
     console.error('删除商品失败：', error)
-    ElMessage.error('删除商品失败，请稍后重试')
+    ElMessage.error(getApiErrorMessage(error, '删除商品失败，请稍后重试'))
   } finally {
     actionLoading.value = null
   }
@@ -228,6 +226,7 @@ async function handleOffline(): Promise<void> {
     </el-button>
 
     <el-button
+      v-if="status !== 5"
       type="danger"
       plain
       :loading="isActionLoading('delete')"

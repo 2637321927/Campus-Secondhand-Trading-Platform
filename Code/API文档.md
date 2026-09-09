@@ -278,7 +278,7 @@ GET /api/products/{productId}
 | name | string | 商品名 |
 | price | decimal | 价格 |
 | info | string? | 描述 |
-| status | int | 0=在售, 1=已售, 2=已下架 |
+| status | int | 0=在售, 1=已售, 2=已下架, 3=待审核, 4=驳回, 5=交易中 |
 | userId | int | 卖家ID |
 | categoryId | long | 分类ID |
 | categoryName | string? | 分类名 |
@@ -326,7 +326,7 @@ PUT /api/products/{productId}    🔒 仅卖家
 | name | string | 商品名 |
 | price | decimal | 价格 |
 | info | string | 描述 |
-| status | int | 0=在售，1=已售，2=下架，3=待审核，4=驳回 |
+| status | int | 0=在售，1=已售，2=下架，3=待审核，4=驳回，5=交易中 |
 | categoryId | long | 分类ID |
 | newImages | file[] | 新增图片 |
 | toRemoveImageIds | long[] | 要删除的图片ID |
@@ -648,7 +648,7 @@ GET /api/admin/products?keyword=手机&status=3&categoryId=1&sellerId=23&page=1&
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | keyword | string | ❌ | 商品名/描述/卖家昵称 |
-| status | int | ❌ | 0=在售，1=已售，2=下架，3=待审核，4=驳回 |
+| status | int | ❌ | 0=在售，1=已售，2=下架，3=待审核，4=驳回，5=交易中 |
 | categoryId | long | ❌ | 分类ID |
 | sellerId | int | ❌ | 卖家ID |
 | page / pageSize | int | ❌ | 分页 |
