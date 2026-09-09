@@ -206,6 +206,27 @@
                 {{ selectedOrder.info || '用户未填写详细说明' }}
               </p>
             </div>
+            <div v-if="selectedOrder.attachments?.length" class="content-block">
+              <div class="content-label">附件（{{ selectedOrder.attachments.length }}）</div>
+              <div class="attachment-list">
+                <div
+                  v-for="attachment in selectedOrder.attachments"
+                  :key="attachment.fileId"
+                  class="attachment-item"
+                >
+                  <el-icon class="attachment-icon"><Download /></el-icon>
+                  <span class="attachment-name">{{ attachment.fileName }}</span>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    @click="downloadAttachment(attachment)"
+                  >
+                    下载
+                  </el-button>
+                </div>
+              </div>
+            </div>
             <div v-if="selectedOrder.appealAgainstWorkOrderId" class="content-block">
               <div class="content-label">申诉关联工单</div>
               <p class="content-text">
@@ -292,6 +313,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Download } from '@element-plus/icons-vue'
 import {
   getModerationTasks,
   getWorkOrderDetail,
@@ -299,8 +321,10 @@ import {
   processWorkOrder,
   rejectWorkOrder
 } from '../../../api/modules/admin'
+import request from '../../../api/http'
 import type {
   AdminWorkOrder,
+  AdminWorkOrderAttachment,
   AdminWorkOrderDetail,
   AdminWorkOrderFilterType,
   AdminWorkOrderStatus,
@@ -494,6 +518,22 @@ const openDetailById = async (workOrderId: number) => {
   }
 }
 
+const downloadAttachment = async (attachment: AdminWorkOrderAttachment) => {
+  try {
+    const response = await request.get(`/api/files/${attachment.fileId}`, {
+      responseType: 'blob'
+    })
+    const url = URL.createObjectURL(response.data as Blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = attachment.fileName
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '附件下载失败'))
+  }
+}
+
 const isUserCancelled = (error: unknown) => error === 'cancel'
 
 const handleReject = async (row: AdminWorkOrder) => {
@@ -676,6 +716,38 @@ onMounted(async () => {
   line-height: 1.6;
   margin: 4px 0 0;
   word-break: break-word;
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.attachment-item {
+  align-items: center;
+  background: #f7faf9;
+  border: 1px solid #e2e8e6;
+  border-radius: 6px;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 12px;
+}
+
+.attachment-icon {
+  color: #24735b;
+  flex: 0 0 auto;
+}
+
+.attachment-name {
+  color: #333;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timeline-title {
