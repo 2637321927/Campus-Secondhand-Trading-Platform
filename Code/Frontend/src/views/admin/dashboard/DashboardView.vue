@@ -131,15 +131,17 @@
       </template>
       <el-empty v-if="!moderationTasks.recentTasks?.length" description="暂无待处理任务" />
       <el-table v-else :data="moderationTasks.recentTasks" border>
-        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column prop="workOrderId" label="工单ID" width="90" />
         <el-table-column prop="type" label="类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.type === 'report' ? 'danger' : 'warning'">
-              {{ row.type === 'report' ? '举报' : '申诉' }}
+            <el-tag :type="row.type === 1 ? 'danger' : 'warning'">
+              {{ row.type === 1 ? '举报' : '申诉' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="200" />
+        <el-table-column prop="reason" label="发起原因" min-width="180">
+          <template #default="{ row }">{{ row.reason }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'waiting' ? 'warning' : 'primary'">
@@ -153,7 +155,7 @@
         <el-table-column label="操作" width="120">
           <template #default="{ row }">
             <el-button size="small" type="primary" @click="goToDetail(row)">
-              处理
+              详情
             </el-button>
           </template>
         </el-table-column>
@@ -169,7 +171,8 @@ import {
   getProductStatistics,
   getUserStatistics,
   getModerationTasks
-}  from '../../../api/modules/admin'
+} from '../../../api/modules/admin'
+import type { ModerationTasks } from '../../../types/api/admin'
 
 const router = useRouter()
 
@@ -194,7 +197,7 @@ const userStats = ref({
   totalWarnings: 0
 })
 
-const moderationTasks = ref({
+const moderationTasks = ref<ModerationTasks>({
   totalPending: 0,
   waitingCount: 0,
   processingCount: 0,
@@ -223,12 +226,11 @@ const loadData = async () => {
   }
 }
 
-const goToDetail = (row: any) => {
-  if (row.type === 'report') {
-    router.push(`/admin/reports/${row.id}`)
-  } else {
-    router.push(`/admin/appeals/${row.id}`)
-  }
+const goToDetail = (row: { workOrderId: number }) => {
+  router.push({
+    name: 'AdminWorkOrderManage',
+    query: { focusId: String(row.workOrderId) }
+  })
 }
 
 const formatDate = (date: string) => {
