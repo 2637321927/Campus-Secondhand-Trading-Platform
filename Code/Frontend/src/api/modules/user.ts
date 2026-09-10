@@ -24,7 +24,8 @@ export async function getPublicUser(
 
     return {
         userId: response.data.userId,
-        userName: response.data.userName
+        userName: response.data.userName,
+        avatarFileId: response.data.avatarFileId ?? null
     }
 }
 

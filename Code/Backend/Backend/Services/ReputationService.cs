@@ -109,4 +109,16 @@ public class ReputationService : IReputationService
             CompletedWorkOrders = 0       // TODO: 接入WorkOrder查询
         };
     }
+
+    public async Task ChangeCreditAsync(int userId, int delta)
+    {
+        if (delta == 0) return;
+
+        var normUser = await _normUserRepo.GetByIdAsync(userId);
+        if (normUser == null) return; // 管理员或无 norm_user，不参与信誉
+
+        normUser.Credit = Math.Clamp(normUser.Credit + delta, CreditRules.Min, CreditRules.Max);
+        _normUserRepo.Update(normUser);
+        await _normUserRepo.SaveAsync();
+    }
 }

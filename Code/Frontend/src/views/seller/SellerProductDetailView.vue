@@ -26,6 +26,10 @@ import type {
 import type { ProductCommentDto } from '../../types/api/comment'
 import SellerProductActions from '../../components/product/SellerProductActions.vue'
 import { useProductImages } from '../../composables/useProductImages'
+import {
+  getProductStatusText,
+  getProductStatusTagType
+} from '../../utils/productStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -86,37 +90,13 @@ const commentCount = computed(() =>
 )
 
 function getStatusText(status: ProductStatus): string {
-  if (status === 0) {
-    return '在售'
-  }
-
-  if (status === 1) {
-    return '已售'
-  }
-
-  if (status === 2) {
-    return '已下架'
-  }
-
-  return '未知状态'
+  return getProductStatusText(status)
 }
 
 function getStatusType(
   status: ProductStatus
-): 'success' | 'warning' | 'info' | 'danger' {
-  if (status === 0) {
-    return 'success'
-  }
-
-  if (status === 1) {
-    return 'info'
-  }
-
-  if (status === 2) {
-    return 'danger'
-  }
-
-  return 'warning'
+): 'success' | 'warning' | 'info' | 'danger' | 'primary' {
+  return getProductStatusTagType(status)
 }
 
 function getShippingTypeLabel(

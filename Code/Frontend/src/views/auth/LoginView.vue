@@ -68,11 +68,11 @@ const rules = reactive<FormRules<LoginForm>>({
   ]
 })
 
-function getSafeRedirect(): string {
+function getSafeRedirect(): string | null {
   const redirect = route.query.redirect
 
   if (typeof redirect !== 'string') {
-    return '/'
+    return null
   }
 
   // 只能跳转到站内路径
@@ -80,7 +80,7 @@ function getSafeRedirect(): string {
     !redirect.startsWith('/') ||
     redirect.startsWith('//')
   ) {
-    return '/'
+    return null
   }
 
   // 防止登录后再次跳回认证页面
@@ -88,7 +88,7 @@ function getSafeRedirect(): string {
     redirect.startsWith('/login') ||
     redirect.startsWith('/register')
   ) {
-    return '/'
+    return null
   }
 
   return redirect
@@ -116,7 +116,9 @@ async function handleLogin(): Promise<void> {
     await authStore.loginAction(requestData)
     ElMessage.success('登录成功')
     const redirectPath = getSafeRedirect()
-    await router.replace(redirectPath)
+    const targetPath = redirectPath
+      ?? (authStore.isAdmin ? '/admin/dashboard' : '/')
+    await router.replace(targetPath)
   } 
   catch (error) {
     console.error('登录失败', error)

@@ -3,7 +3,7 @@
 
 export interface AdminProductListParams {
   keyword?: string
-  status?: 0 | 1 | 2 | 3 | 4  // 0=在售 1=已售 2=下架 3=待审核 4=驳回
+  status?: 0 | 1 | 2 | 3 | 4 | 5  // 0=在售 1=已售 2=下架 3=待审核 4=驳回 5=交易中
   categoryId?: number
   sellerId?: number
   page?: number
@@ -15,7 +15,10 @@ export interface AdminProductListItem {
   name: string
   price: number
   info: string | null
-  status: 0 | 1 | 2 | 3 | 4
+  status: 0 | 1 | 2 | 3 | 4 | 5
+  releaseDate: string
+  userId: number
+  categoryId: number
   sellerName: string
   categoryName: string | null
   viewCount: number
@@ -33,8 +36,7 @@ export interface AdminProductDetail extends AdminProductListItem {
 }
 
 export interface AdminProductImage {
-  imgId: number
-  imgUrl: string
+  fileId: number
   imgIndex: number
 }
 
@@ -85,43 +87,77 @@ export interface AdminUserDetail extends AdminUserListItem {
   avatarFileId: number | null
 }
 
-// ==================== 举报管理类型 ====================
+// ==================== 工单管理类型 ====================
 
-export interface ReportListParams {
+export type AdminWorkOrderFilterType = 'report' | 'appeal'
+export type AdminWorkOrderStatus = 'waiting' | 'processing' | 'done'
+export type AdminWorkOrderTargetType = 'product' | 'user' | 'comment' | 'message' | 'order'
+export type AdminWorkOrderResult = 'accepted' | 'rejected' | 'handled' | 'approved'
+
+export interface AdminWorkOrderListParams {
   keyword?: string
-  status?: 'waiting' | 'processing' | 'done'
-  targetType?: 'product' | 'user' | 'comment' | 'message' | 'order'
+  status?: AdminWorkOrderStatus
+  type?: AdminWorkOrderFilterType
+  targetType?: AdminWorkOrderTargetType
   page?: number
   pageSize?: number
 }
 
-export interface ReportDetail {
-  reportId: number
-  reporterId: number
-  reporterName: string
-  targetType: string
-  targetId: number
-  targetName: string
+export interface AdminWorkOrder {
+  workOrderId: number
+  type: 1 | 2
+  targetType: AdminWorkOrderTargetType | null
+  targetId: number | null
   reason: string
-  description: string | null
-  status: 'waiting' | 'processing' | 'done'
-  result: 'accepted' | 'rejected' | null
+  info: string | null
+  status: AdminWorkOrderStatus
+  result: AdminWorkOrderResult | null
+  handleAction: string | null
   createTime: string
-  attachments: ReportAttachment[]
-  timeline: ReportTimeline[]
+  response: string | null
+  responseTime: string | null
+  initiatorId: number
+  initiatorName: string
+  accusedId: number | null
+  accusedName: string | null
+  productId: number | null
+  productName: string | null
+  appealAgainstWorkOrderId: number | null
+  appealAgainstReason: string | null
+  adminId: number | null
 }
 
-export interface ReportAttachment {
+export interface AdminWorkOrderDetail extends AdminWorkOrder {
+  timeline: AdminWorkOrderTimeline[]
+  attachments: AdminWorkOrderAttachment[]
+}
+
+export interface AdminWorkOrderAttachment {
   fileId: number
-  fileUrl: string
   fileName: string
 }
 
-export interface ReportTimeline {
-  id: number
+export interface AdminWorkOrderTimeline {
+  timelineId: number
   action: string
-  description: string
-  operatorId: number
-  operatorName: string
+  note: string | null
+  adminId: number | null
   createTime: string
+}
+
+export interface AdminWorkOrderPage {
+  items: AdminWorkOrder[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+export interface ModerationTasks {
+  totalPending: number
+  waitingCount: number
+  processingCount: number
+  reportCount: number
+  appealCount: number
+  recentTasks: AdminWorkOrder[]
 }

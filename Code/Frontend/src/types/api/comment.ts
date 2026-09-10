@@ -3,6 +3,7 @@ export interface ProductCommentDto {
     content: string
     userId: number
     userName: string
+    avatarFileId?: number | null
     createTime: string
     responseToId: number | null
     replies: ProductCommentDto[]

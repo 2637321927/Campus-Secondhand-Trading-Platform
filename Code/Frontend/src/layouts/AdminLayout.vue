@@ -32,13 +32,9 @@
           <el-icon><List /></el-icon>
           <span>订单管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/reports">
-          <el-icon><Warning /></el-icon>
-          <span>举报处理</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/appeals">
-          <el-icon><ChatDotRound /></el-icon>
-          <span>申诉处理</span>
+        <el-menu-item index="/admin/work-orders">
+          <el-icon><Tickets /></el-icon>
+          <span>工单管理</span>
         </el-menu-item>
         <el-menu-item index="/admin/announcements">
           <el-icon><Notification /></el-icon>
@@ -71,10 +67,9 @@ import {
   Document,
   Goods,
   User,
-  Warning,
-  ChatDotRound,
   List,
-  Notification
+  Notification,
+  Tickets
 } from '@element-plus/icons-vue'
 
 const router = useRouter()

@@ -278,7 +278,7 @@ GET /api/products/{productId}
 | name | string | 商品名 |
 | price | decimal | 价格 |
 | info | string? | 描述 |
-| status | int | 0=在售, 1=已售, 2=已下架 |
+| status | int | 0=在售, 1=已售, 2=已下架, 3=待审核, 4=驳回, 5=交易中 |
 | userId | int | 卖家ID |
 | categoryId | long | 分类ID |
 | categoryName | string? | 分类名 |
@@ -326,7 +326,7 @@ PUT /api/products/{productId}    🔒 仅卖家
 | name | string | 商品名 |
 | price | decimal | 价格 |
 | info | string | 描述 |
-| status | int | 0=在售，1=已售，2=下架，3=待审核，4=驳回 |
+| status | int | 0=在售，1=已售，2=下架，3=待审核，4=驳回，5=交易中 |
 | categoryId | long | 分类ID |
 | newImages | file[] | 新增图片 |
 | toRemoveImageIds | long[] | 要删除的图片ID |
@@ -648,7 +648,7 @@ GET /api/admin/products?keyword=手机&status=3&categoryId=1&sellerId=23&page=1&
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | keyword | string | ❌ | 商品名/描述/卖家昵称 |
-| status | int | ❌ | 0=在售，1=已售，2=下架，3=待审核，4=驳回 |
+| status | int | ❌ | 0=在售，1=已售，2=下架，3=待审核，4=驳回，5=交易中 |
 | categoryId | long | ❌ | 分类ID |
 | sellerId | int | ❌ | 卖家ID |
 | page / pageSize | int | ❌ | 分页 |
@@ -780,8 +780,20 @@ GET /api/admin/products/{productId}/audit-logs    🔒 管理员
 
 ## 十一、管理员举报与申诉模块
 
-> 基础路径：`/api/admin/reports`、`/api/admin/appeals`、`/api/admin/moderation`  
+> 基础路径：`/api/admin/work-orders`、`/api/admin/reports`、`/api/admin/appeals`、`/api/admin/moderation`  
 > 所有接口需要管理员 Token
+
+### 50A. 管理员统一工单
+
+```text
+GET /api/admin/work-orders?type=report|appeal&keyword=违规&status=waiting&targetType=product&page=1&pageSize=20    🔒 管理员
+GET /api/admin/work-orders/{workOrderId}    🔒 管理员
+PATCH /api/admin/work-orders/{workOrderId}/reject    🔒 管理员
+PATCH /api/admin/work-orders/{workOrderId}/handle    🔒 管理员
+```
+
+统一工单列表省略 `type` 时返回举报和申诉的合并分页；`type` 可筛选 `report` 或 `appeal`。  
+处理请求体与举报综合处理一致；对申诉工单，`action` 固定传 `approve`，后端会撤销原处理。
 
 ### 51. 举报列表
 

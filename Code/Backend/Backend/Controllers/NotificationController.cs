@@ -32,7 +32,7 @@ public class NotificationController : ControllerBase
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<List<NotificationDto>>> List()
-        => Ok((await _announcements.GetAllAsync())
+        => Ok((await _announcements.GetPublishedAsync())
             .OrderByDescending(x => x.ReleaseTime)
             .Select(Map));
 
@@ -42,7 +42,8 @@ public class NotificationController : ControllerBase
     [HttpGet("{notificationId:int}")]
     public async Task<ActionResult<NotificationDto>> Get(int notificationId)
     {
-        var a = await _announcements.GetByIdAsync(notificationId);
+        var a = (await _announcements.GetPublishedAsync())
+            .FirstOrDefault(x => x.AnnouncementId == notificationId);
         return a == null ? NotFound() : Ok(Map(a));
     }
 
@@ -52,7 +53,9 @@ public class NotificationController : ControllerBase
     [HttpPatch("{notificationId:int}/read")]
     public async Task<IActionResult> Read(int notificationId)
     {
-        if (await _announcements.GetByIdAsync(notificationId) == null)
+        var exists = (await _announcements.GetPublishedAsync())
+            .Any(x => x.AnnouncementId == notificationId);
+        if (!exists)
             return NotFound();
         return NoContent();
     }
@@ -69,7 +72,8 @@ public class NotificationController : ControllerBase
     [HttpDelete("{notificationId:int}")]
     public async Task<IActionResult> Delete(int notificationId)
     {
-        var a = await _announcements.GetByIdAsync(notificationId);
+        var a = (await _announcements.GetPublishedAsync())
+            .FirstOrDefault(x => x.AnnouncementId == notificationId);
         if (a == null) return NotFound();
 
         _announcements.Delete(a);

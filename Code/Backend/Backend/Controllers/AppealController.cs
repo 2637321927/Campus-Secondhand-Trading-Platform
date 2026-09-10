@@ -3,6 +3,7 @@ using Backend.Models;
 using Backend.Models.Enums;
 using Backend.Repositories;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Backend.Controllers;
@@ -16,15 +17,21 @@ public class AppealController : ControllerBase
     private readonly IWorkOrderRepository _orders;
     private readonly IWorkOrderTimelineRepository _timeline;
     private readonly Backend.Services.IUpdatedFileService _files;
+    private readonly IProductRepository _products;
+    private readonly IBaseUserRepository _users;
 
     public AppealController(
         IWorkOrderRepository orders,
         IWorkOrderTimelineRepository timeline,
-        Backend.Services.IUpdatedFileService files)
+        Backend.Services.IUpdatedFileService files,
+        IProductRepository products,
+        IBaseUserRepository users)
     {
         _orders = orders;
         _timeline = timeline;
         _files = files;
+        _products = products;
+        _users = users;
     }
 
     private int Uid => int.Parse(User.FindFirst("userId")!.Value);
@@ -61,6 +68,49 @@ public class AppealController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<WorkOrderDto>> Create(CreateAppealDto dto)
     {
+        var targetType = dto.TargetType?.Trim().ToLowerInvariant();
+        long? targetId = dto.TargetId;
+        long? productId = null;
+        int? accusedId = null;
+
+        if (string.IsNullOrEmpty(targetType))
+        {
+            // 兼容旧的“对举报处理结果申诉”：仅绑定原工单，不指定新的申诉对象
+            if (!dto.AppealAgainstId.HasValue)
+                return BadRequest("请选择申诉类型");
+        }
+        else if (targetType == "product")
+        {
+            if (!targetId.HasValue || targetId <= 0)
+                return BadRequest("请选择要申诉的下架商品");
+
+            var product = await _products.GetByIdAsync(targetId.Value);
+            if (product == null)
+                return BadRequest("商品不存在");
+            if (product.UserId != Uid)
+                return BadRequest("只能申诉自己发布的商品");
+            if (product.Status != ProductStatus.Removed)
+                return BadRequest("只能对已下架的商品发起申诉");
+
+            productId = product.ProductId;
+            targetId = product.ProductId;
+        }
+        else if (targetType == "user")
+        {
+            var user = await _users.GetByIdWithProfileAsync(Uid);
+            if (user == null)
+                return BadRequest("用户不存在");
+            if (user.AccountStatus == AccountStatus.Normal)
+                return BadRequest("账号状态正常，无需申诉");
+
+            accusedId = Uid;
+            targetId = Uid;
+        }
+        else
+        {
+            return BadRequest("不支持的申诉对象类型");
+        }
+
         var workOrder = new WorkOrder
         {
             Type = (int)WorkOrderType.Appeal,
@@ -68,8 +118,10 @@ public class AppealController : ControllerBase
             Reason = dto.Reason.Trim(),
             Info = dto.Info?.Trim(),
             AppealAgainstWorkOrderId = dto.AppealAgainstId,
-            TargetType = dto.TargetType,
-            TargetId = dto.TargetId
+            TargetType = targetType,
+            TargetId = targetId,
+            ProductId = productId,
+            AccusedId = accusedId
         };
 
         await _orders.AddAsync(workOrder);
@@ -114,19 +166,35 @@ public class AppealController : ControllerBase
     }
 
     /// <summary>
-    /// 上传申诉附件：文件存到文件服务，文件 ID/名 以文本形式追加到工单 Info 字段
+    /// 为申诉绑定附件：上传走文件模块拿到 fileId 后，将文件 ID/名追加到工单 Info 字段；
+    /// 为兼容旧的直接上传方式，仍允许直接传 multipart 文件
     /// </summary>
     [HttpPost("{appealId:long}/attachments")]
-    public async Task<ActionResult<WorkOrderDto>> Attachment(long appealId, IFormFile file)
+    public async Task<ActionResult<WorkOrderDto>> Attachment(
+        long appealId,
+        [FromForm] long? fileId = null,
+        IFormFile? file = null)
     {
         var w = await Own(appealId);
         if (w == null) return NotFound();
 
-        if (file == null || file.Length == 0)
+        if (fileId == null && (file == null || file.Length == 0))
             return BadRequest("附件不能为空");
 
-        var uploaded = await _files.UploadMultipleAsync(new List<IFormFile> { file }, Uid);
-        var f = uploaded.Single();
+        UpdatedFile f;
+        if (fileId.HasValue)
+        {
+            var meta = await _files.GetActiveByIdAsync(fileId.Value);
+            if (meta == null || meta.UploaderId != Uid)
+                return BadRequest("附件不存在或不是当前用户上传");
+
+            f = meta;
+        }
+        else
+        {
+            var uploaded = await _files.UploadMultipleAsync(new List<IFormFile> { file! }, Uid);
+            f = uploaded.Single();
+        }
 
         w.Info = ((w.Info ?? string.Empty) + $"\n[附件:{f.FileId}:{f.FileName}]").Trim();
         _orders.Update(w);

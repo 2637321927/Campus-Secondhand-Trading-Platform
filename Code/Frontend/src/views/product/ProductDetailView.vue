@@ -16,15 +16,19 @@ import {
 import { getProductDetail } from '../../api/modules/product'
 import type {
   ProductDto,
-  ProductStatus
+  ProductStatus,
+  ProductCardDto
 } from '../../types/api/product'
+import { getRelatedProducts } from '../../api/modules/recommend'
+import ProductCard from '../../components/product/ProductCard.vue'
 import { getPublicUser } from '../../api/modules/user'
 import type { PublicUserDto } from '../../types/api/user'
 import { createConversation } from '../../api/modules/conversation'
 import { getApiErrorMessage } from '../../utils/error'
 import {
   getCollectionStatus,
-  toggleCollection
+  toggleCollection,
+  getProductCollectionCount
 } from '../../api/modules/collection'
 import { useAuthStore } from '../../stores/auth'
 import { 
@@ -37,7 +41,9 @@ import type {
   CreateProductCommentRequest
 } from '../../types/api/comment'
 import { formatDate } from '../../utils/format'
+import UserAvatar from '../../components/common/UserAvatar.vue'
 import { useProductImages } from '../../composables/useProductImages'
+import { getProductStatusText } from '../../utils/productStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,9 +62,14 @@ const selectedImageUrl = computed(() =>
 )
 
 const authStore=useAuthStore()
+const isMuted = computed(
+  () => authStore.currentUser?.accountStatus === 1
+)
 
 const isCollected = ref(false)
 const collectionLoading = ref(false)
+const favoriteCount = ref(0)
+const relatedProducts = ref<ProductCardDto[]>([])
 const contactLoading = ref(false)
 
 const comments = ref<ProductCommentDto[]>([])
@@ -112,35 +123,21 @@ const sellerLoading = ref(false)
 const sellerErrorMessage = ref('')
 
 function getStatusText(status: ProductStatus): string {
-  if (status === 0) {
-    return '在售'
-  }
-
-  if (status === 1) {
-    return '已售'
-  }
-
-  if (status === 2) {
-    return '已下架'
-  }
-
-  return '未知状态'
+  return getProductStatusText(status)
 }
 
 function getStatusClass(status: ProductStatus): string {
-  if (status === 0) {
-    return 'status-available'
+  switch (status) {
+    case 0:
+      return 'status-available'
+    case 1:
+      return 'status-sold'
+    case 3:
+    case 5:
+      return 'status-pending'
+    default:
+      return 'status-removed'
   }
-
-  if (status === 1) {
-    return 'status-sold'
-  }
-
-  if (status === 2) {
-    return 'status-removed'
-  }
-
-  return 'status-removed'
 }
 
 function getShippingTypeText(shippingType: number): string {
@@ -251,6 +248,42 @@ function goToReport(type: string, id: number): void {
   })
 }
 
+async function loadFavoriteCount(
+  requestedProductId: number,
+  version = detailLoadVersion
+): Promise<void> {
+  try {
+    const response = await getProductCollectionCount(
+      requestedProductId
+    )
+
+    if (version !== detailLoadVersion) {
+      return
+    }
+
+    favoriteCount.value = response.data.count ?? 0
+  } catch (error) {
+    console.error('收藏人数加载失败：', error)
+  }
+}
+
+async function loadRelated(
+  requestedProductId: number,
+  version = detailLoadVersion
+): Promise<void> {
+  try {
+    const response = await getRelatedProducts(requestedProductId, 4)
+
+    if (version !== detailLoadVersion) {
+      return
+    }
+
+    relatedProducts.value = response.data ?? []
+  } catch (error) {
+    console.error('猜你想看加载失败：', error)
+  }
+}
+
 async function handleFavorite(): Promise<void> {
   if(!product.value){
     return
@@ -279,6 +312,10 @@ async function handleFavorite(): Promise<void> {
   try{
     const response=await toggleCollection(product.value.productId)
     isCollected.value=response.data.isCollected
+    favoriteCount.value = Math.max(
+      0,
+      favoriteCount.value + (isCollected.value ? 1 : -1)
+    )
 
     ElMessage.success(
       isCollected.value ? '收藏成功' : '已取消收藏'
@@ -360,6 +397,11 @@ async function handleSubmitComment():Promise<void> {
     return
   }
 
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法发表留言')
+    return
+  }
+
   const content=commentContent.value
 
   if(!content){
@@ -384,6 +426,7 @@ async function handleSubmitComment():Promise<void> {
     await loadComments(product.value.productId)
   }
   catch(error){
+    ElMessage.error(getApiErrorMessage(error, '留言发表失败，请稍后重试'))
     console.error('留言发表失败',error)
   }
   finally{
@@ -407,6 +450,11 @@ async function handleStartReply(
     return
   }
 
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法回复留言')
+    return
+  }
+
   replyingToComment.value = comment
   replyContent.value = ''
 }
@@ -423,6 +471,11 @@ async function handleSubmitReply(): Promise<void> {
 
   if (!authStore.isLoggedIn) {
     ElMessage.warning('请先登录后再回复留言')
+    return
+  }
+
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法回复留言')
     return
   }
 
@@ -453,6 +506,7 @@ async function handleSubmitReply(): Promise<void> {
 
     await loadComments(product.value.productId)
   } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '回复留言失败，请稍后重试'))
     console.error('回复留言失败：', error)
   } finally {
     replySubmitting.value = false
@@ -717,6 +771,16 @@ async function loadProduct(): Promise<void> {
       currentVersion
     )
 
+    void loadFavoriteCount(
+      requestedProductId,
+      currentVersion
+    )
+
+    void loadRelated(
+      requestedProductId,
+      currentVersion
+    )
+
     void loadComments(
       requestedProductId,
       currentVersion
@@ -947,6 +1011,16 @@ onBeforeUnmount(() => {
 
             <div class="meta-item">
               <span class="meta-label">
+                收藏人数
+              </span>
+
+              <span class="meta-value">
+                {{ favoriteCount }} 人
+              </span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">
                 卖家编号
               </span>
 
@@ -1138,12 +1212,12 @@ onBeforeUnmount(() => {
           v-else-if="seller"
           class="seller-card"
         >
-          <el-avatar
+          <UserAvatar
             :size="56"
-            class="seller-avatar"
-          >
-            {{ seller.userName?.slice(0, 1) || '卖' }}
-          </el-avatar>
+            :name="seller.userName"
+            :file-id="seller.avatarFileId"
+            className="seller-avatar"
+          />
 
           <div class="seller-info">
             <strong>
@@ -1198,15 +1272,12 @@ onBeforeUnmount(() => {
         <div class="comment-composer">
           <template v-if="authStore.isLoggedIn">
             <div class="composer-user">
-              <el-avatar
+              <UserAvatar
                 :size="40"
-                class="composer-avatar"
-              >
-                {{
-                  authStore.currentUser?.userName
-                    ?.slice(0, 1) || '我'
-                }}
-              </el-avatar>
+                :name="authStore.currentUser?.userName"
+                :file-id="authStore.currentUser?.avatarFileId"
+                className="composer-avatar"
+              />
 
               <div class="composer-input">
                 <el-input
@@ -1214,8 +1285,8 @@ onBeforeUnmount(() => {
                   type="textarea"
                   :rows="3"
                   resize="none"
-                  placeholder="向卖家咨询商品成色、交易地点等信息"
-                  :disabled="commentSubmitting"
+                  :placeholder="isMuted ? '当前账号被禁言，无法发表留言' : '向卖家咨询商品成色、交易地点等信息'"
+                  :disabled="commentSubmitting || isMuted"
                   @keydown.ctrl.enter.prevent="handleSubmitComment"
                 />
 
@@ -1225,6 +1296,7 @@ onBeforeUnmount(() => {
                     :loading="commentSubmitting"
                     :disabled="
                       commentSubmitting ||
+                      isMuted ||
                       !commentContent.trim()
                     "
                     @click="handleSubmitComment"
@@ -1324,12 +1396,12 @@ onBeforeUnmount(() => {
             class="comment-item"
           >
             <!-- 留言用户头像 -->
-            <el-avatar
+            <UserAvatar
               :size="44"
-              class="comment-avatar"
-            >
-              {{ comment.userName?.slice(0, 1) || '用' }}
-            </el-avatar>
+              :name="comment.userName"
+              :file-id="comment.avatarFileId"
+              className="comment-avatar"
+            />
 
             <!-- 留言主体 -->
             <div class="comment-body">
@@ -1361,6 +1433,7 @@ onBeforeUnmount(() => {
                 <el-button
                   text
                   type="primary"
+                  :disabled="isMuted"
                   @click="handleStartReply(comment)"
                 >
                   回复
@@ -1411,8 +1484,8 @@ onBeforeUnmount(() => {
                   resize="none"
                   maxlength="300"
                   show-word-limit
-                  placeholder="输入回复内容"
-                  :disabled="replySubmitting"
+                  :placeholder="isMuted ? '当前账号被禁言，无法回复留言' : '输入回复内容'"
+                  :disabled="replySubmitting || isMuted"
                   @keydown.ctrl.enter.prevent="handleSubmitReply"
                 />
 
@@ -1434,6 +1507,7 @@ onBeforeUnmount(() => {
                       :loading="replySubmitting"
                       :disabled="
                         replySubmitting ||
+                        isMuted ||
                         !replyContent.trim()
                       "
                       @click="handleSubmitReply"
@@ -1454,12 +1528,12 @@ onBeforeUnmount(() => {
                   :key="reply.commentId"
                   class="reply-item"
                 >
-                  <el-avatar
+                  <UserAvatar
                     :size="34"
-                    class="reply-avatar"
-                  >
-                    {{ reply.userName?.slice(0, 1) || '用' }}
-                  </el-avatar>
+                    :name="reply.userName"
+                    :file-id="reply.avatarFileId"
+                    className="reply-avatar"
+                  />
 
                   <div class="reply-body">
                     <div class="reply-header">
@@ -1565,6 +1639,26 @@ onBeforeUnmount(() => {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- 猜你想看 -->
+      <section
+        v-if="relatedProducts.length > 0"
+        class="detail-section related-section"
+      >
+        <div class="section-title comment-title">
+          <div>
+            <h2>猜你想看</h2>
+          </div>
+        </div>
+
+        <div class="related-grid">
+          <ProductCard
+            v-for="product in relatedProducts"
+            :key="product.productId"
+            :product="product"
+          />
         </div>
       </section>
     </div>
@@ -1819,6 +1913,11 @@ onBeforeUnmount(() => {
   background: #edf0ef;
 }
 
+.status-pending {
+  color: #b25e20;
+  background: #fdf0e3;
+}
+
 .status-draft {
   color: #9b681f;
   background: #fff2d9;
@@ -2047,6 +2146,19 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   align-items: center;
   gap: 10px;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+@media (max-width: 1000px) {
+  .related-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .comment-section {

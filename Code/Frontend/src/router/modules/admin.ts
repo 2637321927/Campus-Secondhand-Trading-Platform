@@ -31,6 +31,13 @@ export const adminRoutes: RouteRecordRaw[] = [
         component: () => import('../../views/admin/product/ProductManageView.vue'),
         meta: { title: '商品管理' }
       },
+      // ========== 管理员专用商品详情页 ==========
+      {
+        path: 'products/:productId',
+        name: 'AdminProductDetail',
+        component: () => import('../../views/admin/product/AdminProductDetailView.vue'),
+        meta: { title: '商品详情' }
+      },
       // 用户管理
       {
         path: 'users',
@@ -52,19 +59,21 @@ export const adminRoutes: RouteRecordRaw[] = [
         component: () => import('../../views/admin/order/OrderManageView.vue'),
         meta: { title: '订单管理' }
       },
-      // 举报管理
+      // 工单管理（统一举报与申诉）
       {
-        path: 'reports',
-        name: 'ReportManage',
-        component: () => import('../../views/admin/report/ReportManageView.vue'),
-        meta: { title: '举报管理' }
+        path: 'work-orders',
+        name: 'AdminWorkOrderManage',
+        component: () => import('../../views/admin/workorder/WorkOrderManageView.vue'),
+        meta: { title: '工单管理' }
       },
-      // 申诉管理
+      // 兼容旧入口
       {
         path: 'appeals',
-        name: 'AppealManage',
-        component: () => import('../../views/admin/report/AppealManageView.vue'),
-        meta: { title: '申诉管理' }
+        redirect: { path: '/admin/work-orders', query: { type: 'appeal' } }
+      },
+      {
+        path: 'reports',
+        redirect: { path: '/admin/work-orders', query: { type: 'report' } }
       },
       // 公告管理
       {

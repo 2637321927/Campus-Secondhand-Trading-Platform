@@ -257,6 +257,7 @@ public class AdminProductManagementService : IAdminProductManagementService
             ViewCount = listItem.ViewCount,
             FavoriteCount = listItem.FavoriteCount,
             CommentCount = listItem.CommentCount,
+            CoverImageFileId = listItem.CoverImageFileId,
             ImageCount = listItem.ImageCount,
             RejectReason = listItem.RejectReason,
             ReviewedByAdminId = listItem.ReviewedByAdminId,
@@ -301,6 +302,10 @@ public class AdminProductManagementService : IAdminProductManagementService
         ViewCount = viewCount,
         FavoriteCount = favoriteCount,
         CommentCount = commentCount,
+        CoverImageFileId = product.Images?
+            .OrderBy(i => i.ImgIndex)
+            .Select(i => (long?)i.ImgFileId)
+            .FirstOrDefault(),
         ImageCount = product.Images?.Count ?? 0,
         RejectReason = product.RejectReason,
         ReviewedByAdminId = product.ReviewedByAdminId,

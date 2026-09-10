@@ -11,6 +11,13 @@ public interface IPurchaseRepository
     Task<List<Purchase>> GetBySellerIdAsync(int sellerId);
     Task<List<Purchase>> GetByProductIdAsync(long productId);
     Task<List<Purchase>> GetByStatusAsync(string status);
+    Task<(List<Purchase> Items, int Total)> GetAdminPageAsync(
+        long? orderId,
+        string? status,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize);
     IQueryable<Purchase> Query();
     Task AddAsync(Purchase purchase);
     void Update(Purchase purchase);

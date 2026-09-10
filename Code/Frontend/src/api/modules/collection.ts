@@ -45,6 +45,15 @@ export function getCollectionCount() {
 }
 
 /**
+ * 获取某商品被收藏的人数。
+ */
+export function getProductCollectionCount(productId: number) {
+    return request.get<{ count: number }>(
+        `/api/collections/product/${productId}/count`
+    )
+}
+
+/**
  * 在当前用户的收藏列表中搜索商品。
  */
 export function searchCollections(

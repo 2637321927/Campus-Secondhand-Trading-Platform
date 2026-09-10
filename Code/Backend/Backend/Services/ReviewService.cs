@@ -10,17 +10,20 @@ public class ReviewService : IReviewService
     private readonly IPurchaseRepository _purchaseRepo;
     private readonly IProductRepository _productRepo;
     private readonly IBaseUserRepository _userRepo;
+    private readonly IReputationService _reputationService;
 
     public ReviewService(
         IReviewRepository reviewRepo,
         IPurchaseRepository purchaseRepo,
         IProductRepository productRepo,
-        IBaseUserRepository userRepo)
+        IBaseUserRepository userRepo,
+        IReputationService reputationService)
     {
         _reviewRepo = reviewRepo;
         _purchaseRepo = purchaseRepo;
         _productRepo = productRepo;
         _userRepo = userRepo;
+        _reputationService = reputationService;
     }
 
     public async Task<ReviewDto> CreateReviewAsync(long orderId, int userId, CreateReviewDto dto)
@@ -52,6 +55,15 @@ public class ReviewService : IReviewService
 
         await _reviewRepo.AddAsync(review);
         await _reviewRepo.SaveAsync();
+
+        // 按评分调整卖家信誉：好评 +2、差评 -3、中评不变
+        if (order.Product != null)
+        {
+            var delta = dto.Rating >= 4 ? CreditRules.GoodReview
+                : dto.Rating <= 2 ? CreditRules.BadReview
+                : 0;
+            await _reputationService.ChangeCreditAsync(order.Product.UserId, delta);
+        }
 
         return ToDto(review);
 

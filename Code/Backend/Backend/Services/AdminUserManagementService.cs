@@ -214,6 +214,9 @@ public class AdminUserManagementService : IAdminUserManagementService
         user.IsBanned = dto.Status == AccountStatus.Banned ? 1 : 0;
         user.BannedUntil = dto.Status == AccountStatus.Banned ? dto.BannedUntil : null;
 
+        if (dto.Status == AccountStatus.Banned || dto.Status == AccountStatus.Muted || dto.Status == AccountStatus.PublishRestricted)
+            await _reputationService.ChangeCreditAsync(userId, CreditRules.AccountPenalty);
+
         _baseUserRepo.Update(user);
         await _baseUserRepo.SaveAsync();
 
@@ -237,6 +240,8 @@ public class AdminUserManagementService : IAdminUserManagementService
 
         await _warningRepo.AddAsync(warning);
         await _warningRepo.SaveAsync();
+
+        await _reputationService.ChangeCreditAsync(userId, CreditRules.Warned);
 
         return new AdminUserWarningDto
         {

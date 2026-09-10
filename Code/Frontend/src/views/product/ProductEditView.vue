@@ -34,7 +34,6 @@ import type {
 import type {
   ProductDto,
   ProductImageDto,
-  ProductStatus,
   ShippingType,
   UpdateProductRequest
 } from '../../types/api/product'
@@ -45,7 +44,6 @@ interface ProductEditForm {
   price: number | null
   categoryId: number | null
   info: string
-  status: ProductStatus
   shippingType: ShippingType
   shippingFee: number | null
   allowPickup: boolean
@@ -71,7 +69,6 @@ const form = reactive<ProductEditForm>({
   price: null,
   categoryId: null,
   info: '',
-  status: 0,
   shippingType: 0,
   shippingFee: null,
   allowPickup: false
@@ -292,7 +289,6 @@ function applyProduct(product: ProductDto): void {
   form.price = product.price
   form.categoryId = product.categoryId
   form.info = product.info ?? ''
-  form.status = product.status
   form.shippingType = product.shippingType
   form.shippingFee = product.shippingFee ?? null
   form.allowPickup = product.allowPickup === 1
@@ -605,7 +601,6 @@ function createUpdateRequest(): UpdateProductRequest | null {
     price: form.price,
     info: form.info.trim(),
     categoryId: form.categoryId,
-    status: form.status,
     shippingType: form.shippingType,
     shippingFee: form.shippingFee,
     allowPickup: form.allowPickup ? 1 : 0,
@@ -623,8 +618,7 @@ function createUpdateRequest(): UpdateProductRequest | null {
 function productMatchesRequest(
   product: ProductDto,
   requestData: UpdateProductRequest,
-  expectedImageCount: number,
-  expectedStatus: ProductStatus
+  expectedImageCount: number
 ): boolean {
   const shippingMatches =
     product.shippingType === requestData.shippingType &&
@@ -637,7 +631,6 @@ function productMatchesRequest(
     Number(product.price) === requestData.price &&
     product.categoryId === requestData.categoryId &&
     (product.info ?? '') === (requestData.info ?? '') &&
-    product.status === expectedStatus &&
     shippingMatches &&
     (product.images ?? []).length === expectedImageCount
   )
@@ -673,7 +666,6 @@ async function saveProduct(): Promise<void> {
   }
 
   const expectedImageCount = totalImageCount.value
-  const requestedStatus = form.status
 
   saving.value = true
   let updateSucceeded = false
@@ -713,8 +705,7 @@ async function saveProduct(): Promise<void> {
       productMatchesRequest(
         refreshedProduct,
         requestData,
-        expectedImageCount,
-        requestedStatus
+        expectedImageCount
       )
 
     applyProduct(refreshedProduct)
@@ -825,7 +816,6 @@ watch(
     () => form.price,
     () => form.categoryId,
     () => form.info,
-    () => form.status,
     () => form.shippingType,
     () => form.shippingFee,
     () => form.allowPickup
@@ -998,20 +988,6 @@ onBeforeRouteLeave(async () => {
                   重试
                 </el-button>
               </div>
-            </el-form-item>
-
-            <el-form-item
-              label="商品状态"
-              prop="status"
-            >
-              <el-select
-                v-model="form.status"
-                class="full-control"
-              >
-                <el-option label="在售" :value="0" />
-                <el-option label="已售" :value="1" />
-                <el-option label="已下架" :value="2" />
-              </el-select>
             </el-form-item>
 
             <el-form-item

@@ -1,4 +1,6 @@
+import type { AxiosResponse } from 'axios'
 import request from '../http'
+import type { FileUploadDto } from '../../types/api/file'
 import type {
     AppendAppealMessageDto,
     AppealTimelineDto,
@@ -52,16 +54,24 @@ export function appendAppealMessage(
 /**
  * 上传申诉附件
  */
-export function uploadAppealAttachment(
+export async function uploadAppealAttachment(
     appealId: number,
     file: File
-) {
-    const formData = new FormData()
-    formData.append('file', file)
+): Promise<AxiosResponse<WorkOrderDto>> {
+    const uploadFormData = new FormData()
+    uploadFormData.append('file', file)
+
+    const uploadResponse = await request.post<FileUploadDto>(
+        '/api/files/appeal-attachments',
+        uploadFormData
+    )
+
+    const bindFormData = new FormData()
+    bindFormData.append('fileId', String(uploadResponse.data.fileId))
 
     return request.post<WorkOrderDto>(
         `/api/appeals/${appealId}/attachments`,
-        formData
+        bindFormData
     )
 }
 

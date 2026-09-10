@@ -11,17 +11,20 @@ public class OrderService : IOrderService
     private readonly IProductRepository _productRepo;
     private readonly IAddressRepository _addressRepo;
     private readonly IOrderTimelineRepository _timelineRepo;
+    private readonly IReputationService _reputationService;
 
     public OrderService(
         IPurchaseRepository purchaseRepo,
         IProductRepository productRepo,
         IAddressRepository addressRepo,
-        IOrderTimelineRepository timelineRepo)
+        IOrderTimelineRepository timelineRepo,
+        IReputationService reputationService)
     {
         _purchaseRepo = purchaseRepo;
         _productRepo = productRepo;
         _addressRepo = addressRepo;
         _timelineRepo = timelineRepo;
+        _reputationService = reputationService;
     }
 
     public async Task<PurchaseCheckDto> PurchaseCheckAsync(long productId, int userId)
@@ -322,6 +325,9 @@ public class OrderService : IOrderService
         _purchaseRepo.Update(order);
         await _purchaseRepo.SaveAsync();
 
+        if (order.Product != null)
+            await _reputationService.ChangeCreditAsync(order.Product.UserId, CreditRules.OrderCompleted);
+
         await _timelineRepo.AddAsync(new OrderTimeline
         {
             PurchaseId = orderId,
@@ -345,8 +351,8 @@ public class OrderService : IOrderService
         if (order.BuyerId != userId && (order.Product == null || order.Product.UserId != userId))
             throw new UnauthorizedAccessException("无权操作该订单");
 
-        if (order.Status == "cancel" || order.Status == "success")
-            throw new InvalidOperationException("订单已结束，无法重复完成");
+        if (order.Status != "shipping")
+            throw new InvalidOperationException("只有运输中的订单可以完成");
 
         var oldStatus = order.Status;
         order.Status = "success";
@@ -360,6 +366,9 @@ public class OrderService : IOrderService
 
         _purchaseRepo.Update(order);
         await _purchaseRepo.SaveAsync();
+
+        if (order.Product != null)
+            await _reputationService.ChangeCreditAsync(order.Product.UserId, CreditRules.OrderCompleted);
 
         await _timelineRepo.AddAsync(new OrderTimeline
         {

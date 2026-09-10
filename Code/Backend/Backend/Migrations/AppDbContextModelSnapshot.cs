@@ -94,13 +94,27 @@ namespace Backend.Migrations
 
                     b.Property<string>("Info")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("NVARCHAR2(500)")
+                        .HasMaxLength(2000)
+                        .HasColumnType("NVARCHAR2(2000)")
                         .HasColumnName("info");
+
+                    b.Property<bool>("IsPinned")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("BOOLEAN")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_pinned");
 
                     b.Property<DateTime>("ReleaseTime")
                         .HasColumnType("TIMESTAMP(7)")
                         .HasColumnName("release_time");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("NVARCHAR2(20)")
+                        .HasDefaultValue("published")
+                        .HasColumnName("status");
 
                     b.Property<string>("Title")
                         .IsRequired()

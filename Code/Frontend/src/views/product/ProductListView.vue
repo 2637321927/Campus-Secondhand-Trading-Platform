@@ -5,9 +5,8 @@ import {
   getProducts,
   searchProducts
 } from '../../api/modules/product'
-import type { 
-    ProductListItemDto,
-    ProductStatus
+import type {
+    ProductListItemDto
  } from '../../types/api/product'
 import ProductListCard from '../../components/product/ProductListCard.vue'
 import { getCategoryProducts, getCategories } from '../../api/modules/category'
@@ -24,7 +23,8 @@ type SortOption =
 const loading = ref(false)
 const errorMessage = ref('')
 const products = ref<ProductListItemDto[]>([])
-const selectedStatus = ref<'all' | ProductStatus>('all')
+// -1 = 全部（在售+已售），0 = 在售，1 = 已售
+const selectedStatus = ref<-1 | 0 | 1>(0)
 const minPrice = ref<number | null>(null)
 const maxPrice = ref<number | null>(null)
 const sortOption = ref<SortOption>('default')
@@ -156,7 +156,7 @@ async function loadProducts(): Promise<void> {
 
       nextProducts = response.data ?? []
     } else {
-      const response = await getProducts()
+      const response = await getProducts(selectedStatus.value)
 
       nextProducts = response.data ?? []
     }
@@ -219,7 +219,7 @@ const displayedProducts = computed(() => {
   let result = products.value.filter((product) => {
     // 状态条件
         const matchesStatus =
-        selectedStatus.value === 'all' ||
+        selectedStatus.value === -1 ||
         (product.status ?? 0) === selectedStatus.value
     // 最低价格条件
         const matchesMinPrice =
@@ -267,7 +267,7 @@ const pageTitle = computed(() => {
 })
 
 function resetFilters(): void {
-  selectedStatus.value = 'all'
+  selectedStatus.value = 0
   minPrice.value = null
   maxPrice.value = null
   sortOption.value = 'default'
@@ -291,6 +291,10 @@ watch(
 )
 
 watch(selectedCategoryId, () => {
+  loadProducts()
+})
+
+watch(selectedStatus, () => {
   loadProducts()
 })
 
@@ -366,7 +370,7 @@ onBeforeUnmount(() => {
               v-model="selectedStatus"
               class="status-options"
             >
-              <el-radio-button value="all">
+              <el-radio-button :value="-1">
                 全部
               </el-radio-button>
 
@@ -376,10 +380,6 @@ onBeforeUnmount(() => {
 
               <el-radio-button :value="1">
                 已售
-              </el-radio-button>
-
-              <el-radio-button :value="2">
-                已下架
               </el-radio-button>
 
             </el-radio-group>

@@ -21,6 +21,7 @@ public class AdminProductListItemDto
     public int ViewCount { get; set; }
     public int FavoriteCount { get; set; }
     public int CommentCount { get; set; }
+    public long? CoverImageFileId { get; set; }
     public int ImageCount { get; set; }
     public string? RejectReason { get; set; }
     public int? ReviewedByAdminId { get; set; }

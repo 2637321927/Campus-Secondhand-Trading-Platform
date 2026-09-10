@@ -4,6 +4,7 @@ import type {
   ProductListItemDto,
   ProductStatus
 } from '../../types/api/product'
+import { getProductStatusText } from '../../utils/productStatus'
 
 const props = defineProps<{
   product: ProductListItemDto
@@ -19,16 +20,7 @@ function goToDetail():void{
 }
 
 function getStatusText(status:ProductStatus):string{
-    if(status===0){
-        return '在售'
-    }
-    else if(status===1){
-        return '已售'
-    }
-    else if(status===2){
-        return '已下架'
-    }
-    return '未知状态'
+    return getProductStatusText(status)
 }
 </script>
 
