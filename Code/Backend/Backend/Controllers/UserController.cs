@@ -193,7 +193,8 @@ public class UserController : ControllerBase
     {
         var userId = int.Parse(User.FindFirst("userId")!.Value);
         var products = (await _productService.GetProductsByUserIdAsync(userId))
-            .Where(p => p.Status == Backend.Models.Enums.ProductStatus.Removed)
+            .Where(p => p.Status == Backend.Models.Enums.ProductStatus.Removed ||
+                        p.Status == Backend.Models.Enums.ProductStatus.TakenDown)
             .ToList();
         return Ok(products);
     }

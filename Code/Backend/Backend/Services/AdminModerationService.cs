@@ -407,7 +407,7 @@ public class AdminModerationService : IAdminModerationService
             case RemoveProduct:
                 var removedProductId = ResolveTargetProductId(workOrder);
                 if (removedProductId == null) throw new InvalidOperationException("该工单未关联商品，无法执行下架");
-                await SetProductStatusAsync(removedProductId.Value, ProductStatus.Removed, "remove", reason, adminId);
+                await SetProductStatusAsync(removedProductId.Value, ProductStatus.TakenDown, "remove", reason, adminId);
                 break;
 
             case RestoreProduct:

@@ -151,7 +151,8 @@ public class TermGraph
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var product = await db.Products.AsNoTracking()
                 .FirstOrDefaultAsync(p => p.ProductId == productId);
-            if (product == null || product.Status == ProductStatus.Removed) return;
+            if (product == null ||
+                product.Status is ProductStatus.Removed or ProductStatus.TakenDown) return;
 
             var terms = extractor.Extract($"{product.Name} {product.Info ?? ""}");
             var (affectedTerms, affectedEdges) = ProcessNewProduct(terms, product.UserId, product.CategoryId);
