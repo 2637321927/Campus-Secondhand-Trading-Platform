@@ -82,7 +82,7 @@ public class AdminModerationPageDto
 public class HandleWorkOrderDto
 {
     /// <summary>
-    /// none/remove_product/ban_user/mute_user/restrict_publish/warn_user/restore_product/unban_user
+    /// none/remove_product/ban_user/mute_user/warn_user；申诉使用 approve，撤销原处理由后端内部执行
     /// </summary>
     [Required(ErrorMessage = "处理动作不能为空")]
     public string Action { get; set; } = string.Empty;

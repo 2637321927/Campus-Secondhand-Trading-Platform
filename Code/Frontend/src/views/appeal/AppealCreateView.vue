@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { createAppeal } from '../../api/modules/appeal'
-import { getMyPublishedProducts } from '../../api/modules/user'
+import { getMyRemovedProducts } from '../../api/modules/user'
 import { useAuthStore } from '../../stores/auth'
 import type { ProductDto } from '../../types/api/product'
 import { getApiErrorMessage } from '../../utils/error'
@@ -33,8 +33,8 @@ const targetId = computed<number | null>(() => {
 async function loadRemovedProducts(): Promise<void> {
     loadingProducts.value = true
     try {
-        const response = await getMyPublishedProducts()
-        removedProducts.value = (response.data ?? []).filter(product => product.status === 2)
+        const response = await getMyRemovedProducts()
+        removedProducts.value = response.data ?? []
         if (
             selectedProductId.value !== null &&
             !removedProducts.value.some(product => product.productId === selectedProductId.value)

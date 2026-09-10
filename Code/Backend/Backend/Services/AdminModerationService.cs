@@ -28,7 +28,7 @@ public class AdminModerationService : IAdminModerationService
 
     private static readonly HashSet<string> AllowedHandleActions = new(StringComparer.OrdinalIgnoreCase)
     {
-        None, RemoveProduct, RestoreProduct, BanUser, MuteUser, RestrictPublish, UnbanUser, WarnUser
+        None, RemoveProduct, BanUser, MuteUser, WarnUser
     };
 
     public AdminModerationService(

@@ -22,8 +22,8 @@ public class NotificationController : ControllerBase
     {
         NotificationId = a.AnnouncementId,
         Title = a.Title,
-        Content = a.Info,
-        CreateTime = a.ReleaseTime,
+        Content = a.Content,
+        CreateTime = a.PublishTime ?? a.ReleaseTime,
         IsRead = false
     };
 

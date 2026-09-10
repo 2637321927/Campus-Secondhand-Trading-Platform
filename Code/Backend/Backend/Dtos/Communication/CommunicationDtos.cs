@@ -178,7 +178,7 @@ public class AnnouncementDto
     public bool IsPinned { get; set; }
     public string Status { get; set; } = "published";
     public DateTime ReleaseTime { get; set; }
-    public DateTime PublishTime => ReleaseTime;
+    public DateTime? PublishTime { get; set; }
     public int AdminId { get; set; }
 }
 

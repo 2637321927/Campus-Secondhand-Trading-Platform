@@ -81,7 +81,7 @@ public class WorkOrder
     public string? Result { get; set; }
 
     /// <summary>
-    /// 处理动作：remove_product/ban_user/mute_user/restrict_publish/warn_user/restore_product/unban_user
+    /// 举报处理动作：none/remove_product/ban_user/mute_user/warn_user；申诉撤销动作由后端内部生成
     /// </summary>
     [Column("handle_action")]
     [MaxLength(50)]
