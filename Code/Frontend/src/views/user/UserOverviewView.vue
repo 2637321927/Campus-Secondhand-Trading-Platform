@@ -337,30 +337,6 @@ onMounted(() => {
             <button
               class="entry-card"
               type="button"
-              @click="goToMyProducts"
-            >
-              <span class="entry-title">我的商品</span>
-
-              <span class="entry-desc">
-                管理已发布、已售和已下架的商品
-              </span>
-            </button>
-
-            <button
-              class="entry-card"
-              type="button"
-              @click="goToMyFavorites"
-            >
-              <span class="entry-title">我的收藏</span>
-
-              <span class="entry-desc">
-                查看收藏的校园二手商品
-              </span>
-            </button>
-
-            <button
-              class="entry-card"
-              type="button"
               @click="goToProfile"
             >
               <span class="entry-title">个人资料</span>

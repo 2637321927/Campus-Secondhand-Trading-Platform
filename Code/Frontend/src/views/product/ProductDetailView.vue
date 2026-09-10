@@ -1374,13 +1374,10 @@ onBeforeUnmount(() => {
           class="comments-empty"
           description="暂时还没有留言"
         >
-          <template #image>
-            <div class="empty-comment-icon">
-              留
-            </div>
-          </template>
-
-          <p class="empty-comment-tip">
+          <p
+            v-if="!authStore.isLoggedIn"
+            class="empty-comment-tip"
+          >
             登录后可以向卖家咨询商品情况
           </p>
         </el-empty>
@@ -1599,45 +1596,45 @@ onBeforeUnmount(() => {
 
         <div class="transaction-grid">
           <div class="transaction-item">
-            <span class="transaction-number">
-              01
-            </span>
+            <div class="transaction-head">
+              <span class="transaction-number">
+                01
+              </span>
 
-            <div>
               <strong>当面验货</strong>
-
-              <p>
-                建议在校内公共场所见面，并在付款前仔细检查商品。
-              </p>
             </div>
+
+            <p>
+              建议在校内公共场所见面，并在付款前仔细检查商品。
+            </p>
           </div>
 
           <div class="transaction-item">
-            <span class="transaction-number">
-              02
-            </span>
+            <div class="transaction-head">
+              <span class="transaction-number">
+                02
+              </span>
 
-            <div>
               <strong>谨慎付款</strong>
-
-              <p>
-                不要点击不明链接，不要向陌生账户提前支付大额款项。
-              </p>
             </div>
+
+            <p>
+              不要点击不明链接，不要向陌生账户提前支付大额款项。
+            </p>
           </div>
 
           <div class="transaction-item">
-            <span class="transaction-number">
-              03
-            </span>
+            <div class="transaction-head">
+              <span class="transaction-number">
+                03
+              </span>
 
-            <div>
               <strong>保留记录</strong>
-
-              <p>
-                重要约定应尽量通过平台消息完成，以便发生争议时核查。
-              </p>
             </div>
+
+            <p>
+              重要约定应尽量通过平台消息完成，以便发生争议时核查。
+            </p>
           </div>
         </div>
       </section>
@@ -2161,8 +2158,63 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 交易须知 */
+
+.transaction-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.transaction-item {
+  padding: 20px 18px;
+  background: #f7f9f8;
+  border: 1px solid #e3e9e6;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.transaction-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.transaction-number {
+  color: #3e9b79;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.transaction-item strong {
+  color: #26352f;
+  font-size: 15px;
+}
+
+.transaction-item p {
+  margin: 0;
+  color: #68766f;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+@media (max-width: 1000px) {
+  .transaction-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .comment-section {
   min-height: 180px;
+}
+
+.empty-comment-tip {
+  margin: 0;
+  color: #8a9791;
+  font-size: 13px;
 }
 
 .comment-error {

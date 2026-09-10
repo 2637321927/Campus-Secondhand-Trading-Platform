@@ -6,7 +6,8 @@ export const PRODUCT_STATUS_TEXT: Record<ProductStatus, string> = {
   2: '已下架',
   3: '待审核',
   4: '审核驳回',
-  5: '交易中'
+  5: '交易中',
+  6: '管理员下架'
 }
 
 export const PRODUCT_STATUS_TAG_TYPE: Record<
@@ -18,7 +19,8 @@ export const PRODUCT_STATUS_TAG_TYPE: Record<
   2: 'danger',
   3: 'warning',
   4: 'danger',
-  5: 'primary'
+  5: 'primary',
+  6: 'danger'
 }
 
 export function getProductStatusText(status: ProductStatus): string {

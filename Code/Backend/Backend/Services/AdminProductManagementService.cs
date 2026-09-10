@@ -128,7 +128,8 @@ public class AdminProductManagementService : IAdminProductManagementService
             throw new InvalidOperationException("已售或交易中的商品不能强制下架");
 
         var oldStatus = product.Status;
-        product.Status = ProductStatus.Removed;
+        // 管理员下架用独立状态，卖家无法自行重新上架，只能走恢复或申诉
+        product.Status = ProductStatus.TakenDown;
 
         await SaveWithAuditAsync(product, "remove", oldStatus, dto.Reason.Trim(), adminId);
         return await ToDetailAsync(product);
@@ -139,7 +140,7 @@ public class AdminProductManagementService : IAdminProductManagementService
         var product = await _productRepo.GetByIdAsync(productId);
         if (product == null) return null;
 
-        if (product.Status != ProductStatus.Removed)
+        if (product.Status is not (ProductStatus.Removed or ProductStatus.TakenDown))
             throw new InvalidOperationException("只有已下架商品可以恢复");
 
         var oldStatus = product.Status;
@@ -199,7 +200,8 @@ public class AdminProductManagementService : IAdminProductManagementService
             TotalProducts = await _productRepo.Query().CountAsync(),
             AvailableCount = await _productRepo.Query().CountAsync(p => p.Status == ProductStatus.Available),
             SoldCount = await _productRepo.Query().CountAsync(p => p.Status == ProductStatus.Sold),
-            RemovedCount = await _productRepo.Query().CountAsync(p => p.Status == ProductStatus.Removed),
+            RemovedCount = await _productRepo.Query().CountAsync(
+                p => p.Status == ProductStatus.Removed || p.Status == ProductStatus.TakenDown),
             PendingReviewCount = await _productRepo.Query().CountAsync(p => p.Status == ProductStatus.PendingReview),
             RejectedCount = await _productRepo.Query().CountAsync(p => p.Status == ProductStatus.Rejected),
             NewProductsToday = await _productRepo.Query().CountAsync(p => p.ReleaseDate >= today),

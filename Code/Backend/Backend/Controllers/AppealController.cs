@@ -89,7 +89,7 @@ public class AppealController : ControllerBase
                 return BadRequest("商品不存在");
             if (product.UserId != Uid)
                 return BadRequest("只能申诉自己发布的商品");
-            if (product.Status != ProductStatus.Removed)
+            if (product.Status is not (ProductStatus.Removed or ProductStatus.TakenDown))
                 return BadRequest("只能对已下架的商品发起申诉");
 
             productId = product.ProductId;

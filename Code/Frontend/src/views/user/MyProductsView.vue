@@ -231,6 +231,7 @@ onBeforeUnmount(() => {
             <el-option label="在售" :value="0" />
             <el-option label="已售" :value="1" />
             <el-option label="已下架" :value="2" />
+            <el-option label="管理员下架" :value="6" />
           </el-select>
 
           <el-button
