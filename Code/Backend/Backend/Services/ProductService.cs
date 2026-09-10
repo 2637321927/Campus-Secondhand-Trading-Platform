@@ -131,7 +131,8 @@ public class ProductService : IProductService
             Name = dto.Name,
             Price = dto.Price,
             Info = dto.Info,
-            Status = ProductStatus.Available,
+            // 新发布的商品必须先由管理员审核，审核通过后才会公开展示。
+            Status = ProductStatus.PendingReview,
             UserId = userId,
             ReleaseDate = DateTime.Now,
             CategoryId = dto.CategoryId,
@@ -180,6 +181,16 @@ public class ProductService : IProductService
         product.ShippingType = dto.ShippingType;
         product.ShippingFee = dto.ShippingFee;
         product.AllowPickup = dto.AllowPickup;
+
+        // 驳回商品经卖家修改后重新进入审核队列，避免商品永久停留在“已驳回”状态。
+        // 其他状态的编辑不改变既有的上架或交易状态。
+        if (product.Status == ProductStatus.Rejected)
+        {
+            product.Status = ProductStatus.PendingReview;
+            product.RejectReason = null;
+            product.ReviewedByAdminId = null;
+            product.ReviewedAt = null;
+        }
 
         if (dto.toRemoveImageIds != null && dto.toRemoveImageIds.Count > 0)
         {
@@ -354,6 +365,7 @@ public class ProductService : IProductService
         Price = p.Price,
         Info = p.Info,
         Status = p.Status,
+        RejectReason = p.RejectReason,
         ReleaseDate = p.ReleaseDate,
         UserId = p.UserId,
         CategoryId = p.CategoryId,

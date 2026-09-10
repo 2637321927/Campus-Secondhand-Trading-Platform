@@ -97,6 +97,32 @@
             </p>
           </div>
 
+          <!-- 审核操作：仅待审核商品可执行 -->
+          <div v-if="product.status === 3" class="review-actions">
+            <div class="review-actions-text">
+              <strong>待审核</strong>
+              <span>请核对商品信息与图片，确认无误后通过或驳回</span>
+            </div>
+            <div class="review-actions-buttons">
+              <el-button
+                type="success"
+                :loading="approving"
+                :disabled="rejecting"
+                @click="handleApprove"
+              >
+                通过
+              </el-button>
+              <el-button
+                type="danger"
+                :loading="rejecting"
+                :disabled="approving"
+                @click="openRejectDialog"
+              >
+                驳回
+              </el-button>
+            </div>
+          </div>
+
           <!-- 商品基础信息 -->
           <div class="product-meta">
             <div class="meta-item">
@@ -204,13 +230,40 @@
         </el-timeline>
       </section>
     </div>
+
+    <!-- 驳回原因对话框 -->
+    <el-dialog v-model="rejectDialogVisible" title="驳回原因" width="500px">
+      <el-form>
+        <el-form-item label="驳回原因">
+          <el-input
+            v-model="rejectReason"
+            type="textarea"
+            rows="3"
+            maxlength="500"
+            show-word-limit
+            placeholder="请填写驳回原因，将展示给卖家"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="rejectDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="rejecting" @click="confirmReject">
+          确定驳回
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getAdminProductDetail } from '../../../api/modules/admin'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  approveProduct,
+  getAdminProductDetail,
+  rejectProduct
+} from '../../../api/modules/admin'
 import { getPublicUser } from '../../../api/modules/user'
 import { useProductImages } from '../../../composables/useProductImages'
 import UserAvatar from '../../../components/common/UserAvatar.vue'
@@ -224,6 +277,10 @@ const product = ref<any>(null)
 const seller = ref<any>(null)
 const auditLogs = ref<any[]>([])
 const selectedImageFileId = ref<number | null>(null)
+const approving = ref(false)
+const rejecting = ref(false)
+const rejectDialogVisible = ref(false)
+const rejectReason = ref('')
 
 const {
   getProductImageUrl,
@@ -355,6 +412,64 @@ async function loadProduct(): Promise<void> {
 function formatDate(date: string): string {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')
+}
+
+// ========== 审核操作 ==========
+async function handleApprove(): Promise<void> {
+  const id = productId.value
+  if (!id) return
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要通过商品 "${product.value?.name}" 的审核吗？`,
+      '审核通过',
+      { type: 'success' }
+    )
+  } catch {
+    // 用户取消确认
+    return
+  }
+
+  approving.value = true
+  try {
+    await approveProduct(id)
+    ElMessage.success('审核通过')
+    await loadProduct()
+  } catch (error: any) {
+    console.error('审核通过失败:', error)
+    ElMessage.error(error?.message || '操作失败')
+  } finally {
+    approving.value = false
+  }
+}
+
+function openRejectDialog(): void {
+  rejectReason.value = ''
+  rejectDialogVisible.value = true
+}
+
+async function confirmReject(): Promise<void> {
+  const id = productId.value
+  if (!id) return
+
+  const reason = rejectReason.value.trim()
+  if (!reason) {
+    ElMessage.warning('请填写驳回原因')
+    return
+  }
+
+  rejecting.value = true
+  try {
+    await rejectProduct(id, { reason })
+    ElMessage.success('已驳回')
+    rejectDialogVisible.value = false
+    await loadProduct()
+  } catch (error: any) {
+    console.error('驳回失败:', error)
+    ElMessage.error(error?.message || '操作失败')
+  } finally {
+    rejecting.value = false
+  }
 }
 
 // ========== 生命周期 ==========
@@ -636,6 +751,43 @@ onMounted(() => {
 .currency {
   margin-right: 3px;
   font-size: 22px;
+}
+
+/* 审核操作区 */
+.review-actions {
+  display: flex;
+  margin-top: 20px;
+  padding: 16px 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #f0f8f4;
+  border: 1px solid #d8ebe2;
+  border-radius: 14px;
+}
+
+.review-actions-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-actions-text strong {
+  color: #24735b;
+  font-size: 15px;
+}
+
+.review-actions-text span {
+  color: #6d8179;
+  font-size: 13px;
+}
+
+.review-actions-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 12px;
 }
 
 .product-meta {

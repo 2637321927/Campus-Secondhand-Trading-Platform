@@ -88,8 +88,11 @@ function goToDetail(): void {
 
 <style scoped>
 .product-card {
+  display: flex;
+  height: 100%;
   min-width: 0;
   overflow: hidden;
+  flex-direction: column;
   color: #1e2a26;
   background: #fff;
   border: 1px solid #e3e9e6;
@@ -113,18 +116,9 @@ function goToDetail(): void {
 .product-cover {
   width: 100%;
   overflow: hidden;
+  flex: 0 0 auto;
   aspect-ratio: 4 / 3;
   background: #edf2f0;
-}
-
-.product-meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px 12px;
-  color: #6c7a74;
-  font-size: 13px;
-  text-align: center;
 }
 
 .product-cover :deep(.el-image) {
@@ -157,6 +151,10 @@ function goToDetail(): void {
 }
 
 .product-card__content {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
   padding: 15px 16px 16px;
 }
 
@@ -218,12 +216,16 @@ function goToDetail(): void {
 .product-meta {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
-  margin-top: 11px;
+  min-height: 18px;
+  margin-top: auto;
+  padding-top: 11px;
+  overflow: hidden;
   color: #84918c;
   font-size: 12px;
   line-height: 1.5;
+  white-space: nowrap;
 }
 
 .product-meta__divider {

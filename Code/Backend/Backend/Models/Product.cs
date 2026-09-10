@@ -34,7 +34,7 @@ public class Product
     /// </summary>
     [Column("status")]
     [MaxLength(10)]
-    public ProductStatus Status { get; set; } = ProductStatus.Available;
+    public ProductStatus Status { get; set; } = ProductStatus.PendingReview;
 
     [Column("user_id")]
     public int UserId { get; set; }
