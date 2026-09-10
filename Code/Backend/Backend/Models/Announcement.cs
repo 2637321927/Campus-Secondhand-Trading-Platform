@@ -18,9 +18,9 @@ public class Announcement
     [MaxLength(100)]
     public string Title { get; set; } = string.Empty;
 
-    [Column("info")]
-    [MaxLength(2000)]
-    public string Info { get; set; } = string.Empty;
+    [Column("content", TypeName = "NVARCHAR2(4000)")]
+    [MaxLength(4000)]
+    public string Content { get; set; } = string.Empty;
 
     [Column("is_pinned")]
     public bool IsPinned { get; set; }
@@ -34,6 +34,9 @@ public class Announcement
 
     [Column("release_time")]
     public DateTime ReleaseTime { get; set; } = DateTime.Now;
+
+    [Column("publish_time")]
+    public DateTime? PublishTime { get; set; }
 
     [Column("admin_id")]
     public int AdminId { get; set; }

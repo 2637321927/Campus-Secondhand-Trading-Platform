@@ -8,21 +8,29 @@ namespace Backend.Services;
 public class AnnouncementService : IAnnouncementService
 {
     private readonly IAnnouncementRepository _announcementRepo;
+    private readonly IAdminUserRepository _adminUserRepo;
 
-    public AnnouncementService(IAnnouncementRepository announcementRepo)
+    public AnnouncementService(
+        IAnnouncementRepository announcementRepo,
+        IAdminUserRepository adminUserRepo)
     {
         _announcementRepo = announcementRepo;
+        _adminUserRepo = adminUserRepo;
     }
 
     public async Task<AnnouncementDto> CreateAsync(int adminId, CreateAnnouncementDto dto)
     {
+        await EnsureAdminUserAsync(adminId);
+
+        var status = NormalizeStatus(dto.Status);
         var announcement = new Announcement
         {
             Title = dto.Title.Trim(),
-            Info = dto.Content.Trim(),
+            Content = dto.Content.Trim(),
             IsPinned = dto.IsPinned,
-            Status = NormalizeStatus(dto.Status),
+            Status = status,
             ReleaseTime = DateTime.Now,
+            PublishTime = status == "published" ? DateTime.Now : null,
             AdminId = adminId
         };
 
@@ -53,7 +61,7 @@ public class AnnouncementService : IAnnouncementService
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var kw = keyword.Trim();
-            query = query.Where(a => a.Title.Contains(kw) || a.Info.Contains(kw));
+            query = query.Where(a => a.Title.Contains(kw) || a.Content.Contains(kw));
         }
 
         if (!string.IsNullOrWhiteSpace(status))
@@ -87,7 +95,7 @@ public class AnnouncementService : IAnnouncementService
             announcement.Title = dto.Title.Trim();
 
         if (!string.IsNullOrWhiteSpace(dto.Content))
-            announcement.Info = dto.Content.Trim();
+            announcement.Content = dto.Content.Trim();
 
         if (dto.IsPinned.HasValue)
             announcement.IsPinned = dto.IsPinned.Value;
@@ -96,7 +104,10 @@ public class AnnouncementService : IAnnouncementService
         {
             var status = NormalizeStatus(dto.Status);
             if (announcement.Status != "published" && status == "published")
+            {
                 announcement.ReleaseTime = DateTime.Now;
+                announcement.PublishTime ??= DateTime.Now;
+            }
             announcement.Status = status;
         }
 
@@ -114,7 +125,10 @@ public class AnnouncementService : IAnnouncementService
         announcement.Status = normalized;
 
         if (normalized == "published")
+        {
             announcement.ReleaseTime = DateTime.Now;
+            announcement.PublishTime ??= DateTime.Now;
+        }
 
         _announcementRepo.Update(announcement);
         await _announcementRepo.SaveAsync();
@@ -146,10 +160,11 @@ public class AnnouncementService : IAnnouncementService
     {
         AnnouncementId = a.AnnouncementId,
         Title = a.Title,
-        Content = a.Info,
+        Content = a.Content,
         IsPinned = a.IsPinned,
         Status = a.Status,
         ReleaseTime = a.ReleaseTime,
+        PublishTime = a.PublishTime,
         AdminId = a.AdminId
     };
 
@@ -160,4 +175,13 @@ public class AnnouncementService : IAnnouncementService
             "archived" => "archived",
             _ => "published"
         };
+
+    private async Task EnsureAdminUserAsync(int adminId)
+    {
+        if (await _adminUserRepo.GetByIdAsync(adminId) == null)
+        {
+            await _adminUserRepo.AddAsync(new AdminUser { UserId = adminId, Permission = 1 });
+            await _adminUserRepo.SaveAsync();
+        }
+    }
 }
