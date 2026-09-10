@@ -61,6 +61,9 @@ const selectedImageUrl = computed(() =>
 )
 
 const authStore=useAuthStore()
+const isMuted = computed(
+  () => authStore.currentUser?.accountStatus === 1
+)
 
 const isCollected = ref(false)
 const collectionLoading = ref(false)
@@ -407,6 +410,11 @@ async function handleSubmitComment():Promise<void> {
     return
   }
 
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法发表留言')
+    return
+  }
+
   const content=commentContent.value
 
   if(!content){
@@ -431,6 +439,7 @@ async function handleSubmitComment():Promise<void> {
     await loadComments(product.value.productId)
   }
   catch(error){
+    ElMessage.error(getApiErrorMessage(error, '留言发表失败，请稍后重试'))
     console.error('留言发表失败',error)
   }
   finally{
@@ -454,6 +463,11 @@ async function handleStartReply(
     return
   }
 
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法回复留言')
+    return
+  }
+
   replyingToComment.value = comment
   replyContent.value = ''
 }
@@ -470,6 +484,11 @@ async function handleSubmitReply(): Promise<void> {
 
   if (!authStore.isLoggedIn) {
     ElMessage.warning('请先登录后再回复留言')
+    return
+  }
+
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法回复留言')
     return
   }
 
@@ -500,6 +519,7 @@ async function handleSubmitReply(): Promise<void> {
 
     await loadComments(product.value.productId)
   } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '回复留言失败，请稍后重试'))
     console.error('回复留言失败：', error)
   } finally {
     replySubmitting.value = false
@@ -1278,8 +1298,8 @@ onBeforeUnmount(() => {
                   type="textarea"
                   :rows="3"
                   resize="none"
-                  placeholder="向卖家咨询商品成色、交易地点等信息"
-                  :disabled="commentSubmitting"
+                  :placeholder="isMuted ? '当前账号被禁言，无法发表留言' : '向卖家咨询商品成色、交易地点等信息'"
+                  :disabled="commentSubmitting || isMuted"
                   @keydown.ctrl.enter.prevent="handleSubmitComment"
                 />
 
@@ -1289,6 +1309,7 @@ onBeforeUnmount(() => {
                     :loading="commentSubmitting"
                     :disabled="
                       commentSubmitting ||
+                      isMuted ||
                       !commentContent.trim()
                     "
                     @click="handleSubmitComment"
@@ -1425,6 +1446,7 @@ onBeforeUnmount(() => {
                 <el-button
                   text
                   type="primary"
+                  :disabled="isMuted"
                   @click="handleStartReply(comment)"
                 >
                   回复
@@ -1475,8 +1497,8 @@ onBeforeUnmount(() => {
                   resize="none"
                   maxlength="300"
                   show-word-limit
-                  placeholder="输入回复内容"
-                  :disabled="replySubmitting"
+                  :placeholder="isMuted ? '当前账号被禁言，无法回复留言' : '输入回复内容'"
+                  :disabled="replySubmitting || isMuted"
                   @keydown.ctrl.enter.prevent="handleSubmitReply"
                 />
 
@@ -1498,6 +1520,7 @@ onBeforeUnmount(() => {
                       :loading="replySubmitting"
                       :disabled="
                         replySubmitting ||
+                        isMuted ||
                         !replyContent.trim()
                       "
                       @click="handleSubmitReply"

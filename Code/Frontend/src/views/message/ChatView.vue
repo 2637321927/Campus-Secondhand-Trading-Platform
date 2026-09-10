@@ -82,6 +82,11 @@ const currentUserId = computed(
   () => authStore.currentUser?.userId
 )
 
+/** 账号处于禁言状态时禁止发送消息 */
+const isMuted = computed(
+  () => authStore.currentUser?.accountStatus === 1
+)
+
 /** 对方 = 会话双方中不是当前用户的那一方 */
 function resolveOtherUserId(c: ConversationDto): number | null {
   const uid = currentUserId.value
@@ -207,7 +212,7 @@ async function loadConversation(): Promise<void> {
 async function handleSend(): Promise<void> {
   const content = inputText.value.trim()
 
-  if (!content || sending.value) {
+  if (isMuted.value || !content || sending.value) {
     return
   }
 
@@ -241,7 +246,7 @@ async function handleSend(): Promise<void> {
 async function handleUploadAttachment(
   options: UploadRequestOptions
 ): Promise<void> {
-  if (uploading.value) {
+  if (isMuted.value || uploading.value) {
     return
   }
 
@@ -495,7 +500,7 @@ onMounted(() => {
             class="attachment-upload"
             :show-file-list="false"
             :http-request="handleUploadAttachment"
-            :disabled="uploading"
+            :disabled="uploading || isMuted"
           >
             <el-button
               text
@@ -512,7 +517,8 @@ onMounted(() => {
             type="textarea"
             :rows="2"
             maxlength="1000"
-            placeholder="输入消息，回车发送"
+            :disabled="isMuted"
+            :placeholder="isMuted ? '当前账号被禁言，无法发送消息' : '输入消息，回车发送'"
             @keydown.enter.exact.prevent="handleSend"
           />
 
@@ -520,7 +526,7 @@ onMounted(() => {
             class="send-button"
             type="primary"
             :loading="sending"
-            :disabled="!inputText.trim()"
+            :disabled="isMuted || !inputText.trim()"
             @click="handleSend"
           >
             发送

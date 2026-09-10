@@ -140,7 +140,7 @@ public class AdminModerationService : IAdminModerationService
         var workOrder = await GetWorkOrderForActionAsync(appealId, (int)WorkOrderType.Appeal);
         if (workOrder == null) return null;
 
-        var reversal = GetReversalAction(workOrder.AppealAgainst?.HandleAction);
+        var reversal = GetAppealResolutionAction(workOrder);
         if (reversal != None)
             await ApplyHandleActionAsync(workOrder, reversal, "申诉通过，撤销原处理", adminId);
 
@@ -351,7 +351,7 @@ public class AdminModerationService : IAdminModerationService
         if (!string.Equals(dto.Action.Trim(), Approve, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("申诉处理动作仅支持 approve");
 
-        var reversal = GetReversalAction(workOrder.AppealAgainst?.HandleAction);
+        var reversal = GetAppealResolutionAction(workOrder);
         if (reversal != None)
             await ApplyHandleActionAsync(workOrder, reversal, dto.Reason.Trim(), adminId);
 
@@ -396,40 +396,47 @@ public class AdminModerationService : IAdminModerationService
         switch (action)
         {
             case RemoveProduct:
-                if (workOrder.ProductId == null) throw new InvalidOperationException("该工单未关联商品，无法执行下架");
-                await SetProductStatusAsync(workOrder.ProductId.Value, ProductStatus.Removed, "remove", reason, adminId);
+                var removedProductId = ResolveTargetProductId(workOrder);
+                if (removedProductId == null) throw new InvalidOperationException("该工单未关联商品，无法执行下架");
+                await SetProductStatusAsync(removedProductId.Value, ProductStatus.Removed, "remove", reason, adminId);
                 break;
 
             case RestoreProduct:
-                if (workOrder.ProductId == null) throw new InvalidOperationException("该工单未关联商品，无法恢复");
-                await SetProductStatusAsync(workOrder.ProductId.Value, ProductStatus.Available, "restore", reason, adminId);
+                var restoredProductId = ResolveTargetProductId(workOrder);
+                if (restoredProductId == null) throw new InvalidOperationException("该工单未关联商品，无法恢复");
+                await SetProductStatusAsync(restoredProductId.Value, ProductStatus.Available, "restore", reason, adminId);
                 break;
 
             case BanUser:
-                if (workOrder.AccusedId == null) throw new InvalidOperationException("该工单未关联用户，无法封禁");
-                await SetAccountStatusAsync(workOrder.AccusedId.Value, AccountStatus.Banned);
+                var bannedUserId = ResolveTargetUserId(workOrder);
+                if (bannedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法封禁");
+                await SetAccountStatusAsync(bannedUserId.Value, AccountStatus.Banned);
                 break;
 
             case MuteUser:
-                if (workOrder.AccusedId == null) throw new InvalidOperationException("该工单未关联用户，无法禁言");
-                await SetAccountStatusAsync(workOrder.AccusedId.Value, AccountStatus.Muted);
+                var mutedUserId = ResolveTargetUserId(workOrder);
+                if (mutedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法禁言");
+                await SetAccountStatusAsync(mutedUserId.Value, AccountStatus.Muted);
                 break;
 
             case RestrictPublish:
-                if (workOrder.AccusedId == null) throw new InvalidOperationException("该工单未关联用户，无法限制发布");
-                await SetAccountStatusAsync(workOrder.AccusedId.Value, AccountStatus.PublishRestricted);
+                var restrictedUserId = ResolveTargetUserId(workOrder);
+                if (restrictedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法限制发布");
+                await SetAccountStatusAsync(restrictedUserId.Value, AccountStatus.PublishRestricted);
                 break;
 
             case UnbanUser:
-                if (workOrder.AccusedId == null) throw new InvalidOperationException("该工单未关联用户，无法解除限制");
-                await SetAccountStatusAsync(workOrder.AccusedId.Value, AccountStatus.Normal);
+                var unbannedUserId = ResolveTargetUserId(workOrder);
+                if (unbannedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法解除限制");
+                await SetAccountStatusAsync(unbannedUserId.Value, AccountStatus.Normal);
                 break;
 
             case WarnUser:
-                if (workOrder.AccusedId == null) throw new InvalidOperationException("该工单未关联用户，无法发送警告");
+                var warnedUserId = ResolveTargetUserId(workOrder);
+                if (warnedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法发送警告");
                 await _warningRepo.AddAsync(new UserWarning
                 {
-                    UserId = workOrder.AccusedId.Value,
+                    UserId = warnedUserId.Value,
                     AdminId = adminId,
                     Reason = reason,
                     CreateTime = DateTime.Now
@@ -477,6 +484,35 @@ public class AdminModerationService : IAdminModerationService
             BanUser or MuteUser or RestrictPublish => UnbanUser,
             _ => None
         };
+
+    private static string GetAppealResolutionAction(WorkOrder workOrder)
+    {
+        if (string.Equals(workOrder.TargetType, "product", StringComparison.OrdinalIgnoreCase))
+            return RestoreProduct;
+        if (string.Equals(workOrder.TargetType, "user", StringComparison.OrdinalIgnoreCase))
+            return UnbanUser;
+        return GetReversalAction(workOrder.AppealAgainst?.HandleAction);
+    }
+
+    private static long? ResolveTargetProductId(WorkOrder workOrder)
+        => workOrder.ProductId
+           ?? (string.Equals(workOrder.TargetType, "product", StringComparison.OrdinalIgnoreCase)
+               ? workOrder.TargetId
+               : null);
+
+    private static int? ResolveTargetUserId(WorkOrder workOrder)
+    {
+        if (workOrder.AccusedId.HasValue)
+            return workOrder.AccusedId.Value;
+
+        if (string.Equals(workOrder.TargetType, "user", StringComparison.OrdinalIgnoreCase) &&
+            workOrder.TargetId is long userId &&
+            userId > 0 &&
+            userId <= int.MaxValue)
+            return (int)userId;
+
+        return null;
+    }
 
     private async Task AddTimelineAsync(long workOrderId, string action, string? note, int adminId)
     {

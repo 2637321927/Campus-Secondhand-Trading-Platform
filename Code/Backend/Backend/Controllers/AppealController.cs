@@ -17,15 +17,21 @@ public class AppealController : ControllerBase
     private readonly IWorkOrderRepository _orders;
     private readonly IWorkOrderTimelineRepository _timeline;
     private readonly Backend.Services.IUpdatedFileService _files;
+    private readonly IProductRepository _products;
+    private readonly IBaseUserRepository _users;
 
     public AppealController(
         IWorkOrderRepository orders,
         IWorkOrderTimelineRepository timeline,
-        Backend.Services.IUpdatedFileService files)
+        Backend.Services.IUpdatedFileService files,
+        IProductRepository products,
+        IBaseUserRepository users)
     {
         _orders = orders;
         _timeline = timeline;
         _files = files;
+        _products = products;
+        _users = users;
     }
 
     private int Uid => int.Parse(User.FindFirst("userId")!.Value);
@@ -62,6 +68,49 @@ public class AppealController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<WorkOrderDto>> Create(CreateAppealDto dto)
     {
+        var targetType = dto.TargetType?.Trim().ToLowerInvariant();
+        long? targetId = dto.TargetId;
+        long? productId = null;
+        int? accusedId = null;
+
+        if (string.IsNullOrEmpty(targetType))
+        {
+            // 兼容旧的“对举报处理结果申诉”：仅绑定原工单，不指定新的申诉对象
+            if (!dto.AppealAgainstId.HasValue)
+                return BadRequest("请选择申诉类型");
+        }
+        else if (targetType == "product")
+        {
+            if (!targetId.HasValue || targetId <= 0)
+                return BadRequest("请选择要申诉的下架商品");
+
+            var product = await _products.GetByIdAsync(targetId.Value);
+            if (product == null)
+                return BadRequest("商品不存在");
+            if (product.UserId != Uid)
+                return BadRequest("只能申诉自己发布的商品");
+            if (product.Status != ProductStatus.Removed)
+                return BadRequest("只能对已下架的商品发起申诉");
+
+            productId = product.ProductId;
+            targetId = product.ProductId;
+        }
+        else if (targetType == "user")
+        {
+            var user = await _users.GetByIdWithProfileAsync(Uid);
+            if (user == null)
+                return BadRequest("用户不存在");
+            if (user.AccountStatus == AccountStatus.Normal)
+                return BadRequest("账号状态正常，无需申诉");
+
+            accusedId = Uid;
+            targetId = Uid;
+        }
+        else
+        {
+            return BadRequest("不支持的申诉对象类型");
+        }
+
         var workOrder = new WorkOrder
         {
             Type = (int)WorkOrderType.Appeal,
@@ -69,8 +118,10 @@ public class AppealController : ControllerBase
             Reason = dto.Reason.Trim(),
             Info = dto.Info?.Trim(),
             AppealAgainstWorkOrderId = dto.AppealAgainstId,
-            TargetType = dto.TargetType,
-            TargetId = dto.TargetId
+            TargetType = targetType,
+            TargetId = targetId,
+            ProductId = productId,
+            AccusedId = accusedId
         };
 
         await _orders.AddAsync(workOrder);
