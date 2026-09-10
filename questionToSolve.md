@@ -35,3 +35,37 @@
   - 现象：通过市场的商品信息页面进入的商家来客访问主页后不显示商家信誉
   ![](/questrion%20picture/8_1.png)
   - 解决方案：后端 UserDto 漏了 credit 字段、BaseUserService.GetByIdAsync 未映射，前端商家主页也没渲染。已在 UserDto 补 credit 字段并映射，前端类型补字段、主页资料区展示「信誉」。
+
+- [ ] 9.商品信息图片无法加载
+  - 现象：通过管理员账号进入"http://localhost:5173/admin/products"界面后商品信息中图片不显示
+  ![](/questrion%20picture/9_1.png)
+
+- [ ] 10.管理员无法进入个人中心
+  - 现象：以管理员账号登陆后无法打开个人中心,不知道是否是特意设置
+  ![](/questrion%20picture/10_1.png)
+
+- [ ] 11.用户信息不显示
+  - 现象：通过管理员账号进入"http://localhost:5173/admin/users"界面后,对特定账号点击详情后跳转页面无该账号信息
+  ![](/questrion%20picture/11_1.png)
+  进而在操作中点击解封用户时也不显示昵称
+  ![](/questrion%20picture/11_2.png)
+
+- [ ] 12.管理员发送警告用户无法收到
+  - 现象：以通过管理员账号进入"http://localhost:5173/admin/users"界面后,对特定账号发送警告后,切换至该账号无法收到警告
+
+- [ ] 13.管理员无法发送公告
+  - 现象：以通过管理员账号进入"http://localhost:5173/admin/announcements"界面后,发送公告无法发出
+  ![](/questrion%20picture/13_1.png)
+
+- [ ] 14.申诉显示
+  - 现象：以通过管理员账号进入"http://localhost:5173/admin/appeals"界面后,界面显示有待处理申诉,但实际在列表中没有
+  - 推测：计算申诉数量时加上了举报的数量
+  ![](/questrion%20picture/14_1.png)
+
+- [ ] 15.举报处理界面问题
+  - 现象：以通过管理员账号进入"http://localhost:5173/admin/reports"界面后,举报列表中无法看到*ID*,*举报人*的信息,
+  ![](/questrion%20picture/15_1.png)
+  点击操作中的*详情*栏之后,跳转到"http://localhost:5173/admin/reports/undefined"一个未定义网页,还什么都没有,和在管理员主页"http://localhost:5173/admin/dashboard"中对申诉事件进行*处理*操作后显示一致
+  点击操作中的*成立*,*驳回*栏之后,在跳出提示栏中点击*OK*后,显示*操作失败*
+  点击点击操作中的*处理*栏之后,在跳出提示栏中选择处理动作和处理原因后,点击*确认处理*显示*操作失败*
+  ![](/questrion%20picture/15_4.png)
