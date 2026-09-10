@@ -104,13 +104,6 @@
                 <span>{{ userStats.mutedUsers || 0 }}</span>
               </div>
               <div class="bar-item">
-                <span>限制发布</span>
-                <div class="bar-track">
-                  <div class="bar-fill warning" :style="{ width: getPercent(userStats.publishRestrictedUsers, userStats.totalUsers) }"></div>
-                </div>
-                <span>{{ userStats.publishRestrictedUsers || 0 }}</span>
-              </div>
-              <div class="bar-item">
                 <span>封禁</span>
                 <div class="bar-track">
                   <div class="bar-fill danger" :style="{ width: getPercent(userStats.bannedUsers, userStats.totalUsers) }"></div>
@@ -194,7 +187,6 @@ const userStats = ref({
   totalUsers: 0,
   normalUsers: 0,
   mutedUsers: 0,
-  publishRestrictedUsers: 0,
   bannedUsers: 0,
   usersWithProducts: 0,
   totalOrders: 0,
