@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  computed,
   onMounted,
   ref,
   watch
@@ -17,8 +16,6 @@ import {
 } from '../../api/modules/conversation'
 import {
   getNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
   deleteNotification
 } from '../../api/modules/notification'
 import type { ConversationDto } from '../../types/api/conversation'
@@ -42,9 +39,7 @@ const deletingConversationIds = ref<number[]>([])
 const notifications = ref<NotificationDto[]>([])
 const loadingNotifications = ref(false)
 const notificationsError = ref('')
-const markingAll = ref(false)
-const markingIds = ref<number[]>([])
-const deletingNotificationIds = ref<number[]>([])
+const deletingNotificationIds = ref<string[]>([])
 
 function formatTime(value?: string): string {
   if (!value) {
@@ -68,6 +63,10 @@ function formatTime(value?: string): string {
     : { month: '2-digit', day: '2-digit' }
 
   return date.toLocaleString('zh-CN', options)
+}
+
+function notificationKey(notification: NotificationDto): string {
+  return `${notification.type || 'announcement'}:${notification.notificationId}`
 }
 
 /**
@@ -175,74 +174,18 @@ async function handleDeleteConversation(
   }
 }
 
-// ===== 通知操作 =====
-async function handleMarkRead(
-  notification: NotificationDto
-): Promise<void> {
-  if (notification.isRead) {
-    return
-  }
-
-  markingIds.value = [
-    ...markingIds.value,
-    notification.notificationId
-  ]
-
-  try {
-    await markNotificationRead(notification.notificationId)
-
-    notification.isRead = true
-
-    ElMessage.success('已标记为已读')
-  } catch (error) {
-    ElMessage.error(
-      getApiErrorMessage(error, '标记已读失败，请稍后重试')
-    )
-
-    console.error('标记通知已读失败：', error)
-  } finally {
-    markingIds.value = markingIds.value.filter(
-      (id) => id !== notification.notificationId
-    )
-  }
-}
-
-async function handleMarkAllRead(): Promise<void> {
-  if (markingAll.value) {
-    return
-  }
-
-  markingAll.value = true
-
-  try {
-    await markAllNotificationsRead()
-
-    for (const notification of notifications.value) {
-      notification.isRead = true
-    }
-
-    ElMessage.success('全部通知已标记为已读')
-  } catch (error) {
-    ElMessage.error(
-      getApiErrorMessage(error, '操作失败，请稍后重试')
-    )
-
-    console.error('全部通知标记已读失败：', error)
-  } finally {
-    markingAll.value = false
-  }
-}
-
-function isDeletingNotification(id: number): boolean {
-  return deletingNotificationIds.value.includes(id)
+function isDeletingNotification(notification: NotificationDto): boolean {
+  return deletingNotificationIds.value.includes(notificationKey(notification))
 }
 
 async function handleDeleteNotification(
   notification: NotificationDto
 ): Promise<void> {
-  if (isDeletingNotification(notification.notificationId)) {
+  if (isDeletingNotification(notification)) {
     return
   }
+
+  const key = notificationKey(notification)
 
   try {
     await ElMessageBox.confirm(
@@ -260,17 +203,17 @@ async function handleDeleteNotification(
 
   deletingNotificationIds.value = [
     ...deletingNotificationIds.value,
-    notification.notificationId
+    key
   ]
 
   try {
-    await deleteNotification(notification.notificationId)
+    await deleteNotification(notification.notificationId, notification.type)
 
     ElMessage.success('通知已删除')
 
     notifications.value = notifications.value.filter(
       (item) =>
-        item.notificationId !== notification.notificationId
+        notificationKey(item) !== key
     )
   } catch (error) {
     ElMessage.error(
@@ -281,17 +224,10 @@ async function handleDeleteNotification(
   } finally {
     deletingNotificationIds.value =
       deletingNotificationIds.value.filter(
-        (id) => id !== notification.notificationId
+        (id) => id !== key
       )
   }
 }
-
-const unreadNotificationsCount = computed(
-  () =>
-    notifications.value.filter(
-      (notification) => !notification.isRead
-    ).length
-)
 
 watch(keyword, () => {
   void loadConversations()
@@ -454,27 +390,8 @@ onMounted(() => {
             <template #label>
               <span class="tab-label">
                 通知
-
-                <el-badge
-                  v-if="unreadNotificationsCount > 0"
-                  :value="unreadNotificationsCount"
-                  :max="99"
-                  class="tab-badge"
-                />
               </span>
             </template>
-
-            <div class="pane-toolbar pane-toolbar--right">
-              <el-button
-                :disabled="
-                  markingAll || unreadNotificationsCount === 0
-                "
-                :loading="markingAll"
-                @click="handleMarkAllRead"
-              >
-                全部已读
-              </el-button>
-            </div>
 
             <!-- 加载中 -->
             <div
@@ -523,10 +440,11 @@ onMounted(() => {
             >
               <li
                 v-for="notification in notifications"
-                :key="notification.notificationId"
+                :key="notificationKey(notification)"
                 class="notification-item"
                 :class="{
-                  'notification-item--unread': !notification.isRead
+                  'notification-item--warning':
+                    notification.type === 'warning'
                 }"
               >
                 <div class="notification-main">
@@ -547,27 +465,10 @@ onMounted(() => {
 
                 <div class="notification-actions">
                   <el-button
-                    v-if="!notification.isRead"
-                    type="primary"
-                    link
-                    :loading="
-                      markingIds.includes(
-                        notification.notificationId
-                      )
-                    "
-                    @click="handleMarkRead(notification)"
-                  >
-                    标为已读
-                  </el-button>
-
-                  <el-button
+                    v-if="notification.type !== 'warning'"
                     type="danger"
                     link
-                    :loading="
-                      isDeletingNotification(
-                        notification.notificationId
-                      )
-                    "
+                    :loading="isDeletingNotification(notification)"
                     :disabled="deletingNotificationIds.length > 0"
                     @click="handleDeleteNotification(notification)"
                   >
@@ -651,11 +552,6 @@ onMounted(() => {
 
 .pane-toolbar {
   padding: 16px 0 8px;
-}
-
-.pane-toolbar--right {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .search-input {
@@ -777,15 +673,8 @@ onMounted(() => {
   border-bottom: 0;
 }
 
-.notification-item--unread .notification-title::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 8px;
-  vertical-align: middle;
-  background: #f3a95f;
-  border-radius: 50%;
+.notification-item--warning .notification-title {
+  color: #b3342a;
 }
 
 .notification-main {

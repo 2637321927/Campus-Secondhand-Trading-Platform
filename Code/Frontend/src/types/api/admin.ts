@@ -90,7 +90,7 @@ export interface AdminUserDetail extends AdminUserListItem {
 // ==================== 工单管理类型 ====================
 
 export type AdminWorkOrderFilterType = 'report' | 'appeal'
-export type AdminWorkOrderStatus = 'waiting' | 'processing' | 'done'
+export type AdminWorkOrderStatus = 'waiting' | 'done'
 export type AdminWorkOrderTargetType = 'product' | 'user' | 'comment' | 'message' | 'order'
 export type AdminWorkOrderResult = 'accepted' | 'rejected' | 'handled' | 'approved'
 
@@ -156,7 +156,7 @@ export interface AdminWorkOrderPage {
 export interface ModerationTasks {
   totalPending: number
   waitingCount: number
-  processingCount: number
+  doneCount: number
   reportCount: number
   appealCount: number
   recentTasks: AdminWorkOrder[]

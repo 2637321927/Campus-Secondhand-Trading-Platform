@@ -1,4 +1,3 @@
-// 用户详情界面
 <template>
   <div class="user-detail">
     <el-page-header @back="router.back()" content="返回用户列表" />
@@ -209,6 +208,7 @@ const bannedUntil = ref<string | null>(null)
 const warningDialogVisible = ref(false)
 const warningReason = ref('')
 
+// ========== 加载用户数据 ==========
 const loadData = async () => {
   loading.value = true
   try {
@@ -216,15 +216,19 @@ const loadData = async () => {
       getAdminUserDetail(userId),
       getUserReputation(userId).catch(() => null)
     ])
-    userInfo.value = user
-    reputationData.value = reputation
+    
+    // 使用 response.data 获取实际数据
+    userInfo.value = user?.data || user || {}
+    reputationData.value = reputation?.data || reputation || null
   } catch (error) {
+    console.error('加载用户信息失败:', error)
     ElMessage.error('加载用户信息失败')
   } finally {
     loading.value = false
   }
 }
 
+// ========== 切换用户状态 ==========
 const toggleStatus = () => {
   if (userInfo.value.accountStatus === 0) {
     statusDialogTitle.value = `封禁用户 "${userInfo.value.userName}"`
@@ -244,19 +248,28 @@ const confirmStatusChange = async () => {
     return
   }
   try {
-    await updateUserStatus(userId, {
+    const res = await updateUserStatus(userId, {
       status: newStatus.value,
       reason: statusReason.value,
       bannedUntil: bannedUntil.value || null
     })
+    
+    // 如果返回了更新后的数据，直接使用；否则重新加载
+    if (res?.data) {
+      userInfo.value = res.data
+    } else {
+      await loadData()
+    }
+    
     ElMessage.success('操作成功')
     statusDialogVisible.value = false
-    loadData()
   } catch (error) {
+    console.error('操作失败:', error)
     ElMessage.error('操作失败')
   }
 }
 
+// ========== 发送警告 ==========
 const openWarningDialog = () => {
   warningReason.value = ''
   warningDialogVisible.value = true
@@ -273,14 +286,17 @@ const confirmWarning = async () => {
     warningDialogVisible.value = false
     loadData()
   } catch (error) {
+    console.error('发送失败:', error)
     ElMessage.error('发送失败')
   }
 }
 
+// ========== 查看用户发布的商品 ==========
 const viewUserProducts = () => {
   router.push(`/admin/products?sellerId=${userId}`)
 }
 
+// ========== 格式化日期 ==========
 const formatDate = (date: string) => {
   if (!date) return '-'
   return new Date(date).toLocaleString('zh-CN')

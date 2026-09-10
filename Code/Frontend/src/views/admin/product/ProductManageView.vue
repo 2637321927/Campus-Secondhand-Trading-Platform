@@ -70,6 +70,7 @@
             <el-option label="已下架" :value="2" />
             <el-option label="待审核" :value="3" />
             <el-option label="已驳回" :value="4" />
+            <el-option label="管理员下架" :value="6" />
           </el-select>
         </el-form-item>
         <el-form-item label="分类">
@@ -158,7 +159,7 @@
               驳回
             </el-button>
             <el-button
-              v-if="row.status === 2 || row.status === 4"
+              v-if="row.status === 2 || row.status === 4 || row.status === 6"
               size="small"
               type="warning"
               @click="handleRestore(row)"
@@ -287,7 +288,8 @@ const statusMap: Record<number, { text: string; type: string }> = {
   1: { text: '已售', type: 'info' },
   2: { text: '已下架', type: 'danger' },
   3: { text: '待审核', type: 'warning' },
-  4: { text: '已驳回', type: 'danger' }
+  4: { text: '已驳回', type: 'danger' },
+  6: { text: '管理员下架', type: 'danger' }
 }
 
 const getStatusText = (status: number) => statusMap[status]?.text || '未知'

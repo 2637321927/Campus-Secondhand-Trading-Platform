@@ -188,7 +188,7 @@ export function rejectWorkOrder(workOrderId: number) {
 
 // 处理工单
 export function processWorkOrder(workOrderId: number, data: {
-  action: 'none' | 'remove_product' | 'restore_product' | 'ban_user' | 'mute_user' | 'restrict_publish' | 'unban_user' | 'warn_user' | 'approve'
+  action: 'none' | 'remove_product' | 'ban_user' | 'mute_user' | 'warn_user' | 'approve'
   reason: string
 }) {
   return request.patch<AdminWorkOrderDetail>(`/api/admin/work-orders/${workOrderId}/handle`, data)

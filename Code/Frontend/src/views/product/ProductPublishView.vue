@@ -251,7 +251,9 @@ const rules: FormRules<ProductPublishForm> = {
     {
       required: true,
       message: '请选择商品分类',
-      trigger: 'change'
+      // 级联选择器每选一级都会触发 change，此时 form.categoryId 仍为 null，
+      // 会在只选完大分类时就弹红框，因此改为失焦时校验，提交时仍会整体校验。
+      trigger: 'blur'
     }
   ],
 

@@ -264,7 +264,8 @@ const statusMap: Record<number, { text: string; class: string }> = {
   2: { text: '已下架', class: 'status-removed' },
   3: { text: '待审核', class: 'status-draft' },
   4: { text: '已驳回', class: 'status-removed' },
-  5: { text: '交易中', class: 'status-draft' }
+  5: { text: '交易中', class: 'status-draft' },
+  6: { text: '管理员下架', class: 'status-removed' }
 }
 
 function getStatusText(status: number): string {

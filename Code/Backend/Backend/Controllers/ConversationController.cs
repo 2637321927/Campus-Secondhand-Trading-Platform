@@ -211,6 +211,11 @@ public class ConversationController : ControllerBase
     /// </summary>
     private async Task<ActionResult<MessageDto>> SendCore(int conversationId, SendMessageDto dto, IFormFile? file)
     {
+        var sender = await _db.BaseUsers.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.UserId == UserId);
+        if (sender?.AccountStatus == AccountStatus.Muted)
+            return BadRequest(new { error = "禁言用户无法发送消息" });
+
         // 附件：先上传拿到 FileId，再作为消息的一部分落库
         if (file != null)
         {

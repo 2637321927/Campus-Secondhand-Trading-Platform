@@ -6,13 +6,18 @@ import type {
 export type { WorkOrderDto }
 
 /**
+ * 申诉对象类型
+ */
+export type AppealTargetType = 'product' | 'user'
+
+/**
  * 发起申诉请求
  */
 export interface CreateAppealDto {
     reason: string
     info?: string | null
     appealAgainstId?: number | null
-    targetType?: string | null
+    targetType?: AppealTargetType | null
     targetId?: number | null
 }
 

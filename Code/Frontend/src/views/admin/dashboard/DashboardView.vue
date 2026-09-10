@@ -28,8 +28,8 @@
       <el-col :span="6">
         <el-card>
           <div class="stat-item">
-            <div class="stat-number">{{ moderationTasks.totalPending || 0 }}</div>
-            <div class="stat-label">待处理工单</div>
+            <div class="stat-number">{{ moderationTasks.waitingCount || 0 }}</div>
+            <div class="stat-label">待处理</div>
           </div>
         </el-card>
       </el-col>
@@ -102,13 +102,6 @@
                   <div class="bar-fill warning" :style="{ width: getPercent(userStats.mutedUsers, userStats.totalUsers) }"></div>
                 </div>
                 <span>{{ userStats.mutedUsers || 0 }}</span>
-              </div>
-              <div class="bar-item">
-                <span>限制发布</span>
-                <div class="bar-track">
-                  <div class="bar-fill warning" :style="{ width: getPercent(userStats.publishRestrictedUsers, userStats.totalUsers) }"></div>
-                </div>
-                <span>{{ userStats.publishRestrictedUsers || 0 }}</span>
               </div>
               <div class="bar-item">
                 <span>封禁</span>
@@ -194,7 +187,6 @@ const userStats = ref({
   totalUsers: 0,
   normalUsers: 0,
   mutedUsers: 0,
-  publishRestrictedUsers: 0,
   bannedUsers: 0,
   usersWithProducts: 0,
   totalOrders: 0,
@@ -204,7 +196,7 @@ const userStats = ref({
 const moderationTasks = ref({
   totalPending: 0,
   waitingCount: 0,
-  processingCount: 0,
+  doneCount: 0,
   reportCount: 0,
   appealCount: 0,
   recentTasks: [] as any[]
@@ -231,13 +223,11 @@ const getReasonText = (reason: string) => {
 // ========== 状态映射（与 WorkOrderManageView 保持一致） ==========
 const statusTextMap: Record<string, string> = {
   waiting: '待处理',
-  processing: '处理中',
   done: '已完成'
 }
 
 const statusTypeMap: Record<string, 'warning' | 'primary' | 'success'> = {
   waiting: 'warning',
-  processing: 'primary',
   done: 'success'
 }
 
@@ -268,7 +258,7 @@ const loadData = async () => {
     moderationTasks.value = {
       totalPending: taskData.totalPending ?? 0,
       waitingCount: taskData.waitingCount ?? 0,
-      processingCount: taskData.processingCount ?? 0,
+      doneCount: taskData.doneCount ?? 0,
       reportCount: taskData.reportCount ?? 0,
       appealCount: taskData.appealCount ?? 0,
       recentTasks: taskData.recentTasks ?? []

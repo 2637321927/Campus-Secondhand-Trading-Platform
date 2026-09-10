@@ -64,6 +64,9 @@ const selectedImageUrl = computed(() =>
 )
 
 const authStore=useAuthStore()
+const isMuted = computed(
+  () => authStore.currentUser?.accountStatus === 1
+)
 
 const isCollected = ref(false)
 const collectionLoading = ref(false)
@@ -458,6 +461,11 @@ async function handleSubmitComment():Promise<void> {
     return
   }
 
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法发表留言')
+    return
+  }
+
   const content=commentContent.value
 
   if(!content){
@@ -482,6 +490,7 @@ async function handleSubmitComment():Promise<void> {
     await loadComments(product.value.productId)
   }
   catch(error){
+    ElMessage.error(getApiErrorMessage(error, '留言发表失败，请稍后重试'))
     console.error('留言发表失败',error)
   }
   finally{
@@ -505,6 +514,11 @@ async function handleStartReply(
     return
   }
 
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法回复留言')
+    return
+  }
+
   replyingToComment.value = comment
   replyContent.value = ''
 }
@@ -521,6 +535,11 @@ async function handleSubmitReply(): Promise<void> {
 
   if (!authStore.isLoggedIn) {
     ElMessage.warning('请先登录后再回复留言')
+    return
+  }
+
+  if (isMuted.value) {
+    ElMessage.warning('当前账号被禁言，无法回复留言')
     return
   }
 
@@ -551,6 +570,7 @@ async function handleSubmitReply(): Promise<void> {
 
     await loadComments(product.value.productId)
   } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '回复留言失败，请稍后重试'))
     console.error('回复留言失败：', error)
   } finally {
     replySubmitting.value = false
@@ -1335,8 +1355,8 @@ onBeforeUnmount(() => {
                   type="textarea"
                   :rows="3"
                   resize="none"
-                  placeholder="向卖家咨询商品成色、交易地点等信息"
-                  :disabled="commentSubmitting"
+                  :placeholder="isMuted ? '当前账号被禁言，无法发表留言' : '向卖家咨询商品成色、交易地点等信息'"
+                  :disabled="commentSubmitting || isMuted"
                   @keydown.ctrl.enter.prevent="handleSubmitComment"
                 />
 
@@ -1346,6 +1366,7 @@ onBeforeUnmount(() => {
                     :loading="commentSubmitting"
                     :disabled="
                       commentSubmitting ||
+                      isMuted ||
                       !commentContent.trim()
                     "
                     @click="handleSubmitComment"
@@ -1423,13 +1444,10 @@ onBeforeUnmount(() => {
           class="comments-empty"
           description="暂时还没有留言"
         >
-          <template #image>
-            <div class="empty-comment-icon">
-              留
-            </div>
-          </template>
-
-          <p class="empty-comment-tip">
+          <p
+            v-if="!authStore.isLoggedIn"
+            class="empty-comment-tip"
+          >
             登录后可以向卖家咨询商品情况
           </p>
         </el-empty>
@@ -1482,6 +1500,7 @@ onBeforeUnmount(() => {
                 <el-button
                   text
                   type="primary"
+                  :disabled="isMuted"
                   @click="handleStartReply(comment)"
                 >
                   回复
@@ -1532,8 +1551,8 @@ onBeforeUnmount(() => {
                   resize="none"
                   maxlength="300"
                   show-word-limit
-                  placeholder="输入回复内容"
-                  :disabled="replySubmitting"
+                  :placeholder="isMuted ? '当前账号被禁言，无法回复留言' : '输入回复内容'"
+                  :disabled="replySubmitting || isMuted"
                   @keydown.ctrl.enter.prevent="handleSubmitReply"
                 />
 
@@ -1555,6 +1574,7 @@ onBeforeUnmount(() => {
                       :loading="replySubmitting"
                       :disabled="
                         replySubmitting ||
+                        isMuted ||
                         !replyContent.trim()
                       "
                       @click="handleSubmitReply"
@@ -1721,45 +1741,45 @@ onBeforeUnmount(() => {
 
         <div class="transaction-grid">
           <div class="transaction-item">
-            <span class="transaction-number">
-              01
-            </span>
+            <div class="transaction-head">
+              <span class="transaction-number">
+                01
+              </span>
 
-            <div>
               <strong>当面验货</strong>
-
-              <p>
-                建议在校内公共场所见面，并在付款前仔细检查商品。
-              </p>
             </div>
+
+            <p>
+              建议在校内公共场所见面，并在付款前仔细检查商品。
+            </p>
           </div>
 
           <div class="transaction-item">
-            <span class="transaction-number">
-              02
-            </span>
+            <div class="transaction-head">
+              <span class="transaction-number">
+                02
+              </span>
 
-            <div>
               <strong>谨慎付款</strong>
-
-              <p>
-                不要点击不明链接，不要向陌生账户提前支付大额款项。
-              </p>
             </div>
+
+            <p>
+              不要点击不明链接，不要向陌生账户提前支付大额款项。
+            </p>
           </div>
 
           <div class="transaction-item">
-            <span class="transaction-number">
-              03
-            </span>
+            <div class="transaction-head">
+              <span class="transaction-number">
+                03
+              </span>
 
-            <div>
               <strong>保留记录</strong>
-
-              <p>
-                重要约定应尽量通过平台消息完成，以便发生争议时核查。
-              </p>
             </div>
+
+            <p>
+              重要约定应尽量通过平台消息完成，以便发生争议时核查。
+            </p>
           </div>
         </div>
       </section>
@@ -2283,8 +2303,63 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 交易须知 */
+
+.transaction-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.transaction-item {
+  padding: 20px 18px;
+  background: #f7f9f8;
+  border: 1px solid #e3e9e6;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.transaction-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.transaction-number {
+  color: #3e9b79;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.transaction-item strong {
+  color: #26352f;
+  font-size: 15px;
+}
+
+.transaction-item p {
+  margin: 0;
+  color: #68766f;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+@media (max-width: 1000px) {
+  .transaction-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .comment-section {
   min-height: 180px;
+}
+
+.empty-comment-tip {
+  margin: 0;
+  color: #8a9791;
+  font-size: 13px;
 }
 
 .comment-error {
