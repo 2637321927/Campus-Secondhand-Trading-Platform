@@ -20,9 +20,11 @@ import type {
   ProductCardDto
 } from '../../types/api/product'
 import { getRelatedProducts } from '../../api/modules/recommend'
+import { getProductReviews } from '../../api/modules/review'
 import ProductCard from '../../components/product/ProductCard.vue'
 import { getPublicUser } from '../../api/modules/user'
 import type { PublicUserDto } from '../../types/api/user'
+import type { ReviewDto } from '../../types/api/review'
 import { createConversation } from '../../api/modules/conversation'
 import { getApiErrorMessage } from '../../utils/error'
 import {
@@ -77,6 +79,9 @@ const commentsLoading = ref(false)
 const commentsErrorMessage = ref('')
 const commentContent = ref('')
 const commentSubmitting = ref(false)
+
+const productReviews = ref<ReviewDto[]>([])
+const productReviewsLoading = ref(false)
 
 const replyingToComment = ref<ProductCommentDto | null>(null)
 const replyContent = ref('')
@@ -378,6 +383,65 @@ async function loadComments(
   }
 }
 
+
+async function loadProductReviews(
+  requestedProductId: number,
+  version = detailLoadVersion
+): Promise<void> {
+  productReviewsLoading.value = true
+
+  try {
+    const response = await getProductReviews(
+      requestedProductId
+    )
+
+    if (
+      !isCurrentDetailLoad(
+        version,
+        requestedProductId
+      )
+    ) {
+      return
+    }
+
+    productReviews.value = response.data ?? []
+  } catch (error) {
+    if (
+      !isCurrentDetailLoad(
+        version,
+        requestedProductId
+      )
+    ) {
+      return
+    }
+
+    productReviews.value = []
+
+    console.error('商品评价加载失败：', error)
+  } finally {
+    if (
+      isCurrentDetailLoad(
+        version,
+        requestedProductId
+      )
+    ) {
+      productReviewsLoading.value = false
+    }
+  }
+}
+
+function goToProductReviews(): void {
+  if (!product.value) {
+    return
+  }
+
+  void router.push({
+    name: 'product-reviews',
+    params: {
+      productId: product.value.productId
+    }
+  })
+}
 
 async function handleSubmitComment():Promise<void> {
   if(!product.value){
@@ -704,6 +768,7 @@ async function loadProduct(): Promise<void> {
   product.value = null
   seller.value = null
   comments.value = []
+  productReviews.value = []
   selectedImageFileId.value = null
   clearProductImages()
   isCollected.value = false
@@ -782,6 +847,11 @@ async function loadProduct(): Promise<void> {
     )
 
     void loadComments(
+      requestedProductId,
+      currentVersion
+    )
+
+    void loadProductReviews(
       requestedProductId,
       currentVersion
     )
@@ -1579,6 +1649,81 @@ onBeforeUnmount(() => {
                   </div>
                 </article>
               </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- 商品评价 -->
+      <section class="detail-section product-review-section">
+        <div class="section-title comment-title">
+          <div>
+            <h2>商品评价</h2>
+
+            <span>查看买家交易完成后对商品的评价</span>
+          </div>
+
+          <el-button
+            v-if="productReviews.length > 0"
+            text
+            type="primary"
+            @click="goToProductReviews"
+          >
+            查看全部（{{ productReviews.length }}）
+          </el-button>
+        </div>
+
+        <!-- 评价加载中 -->
+        <div
+          v-if="productReviewsLoading"
+          class="comments-loading"
+        >
+          <el-skeleton :rows="3" animated />
+        </div>
+
+        <!-- 暂无评价 -->
+        <el-empty
+          v-else-if="productReviews.length === 0"
+          class="product-review-empty"
+          description="该商品暂无评价"
+        />
+
+        <!-- 评价列表 -->
+        <div v-else class="review-list">
+          <article
+            v-for="review in productReviews"
+            :key="review.reviewId"
+            class="review-item"
+          >
+            <div class="review-head">
+              <strong>
+                {{ review.reviewerName ?? '匿名用户' }}
+              </strong>
+
+              <el-rate
+                :model-value="review.rating"
+                disabled
+                size="small"
+              />
+            </div>
+
+            <p v-if="review.info" class="review-text">
+              {{ review.info }}
+            </p>
+
+            <time class="review-time">
+              {{ formatDate(review.reviewTime) }}
+            </time>
+
+            <div
+              v-if="review.replyInfo"
+              class="review-reply"
+            >
+              <span class="review-reply-label">
+                卖家回复：
+              </span>
+
+              <span>{{ review.replyInfo }}</span>
             </div>
           </article>
         </div>
@@ -2443,5 +2588,66 @@ onBeforeUnmount(() => {
   margin-left: 0;
   padding: 3px 0;
   font-size: 12px;
+}
+
+/* 商品评价 */
+.product-review-section {
+  min-height: 120px;
+}
+
+.product-review-empty {
+  padding: 20px 0;
+}
+
+.review-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.review-item {
+  padding: 18px 20px;
+  background: #fafbfa;
+  border: 1px solid #e5ebe8;
+  border-radius: 12px;
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-head strong {
+  color: #1e2a26;
+}
+
+.review-text {
+  margin: 10px 0 6px;
+  color: #34443d;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.review-time {
+  color: #8a9691;
+  font-size: 12px;
+}
+
+.review-reply {
+  margin-top: 10px;
+  padding: 10px 14px;
+  color: #34443d;
+  background: #f0f7f3;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.review-reply-label {
+  color: #24735b;
+  font-weight: 600;
 }
 </style>

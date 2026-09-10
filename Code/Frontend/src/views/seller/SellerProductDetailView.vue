@@ -357,6 +357,19 @@ async function goToEdit(): Promise<void> {
   })
 }
 
+function goToReviews(): void {
+  if (!product.value) {
+    return
+  }
+
+  void router.push({
+    name: 'product-reviews',
+    params: {
+      productId: product.value.productId
+    }
+  })
+}
+
 function handleProductChanged(): void {
   const requestedProductId = productId.value
 
@@ -573,6 +586,29 @@ onBeforeUnmount(() => {
               <span>留言量</span>
             </div>
           </div>
+        </el-card>
+
+        <el-card
+          class="detail-card"
+          shadow="never"
+        >
+          <template #header>
+            <div class="section-header">
+              <h2>商品评价</h2>
+
+              <el-button
+                text
+                type="primary"
+                @click="goToReviews"
+              >
+                查看评价与回复
+              </el-button>
+            </div>
+          </template>
+
+          <p class="review-tip">
+            买家完成交易后可以对商品进行评价，你可以在这里查看并回复买家的评价。
+          </p>
         </el-card>
 
         <el-card
@@ -852,6 +888,13 @@ onBeforeUnmount(() => {
   line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.review-tip {
+  margin: 0;
+  color: #6c7a74;
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 .section-header {

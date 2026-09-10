@@ -16,7 +16,7 @@ import {
     shipOrder
 } from '../../api/modules/order'
 import { getProductImages } from '../../api/modules/product'
-import { getOrderReview } from '../../api/modules/review'
+import { getOrderReview, replyReview } from '../../api/modules/review'
 import type {
     OrderDto,
     OrderTimelineDto
@@ -36,6 +36,10 @@ const timeline = ref<OrderTimelineDto[]>([])
 const review = ref<ReviewDto | null>(null)
 const productImageUrl = ref('')
 const operating = ref(false)
+
+const replyDialogVisible = ref(false)
+const replyContent = ref('')
+const replySubmitting = ref(false)
 
 const orderId = computed(() => Number(route.params.orderId))
 
@@ -357,6 +361,36 @@ function goToReviewCreate(): void {
     })
 }
 
+function openReplyDialog(): void {
+    replyContent.value = ''
+    replyDialogVisible.value = true
+}
+
+async function handleSubmitReply(): Promise<void> {
+    if (!review.value) return
+
+    const content = replyContent.value.trim()
+    if (!content) {
+        ElMessage.warning('请输入回复内容')
+        return
+    }
+
+    replySubmitting.value = true
+    try {
+        await replyReview(review.value.reviewId, {
+            replyInfo: content
+        })
+        ElMessage.success('回复成功')
+        replyDialogVisible.value = false
+        await loadOrder()
+    } catch (error) {
+        ElMessage.error(getApiErrorMessage(error, '回复失败'))
+        console.error('回复评价失败：', error)
+    } finally {
+        replySubmitting.value = false
+    }
+}
+
 onMounted(() => {
     void loadOrder()
 })
@@ -507,6 +541,18 @@ onMounted(() => {
                             <span class="reply-label">回复：</span>
                             <span>{{ review.replyInfo }}</span>
                         </div>
+                        <div
+                            v-if="review.revieweeId === authStore.currentUser?.userId && !review.replyInfo"
+                            class="review-actions"
+                        >
+                            <el-button
+                                type="primary"
+                                size="small"
+                                @click="openReplyDialog"
+                            >
+                                回复评价
+                            </el-button>
+                        </div>
                     </div>
                 </section>
 
@@ -654,6 +700,28 @@ onMounted(() => {
                 <el-button @click="shipDialogVisible = false">取消</el-button>
                 <el-button type="primary" :loading="operating" @click="handleShipOrder">
                     确认发货
+                </el-button>
+            </template>
+        </el-dialog>
+
+        <!-- 回复评价弹窗 -->
+        <el-dialog
+            v-model="replyDialogVisible"
+            title="回复评价"
+            width="440px"
+        >
+            <el-input
+                v-model="replyContent"
+                type="textarea"
+                :rows="4"
+                placeholder="请输入回复内容"
+                maxlength="200"
+                show-word-limit
+            />
+            <template #footer>
+                <el-button @click="replyDialogVisible = false">取消</el-button>
+                <el-button type="primary" :loading="replySubmitting" @click="handleSubmitReply">
+                    确认回复
                 </el-button>
             </template>
         </el-dialog>
@@ -806,6 +874,11 @@ onMounted(() => {
 .reply-label {
     color: #3e9b79;
     font-weight: 600;
+}
+
+.review-actions {
+    display: flex;
+    margin-top: 8px;
 }
 
 .action-buttons {
