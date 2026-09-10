@@ -6,6 +6,7 @@ import { useMessageStore } from '../../stores/message'
 import { ElMessage } from 'element-plus'
 import {
   ArrowDown,
+  Search,
   SwitchButton,
   User
 } from '@element-plus/icons-vue'
@@ -149,7 +150,7 @@ onMounted(() => {
               aria-label="搜索商品"
               @click="handleSearch"
             >
-              搜索
+              <el-icon><Search /></el-icon>
             </el-button>
           </template>
         </el-input>

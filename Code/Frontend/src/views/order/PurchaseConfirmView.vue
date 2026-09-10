@@ -25,7 +25,6 @@ const productImageUrl = ref('')
 const purchaseCheckResult = ref<PurchaseCheckDto | null>(null)
 const addressList = ref<AddressDto[]>([])
 const selectedAddressId = ref<number>(0)
-const shippingMethod = ref('')
 const note = ref('')
 
 const productId = computed(() => Number(route.params.productId))
@@ -115,7 +114,8 @@ async function handleSubmitOrder(): Promise<void> {
         const response = await createOrder({
             productId: productId.value,
             addressId: selectedAddressId.value,
-            shippingMethod: shippingMethod.value || null,
+            // 发货方式在商品发布时已确定，买家侧不再填写
+            shippingMethod: null,
             note: note.value || null
         })
 
@@ -242,17 +242,10 @@ onMounted(() => {
                     </el-radio-group>
                 </section>
 
-                <!-- 发货方式与备注 -->
+                <!-- 买家备注 -->
                 <section class="purchase-panel">
-                    <h2 class="panel-title">发货方式与备注</h2>
+                    <h2 class="panel-title">买家备注</h2>
                     <el-form label-width="100px">
-                        <el-form-item label="发货方式">
-                            <el-input
-                                v-model="shippingMethod"
-                                placeholder="如：快递、自提、面交（选填）"
-                                clearable
-                            />
-                        </el-form-item>
                         <el-form-item label="买家备注">
                             <el-input
                                 v-model="note"

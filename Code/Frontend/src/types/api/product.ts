@@ -6,8 +6,9 @@
  * 3 = 待审核
  * 4 = 审核驳回
  * 5 = 交易中
+ * 6 = 管理员强制下架（卖家不能自行重新上架）
  */
-export type ProductStatus = 0 | 1 | 2 | 3 | 4 | 5
+export type ProductStatus = 0 | 1 | 2 | 3 | 4 | 5 | 6
 export type ShippingType = 0 | 1 | 2 | 3
 
 export interface ProductCardDto{
