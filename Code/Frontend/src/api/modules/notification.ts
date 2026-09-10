@@ -15,35 +15,19 @@ export function getNotifications() {
 /**
  * 获取单条通知详情
  */
-export function getNotification(notificationId: number) {
+export function getNotification(notificationId: number, type?: string) {
     return request.get<NotificationDto>(
-        `/api/notifications/${notificationId}`
-    )
-}
-
-/**
- * 标记单条通知为已读
- */
-export function markNotificationRead(notificationId: number) {
-    return request.patch<void>(
-        `/api/notifications/${notificationId}/read`
-    )
-}
-
-/**
- * 全部通知标记为已读
- */
-export function markAllNotificationsRead() {
-    return request.patch<void>(
-        '/api/notifications/read-all'
+        `/api/notifications/${notificationId}`,
+        { params: { type } }
     )
 }
 
 /**
  * 删除通知
  */
-export function deleteNotification(notificationId: number) {
+export function deleteNotification(notificationId: number, type?: string) {
     return request.delete<void>(
-        `/api/notifications/${notificationId}`
+        `/api/notifications/${notificationId}`,
+        { params: { type } }
     )
 }

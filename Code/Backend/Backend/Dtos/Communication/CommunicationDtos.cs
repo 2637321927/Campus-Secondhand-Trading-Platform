@@ -134,11 +134,15 @@ public class WorkOrderDto
 // ==================== 通知 ====================
 
 /// <summary>
-/// 站内通知项（基于公告表）
+/// 站内通知项（公告 / 用户警告）
 /// </summary>
 public class NotificationDto
 {
-    public int NotificationId { get; set; }
+    public long NotificationId { get; set; }
+
+    /// <summary>通知类型：announcement=系统公告，warning=用户警告</summary>
+    public string Type { get; set; } = "announcement";
+
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime CreateTime { get; set; }
