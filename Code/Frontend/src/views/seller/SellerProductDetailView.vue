@@ -19,11 +19,14 @@ import {
   createProductComment,
   getProductComments
 } from '../../api/modules/comment'
+import { getProductReviews, replyReview } from '../../api/modules/review'
 import type {
   ProductDto,
   ProductStatus
 } from '../../types/api/product'
 import type { ProductCommentDto } from '../../types/api/comment'
+import type { ReviewDto } from '../../types/api/review'
+import { useAuthStore } from '../../stores/auth'
 import SellerProductActions from '../../components/product/SellerProductActions.vue'
 import { useProductImages } from '../../composables/useProductImages'
 import {
@@ -33,6 +36,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const product = ref<ProductDto | null>(null)
 const productLoading = ref(false)
@@ -48,6 +52,15 @@ const commentsErrorMessage = ref('')
 
 const replyContents = reactive<Record<number, string>>({})
 const replyingCommentId = ref<number | null>(null)
+
+const reviews = ref<ReviewDto[]>([])
+const reviewsLoading = ref(false)
+const reviewsErrorMessage = ref('')
+
+const reviewReplyVisible = ref(false)
+const reviewReplyTargetId = ref<number | null>(null)
+const reviewReplyContent = ref('')
+const reviewReplySubmitting = ref(false)
 
 let loadVersion = 0
 
@@ -249,17 +262,57 @@ async function loadComments(
   }
 }
 
+async function loadReviews(
+  requestedProductId: number,
+  version = loadVersion
+): Promise<void> {
+  if (!isCurrentLoad(version, requestedProductId)) {
+    return
+  }
+
+  reviewsLoading.value = true
+  reviewsErrorMessage.value = ''
+
+  try {
+    const response = await getProductReviews(
+      requestedProductId
+    )
+
+    if (!isCurrentLoad(version, requestedProductId)) {
+      return
+    }
+
+    reviews.value = response.data ?? []
+  } catch (error) {
+    if (!isCurrentLoad(version, requestedProductId)) {
+      return
+    }
+
+    reviews.value = []
+    reviewsErrorMessage.value = '商品评价加载失败'
+
+    console.error('卖家商品评价加载失败：', error)
+  } finally {
+    if (isCurrentLoad(version, requestedProductId)) {
+      reviewsLoading.value = false
+    }
+  }
+}
+
 function loadPage(): void {
   const requestedProductId = productId.value
   const currentVersion = ++loadVersion
 
   product.value = null
   comments.value = []
+  reviews.value = []
   productLoading.value = false
   commentsLoading.value = false
+  reviewsLoading.value = false
 
   productErrorMessage.value = ''
   commentsErrorMessage.value = ''
+  reviewsErrorMessage.value = ''
 
   if (requestedProductId === null) {
     productErrorMessage.value = '商品编号不正确'
@@ -272,6 +325,11 @@ function loadPage(): void {
   )
 
   void loadComments(
+    requestedProductId,
+    currentVersion
+  )
+
+  void loadReviews(
     requestedProductId,
     currentVersion
   )
@@ -335,6 +393,45 @@ async function handleReply(
     ElMessage.error('回复失败，请稍后重试')
   } finally {
     replyingCommentId.value = null
+  }
+}
+
+function openReviewReply(reviewId: number): void {
+  reviewReplyTargetId.value = reviewId
+  reviewReplyContent.value = ''
+  reviewReplyVisible.value = true
+}
+
+async function submitReviewReply(): Promise<void> {
+  if (reviewReplyTargetId.value === null) {
+    return
+  }
+
+  const content = reviewReplyContent.value.trim()
+  if (!content) {
+    ElMessage.warning('请输入回复内容')
+    return
+  }
+
+  reviewReplySubmitting.value = true
+
+  try {
+    await replyReview(reviewReplyTargetId.value, {
+      replyInfo: content
+    })
+
+    ElMessage.success('回复成功')
+    reviewReplyVisible.value = false
+
+    const requestedProductId = productId.value
+    if (requestedProductId !== null) {
+      await loadReviews(requestedProductId)
+    }
+  } catch (error) {
+    console.error('回复评价失败：', error)
+    ElMessage.error('回复失败，请稍后重试')
+  } finally {
+    reviewReplySubmitting.value = false
   }
 }
 
@@ -606,9 +703,98 @@ onBeforeUnmount(() => {
             </div>
           </template>
 
-          <p class="review-tip">
-            买家完成交易后可以对商品进行评价，你可以在这里查看并回复买家的评价。
-          </p>
+          <div
+            v-if="reviewsLoading && reviews.length === 0"
+            class="section-loading"
+          >
+            <el-skeleton :rows="3" animated />
+          </div>
+
+          <el-alert
+            v-else-if="
+              reviewsErrorMessage &&
+              reviews.length === 0
+            "
+            :title="reviewsErrorMessage"
+            type="error"
+            :closable="false"
+            show-icon
+          >
+            <template #default>
+              <el-button
+                link
+                type="primary"
+                @click="
+                  productId !== null &&
+                  loadReviews(productId)
+                "
+              >
+                重新加载评价
+              </el-button>
+            </template>
+          </el-alert>
+
+          <el-empty
+            v-else-if="reviews.length === 0"
+            description="该商品还没有评价"
+            :image-size="90"
+          />
+
+          <div v-else class="review-list">
+            <el-alert
+              v-if="reviewsErrorMessage"
+              :title="reviewsErrorMessage"
+              type="error"
+              :closable="false"
+              show-icon
+            />
+
+            <article
+              v-for="review in reviews"
+              :key="review.reviewId"
+              class="review-item"
+            >
+              <div class="review-heading">
+                <strong>
+                  {{ review.reviewerName ?? '匿名用户' }}
+                </strong>
+
+                <el-rate
+                  :model-value="review.rating"
+                  disabled
+                  size="small"
+                />
+              </div>
+
+              <p v-if="review.info" class="review-content">
+                {{ review.info }}
+              </p>
+
+              <span class="review-time">
+                {{ formatCommentTime(review.reviewTime) }}
+              </span>
+
+              <div v-if="review.replyInfo" class="review-reply">
+                <strong>我的回复：</strong>
+                <span>{{ review.replyInfo }}</span>
+              </div>
+
+              <div class="review-actions">
+                <el-button
+                  v-if="
+                    review.revieweeId ===
+                      authStore.currentUser?.userId &&
+                    !review.replyInfo
+                  "
+                  type="primary"
+                  size="small"
+                  @click="openReviewReply(review.reviewId)"
+                >
+                  回复评价
+                </el-button>
+              </div>
+            </article>
+          </div>
         </el-card>
 
         <el-card
@@ -746,6 +932,34 @@ onBeforeUnmount(() => {
         </el-card>
       </template>
     </section>
+
+    <el-dialog
+      v-model="reviewReplyVisible"
+      title="回复评价"
+      width="440px"
+    >
+      <el-input
+        v-model="reviewReplyContent"
+        type="textarea"
+        :rows="4"
+        placeholder="请输入回复内容"
+        maxlength="200"
+        show-word-limit
+      />
+
+      <template #footer>
+        <el-button @click="reviewReplyVisible = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          :loading="reviewReplySubmitting"
+          @click="submitReviewReply"
+        >
+          确认回复
+        </el-button>
+      </template>
+    </el-dialog>
   </main>
 </template>
 
@@ -890,11 +1104,60 @@ onBeforeUnmount(() => {
   overflow-wrap: anywhere;
 }
 
-.review-tip {
-  margin: 0;
-  color: #6c7a74;
+.review-list {
+  display: grid;
+  gap: 14px;
+}
+
+.review-item {
+  padding: 18px;
+  border: 1px solid #e3e9e6;
+  border-radius: 12px;
+}
+
+.review-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.review-heading strong {
+  color: #1e2a26;
+}
+
+.review-content {
+  margin-top: 12px;
+  color: #46534d;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.review-time {
+  display: block;
+  margin-top: 8px;
+  color: #7d8984;
+  font-size: 12px;
+}
+
+.review-reply {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0f7f3;
+  border-radius: 9px;
+  color: #34443d;
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.6;
+}
+
+.review-reply strong {
+  color: #24735b;
+}
+
+.review-actions {
+  display: flex;
+  margin-top: 12px;
 }
 
 .section-header {
