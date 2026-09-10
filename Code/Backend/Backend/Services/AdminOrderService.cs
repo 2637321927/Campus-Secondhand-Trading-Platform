@@ -11,15 +11,18 @@ public class AdminOrderService : IAdminOrderService
     private readonly IPurchaseRepository _purchaseRepo;
     private readonly IProductRepository _productRepo;
     private readonly IOrderTimelineRepository _timelineRepo;
+    private readonly IReputationService _reputationService;
 
     public AdminOrderService(
         IPurchaseRepository purchaseRepo,
         IProductRepository productRepo,
-        IOrderTimelineRepository timelineRepo)
+        IOrderTimelineRepository timelineRepo,
+        IReputationService reputationService)
     {
         _purchaseRepo = purchaseRepo;
         _productRepo = productRepo;
         _timelineRepo = timelineRepo;
+        _reputationService = reputationService;
     }
 
     public async Task<AdminOrderPageDto> GetOrdersAsync(
@@ -123,6 +126,9 @@ public class AdminOrderService : IAdminOrderService
 
         _purchaseRepo.Update(order);
         await _purchaseRepo.SaveAsync();
+
+        if (order.Product != null)
+            await _reputationService.ChangeCreditAsync(order.Product.UserId, CreditRules.OrderCompleted);
 
         await _timelineRepo.AddAsync(new OrderTimeline
         {
