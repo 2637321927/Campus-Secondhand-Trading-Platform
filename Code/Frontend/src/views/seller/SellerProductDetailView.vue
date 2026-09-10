@@ -479,6 +479,16 @@ onBeforeUnmount(() => {
             </el-tag>
           </div>
 
+          <el-alert
+            v-if="product.status === 4 && product.rejectReason"
+            class="reject-reason"
+            type="error"
+            :closable="false"
+            show-icon
+            title="审核驳回原因"
+            :description="product.rejectReason"
+          />
+
           <div class="product-actions">
             <SellerProductActions
               :product-id="product.productId"
@@ -821,6 +831,10 @@ onBeforeUnmount(() => {
 
 .product-actions {
   margin-top: 20px;
+}
+
+.reject-reason {
+  margin-top: 16px;
 }
 
 .image-grid {

@@ -182,10 +182,9 @@ const loadStatistics = async () => {
   }
 }
 
-// ========== 查看详情 - 跳转到普通用户商品详情页 ==========
+// ========== 查看详情 - 跳转到管理员专用商品详情页（与商品管理界面一致） ==========
 const viewDetail = (row: any) => {
-  console.log('查看商品详情:', row.productId)
-  router.push(`/products/${row.productId}`)
+  router.push(`/admin/products/${row.productId}`)
 }
 
 const handleApprove = async (row: any) => {

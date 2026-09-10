@@ -365,6 +365,7 @@ public class ProductService : IProductService
         Price = p.Price,
         Info = p.Info,
         Status = p.Status,
+        RejectReason = p.RejectReason,
         ReleaseDate = p.ReleaseDate,
         UserId = p.UserId,
         CategoryId = p.CategoryId,

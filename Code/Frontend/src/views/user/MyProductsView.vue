@@ -366,6 +366,16 @@ onBeforeUnmount(() => {
                 </span>
               </div>
 
+              <el-alert
+                v-if="product.status === 4 && product.rejectReason"
+                class="reject-reason"
+                type="error"
+                :closable="false"
+                show-icon
+                title="审核驳回原因"
+                :description="product.rejectReason"
+              />
+
               <p
                 v-if="product.info"
                 class="product-info"
@@ -536,6 +546,10 @@ onBeforeUnmount(() => {
   margin-top: 14px;
   color: #6c7a74;
   font-size: 13px;
+}
+
+.reject-reason {
+  margin-top: 12px;
 }
 
 .product-info {

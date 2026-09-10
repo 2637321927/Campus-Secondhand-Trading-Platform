@@ -43,6 +43,8 @@ public class ProductDto
     public decimal Price { get; set; }
     public string? Info { get; set; }
     public ProductStatus Status { get; set; } = ProductStatus.PendingReview;
+    /// <summary>审核驳回原因，仅状态为“审核驳回”时有值；卖家据此修改后重新进入审核队列。</summary>
+    public string? RejectReason { get; set; }
     public DateTime ReleaseDate { get; set; }
     public int UserId { get; set; }
     public long CategoryId { get; set; }

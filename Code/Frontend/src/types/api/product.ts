@@ -58,6 +58,8 @@ export interface ProductDto{
     price: number;
     info?:string|null;
     status:ProductStatus;
+    /** 审核驳回原因，仅状态为 4（审核驳回）时有值。 */
+    rejectReason?:string|null;
     userId:number;
     categoryId:number;
     categoryName?:string|null;
