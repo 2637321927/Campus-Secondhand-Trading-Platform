@@ -24,6 +24,7 @@ public class AdminModerationService : IAdminModerationService
     private readonly IProductAuditLogRepository _auditRepo;
     private readonly IBaseUserRepository _baseUserRepo;
     private readonly IUserWarningRepository _warningRepo;
+    private readonly IReputationService _reputationService;
 
     private static readonly HashSet<string> AllowedHandleActions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -36,7 +37,8 @@ public class AdminModerationService : IAdminModerationService
         IProductRepository productRepo,
         IProductAuditLogRepository auditRepo,
         IBaseUserRepository baseUserRepo,
-        IUserWarningRepository warningRepo)
+        IUserWarningRepository warningRepo,
+        IReputationService reputationService)
     {
         _workOrderRepo = workOrderRepo;
         _timelineRepo = timelineRepo;
@@ -44,6 +46,7 @@ public class AdminModerationService : IAdminModerationService
         _auditRepo = auditRepo;
         _baseUserRepo = baseUserRepo;
         _warningRepo = warningRepo;
+        _reputationService = reputationService;
     }
 
     public async Task<AdminModerationPageDto> GetReportsAsync(
@@ -89,6 +92,10 @@ public class AdminModerationService : IAdminModerationService
         workOrder.Result = "accepted";
         workOrder.AdminId = adminId;
         workOrder.ResponseTime = DateTime.Now;
+
+        var accusedId = ResolveTargetUserId(workOrder);
+        if (accusedId.HasValue)
+            await _reputationService.ChangeCreditAsync(accusedId.Value, CreditRules.ReportAccepted);
 
         await AddTimelineAsync(reportId, "accept", "举报成立", adminId);
         await _workOrderRepo.SaveAsync();
@@ -164,6 +171,8 @@ public class AdminModerationService : IAdminModerationService
         workOrder.Result = "rejected";
         workOrder.AdminId = adminId;
         workOrder.ResponseTime = DateTime.Now;
+
+        await _reputationService.ChangeCreditAsync(workOrder.InitiatorId, CreditRules.AppealRejected);
 
         await AddTimelineAsync(appealId, "reject", "申诉驳回", adminId);
         await _workOrderRepo.SaveAsync();
@@ -410,18 +419,21 @@ public class AdminModerationService : IAdminModerationService
             case BanUser:
                 var bannedUserId = ResolveTargetUserId(workOrder);
                 if (bannedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法封禁");
+                await _reputationService.ChangeCreditAsync(bannedUserId.Value, CreditRules.AccountPenalty);
                 await SetAccountStatusAsync(bannedUserId.Value, AccountStatus.Banned);
                 break;
 
             case MuteUser:
                 var mutedUserId = ResolveTargetUserId(workOrder);
                 if (mutedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法禁言");
+                await _reputationService.ChangeCreditAsync(mutedUserId.Value, CreditRules.AccountPenalty);
                 await SetAccountStatusAsync(mutedUserId.Value, AccountStatus.Muted);
                 break;
 
             case RestrictPublish:
                 var restrictedUserId = ResolveTargetUserId(workOrder);
                 if (restrictedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法限制发布");
+                await _reputationService.ChangeCreditAsync(restrictedUserId.Value, CreditRules.AccountPenalty);
                 await SetAccountStatusAsync(restrictedUserId.Value, AccountStatus.PublishRestricted);
                 break;
 
@@ -434,6 +446,7 @@ public class AdminModerationService : IAdminModerationService
             case WarnUser:
                 var warnedUserId = ResolveTargetUserId(workOrder);
                 if (warnedUserId == null) throw new InvalidOperationException("该工单未关联用户，无法发送警告");
+                await _reputationService.ChangeCreditAsync(warnedUserId.Value, CreditRules.Warned);
                 await _warningRepo.AddAsync(new UserWarning
                 {
                     UserId = warnedUserId.Value,
