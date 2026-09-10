@@ -1,3 +1,5 @@
+using Backend.Dtos.File;
+using Backend.Models;
 using Backend.Repositories;
 using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -6,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Backend.Controllers;
 
 /// <summary>
-/// 文件获取与删除（验证性接口）
+/// 附件模块：文件上传、获取与删除
 /// </summary>
 [ApiController]
 [Route("api/files")]
@@ -24,6 +26,43 @@ public class FileController : ControllerBase
         _fileService = fileService;
         _userRepo = userRepo;
         _configuration = configuration;
+    }
+
+    /// <summary>
+    /// 上传举报证据附件
+    /// </summary>
+    [Authorize]
+    [HttpPost("report-attachments")]
+    public async Task<ActionResult<FileUploadDto>> UploadReportAttachment(IFormFile file)
+        => await UploadAttachment(file);
+
+    /// <summary>
+    /// 上传申诉材料附件
+    /// </summary>
+    [Authorize]
+    [HttpPost("appeal-attachments")]
+    public async Task<ActionResult<FileUploadDto>> UploadAppealAttachment(IFormFile file)
+        => await UploadAttachment(file);
+
+    private async Task<ActionResult<FileUploadDto>> UploadAttachment(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "附件不能为空" });
+
+        var uploaderId = int.Parse(User.FindFirst("userId")!.Value);
+
+        try
+        {
+            var uploaded = await _fileService.UploadMultipleAsync(new List<IFormFile> { file }, uploaderId);
+            if (uploaded.Count == 0)
+                return BadRequest(new { error = "附件上传失败" });
+
+            return Ok(ToUploadDto(uploaded[0]));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     /// <summary>
@@ -80,4 +119,12 @@ public class FileController : ControllerBase
 
         return NoContent();
     }
+
+    private static FileUploadDto ToUploadDto(UpdatedFile file) => new()
+    {
+        FileId = file.FileId,
+        FileName = file.FileName,
+        FileSize = file.FileSize,
+        ContentType = file.MimeType
+    };
 }

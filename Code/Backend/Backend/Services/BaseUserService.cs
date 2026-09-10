@@ -282,6 +282,10 @@ public class BaseUserService : IBaseUserService
             Email = normUser.BaseUser.Email,
             PhoneNumber = normUser.BaseUser.PhoneNumber,
             UserName = normUser.UserName,
+            Gender = normUser.BaseUser.Gender,
+            Profile = normUser.Profile,
+            AvatarFileId = normUser.BaseUser.AvatarFileId,
+            Credit = normUser.Credit,
             RegisterTime = normUser.BaseUser.RegisterTime
         };
     }

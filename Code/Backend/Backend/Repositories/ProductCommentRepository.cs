@@ -14,6 +14,8 @@ public class ProductCommentRepository : IProductCommentRepository
 
     public async Task<List<ProductComment>> GetByProductIdAsync(long productId)
         => await _context.ProductComments
+            .Include(c => c.User)
+            .ThenInclude(u => u.BaseUser)
             .Where(c => c.ProductId == productId)
             .OrderBy(c => c.Index)
             .ToListAsync();

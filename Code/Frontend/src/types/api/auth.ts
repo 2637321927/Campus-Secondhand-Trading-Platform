@@ -49,6 +49,7 @@ export interface CurrentUser{
     avatarFileId:number|null;
     isBanned:BannedStatus;
     bannedUntil:string|null;
+    accountStatus: 0 | 1 | 2 | 3;
 }
 
 export interface ChangePasswordRequest{

@@ -12,7 +12,7 @@ public sealed class SearchResultCache
 
     public SearchResultCache(TimeProvider clock) => _clock = clock;
 
-    private sealed record Entry(string Keyword, int? UserId, long[] ProductIds,
+    private sealed record Entry(string Keyword, int? UserId, long? CategoryId, long[] ProductIds,
         List<string> ExpandedTerms)
     {
         public DateTimeOffset LastAccess { get; set; }
@@ -30,7 +30,7 @@ public sealed class SearchResultCache
                 _entries.Remove(_entries.MinBy(pair => pair.Value.LastAccess).Key);
 
             var id = Guid.NewGuid().ToString("N");
-            _entries[id] = new Entry(request.Keyword.Trim(), request.UserId,
+            _entries[id] = new Entry(request.Keyword.Trim(), request.UserId, request.CategoryId,
                 productIds.ToArray(), expandedTerms.ToList())
             {
                 LastAccess = _clock.GetUtcNow()
@@ -47,6 +47,7 @@ public sealed class SearchResultCache
             if (string.IsNullOrWhiteSpace(request.SearchId) ||
                 !_entries.TryGetValue(request.SearchId, out var entry) ||
                 entry.UserId != request.UserId ||
+                entry.CategoryId != request.CategoryId ||
                 (!string.IsNullOrWhiteSpace(request.Keyword) &&
                  !string.Equals(entry.Keyword, request.Keyword.Trim(), StringComparison.Ordinal)) ||
                 (!string.IsNullOrEmpty(request.SortBy) && request.SortBy != "relevance"))

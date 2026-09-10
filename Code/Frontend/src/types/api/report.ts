@@ -46,6 +46,17 @@ export interface ReportProductInfoDto {
 }
 
 /**
+ * 被举报评论信息摘要
+ */
+export interface ReportCommentInfoDto {
+    commentId: number
+    productId: number
+    userId: number
+    userName: string
+    content: string
+}
+
+/**
  * 被举报用户信息摘要
  */
 export interface ReportUserInfoDto {

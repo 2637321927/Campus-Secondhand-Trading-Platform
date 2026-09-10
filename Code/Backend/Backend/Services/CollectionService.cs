@@ -77,6 +77,12 @@ public class CollectionService : ICollectionService
         return collections.Count;
     }
 
+    public async Task<int> GetProductCollectionCountAsync(long productId)
+    {
+        var counts = await _collectionRepo.GetCountsByProductIdsAsync(new[] { productId });
+        return counts.GetValueOrDefault(productId, 0);
+    }
+
     public async Task<List<ProductCardDto>> SearchAsync(int userId, string keyword)
     {
         var collections = await _collectionRepo.GetByUserIdAsync(userId);

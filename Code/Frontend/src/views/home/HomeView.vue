@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getHomeData, getHotProducts } from '../../api/modules/home'
+import { getRecommendedProducts } from '../../api/modules/recommend'
 import type { HomeResponseDto } from '../../types/api/home'
+import type { CategoryDto } from '../../types/api/category'
 import type { ProductCardDto } from '../../types/api/product'
 import ProductCard from '../../components/product/ProductCard.vue'
 
@@ -10,6 +12,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const homeData = ref<HomeResponseDto | null>(null)
 const hotProducts = ref<ProductCardDto[]>([])
+const recommendProducts = ref<ProductCardDto[]>([])
 const router = useRouter()
 
 async function loadHomeData(): Promise<void> {
@@ -30,6 +33,15 @@ async function loadHomeData(): Promise<void> {
   }
 }
 
+async function loadRecommended(): Promise<void> {
+  try {
+    const response = await getRecommendedProducts(8)
+    recommendProducts.value = response.data ?? []
+  } catch (error) {
+    console.error('推荐商品加载失败：', error)
+  }
+}
+
 function goToProductList(): void {
   router.push('/products')
 }
@@ -45,8 +57,40 @@ function goToCategory(categoryId: number): void {
   })
 }
 
+// 首页分类：只展示大分类，点开显示其小分类，大小分类都可点击
+const activeParentCategoryId = ref<number | null>(null)
+
+const rootCategories = computed(() => {
+  const all = homeData.value?.categories ?? []
+  const roots = all.filter((category) => category.parentId === null)
+
+  return roots.map((root) => ({
+    ...root,
+    children: all.filter(
+      (category) => category.parentId === root.categoryId
+    )
+  }))
+})
+
+function onParentCategoryClick(category: {
+  categoryId: number
+  children: CategoryDto[]
+}): void {
+  // 大分类没有小分类时直接进入商品列表
+  if (category.children.length === 0) {
+    goToCategory(category.categoryId)
+    return
+  }
+
+  activeParentCategoryId.value =
+    activeParentCategoryId.value === category.categoryId
+      ? null
+      : category.categoryId
+}
+
 onMounted(() => {
   loadHomeData()
+  void loadRecommended()
 })
 </script>
 
@@ -119,27 +163,76 @@ onMounted(() => {
             </div>
           </div>
 
-          <div v-if="homeData.categories.length > 0" class="category-grid">
-            <button
-              v-for="category in homeData.categories"
-              :key="category.categoryId"
-              class="category-card"
-              type="button"
-              @click="goToCategory(category.categoryId)"
+          <div v-if="rootCategories.length > 0" class="category-area">
+            <div class="category-grid">
+              <button
+                v-for="category in rootCategories"
+                :key="category.categoryId"
+                class="category-card"
+                type="button"
+                @click="onParentCategoryClick(category)"
+              >
+                <span class="category-card__content">
+                  <strong>{{ category.categoryName }}</strong>
+                  <small v-if="category.children.length">{{ category.children.length }} 个子分类</small>
+                  <small v-else>查看该分类商品</small>
+                </span>
+                <span class="category-card__arrow" aria-hidden="true">
+                  {{ activeParentCategoryId === category.categoryId ? '−' : '+' }}
+                </span>
+              </button>
+            </div>
+
+            <div
+              v-for="category in rootCategories"
+              :key="`children-${category.categoryId}`"
             >
-              <span class="category-card__content">
-                <strong>{{ category.categoryName }}</strong>
-                <small v-if="category.children?.length">{{ category.children.length }} 个子分类</small>
-                <small v-else>查看该分类商品</small>
-              </span>
-              <span class="category-card__arrow" aria-hidden="true">→</span>
-            </button>
+              <div
+                v-if="activeParentCategoryId === category.categoryId && category.children.length > 0"
+                class="category-children"
+              >
+                <button
+                  class="category-chip category-chip--all"
+                  type="button"
+                  @click="goToCategory(category.categoryId)"
+                >
+                  {{ category.categoryName }} · 全部
+                </button>
+                <button
+                  v-for="child in category.children"
+                  :key="child.categoryId"
+                  class="category-chip"
+                  type="button"
+                  @click="goToCategory(child.categoryId)"
+                >
+                  {{ child.categoryName }}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div v-else class="empty-state empty-state--compact">
             <span class="empty-state__icon" aria-hidden="true">□</span>
             <h3>暂时还没有分类</h3>
             <p>分类数据上线后会显示在这里</p>
+          </div>
+        </section>
+
+        <section v-if="recommendProducts.length > 0" class="home-section" aria-labelledby="recommend-title">
+          <div class="section-header">
+            <div>
+              <h2 id="recommend-title">为您推荐</h2>
+              <p>根据您的浏览和收藏推荐</p>
+            </div>
+            <el-button text class="section-more" @click="goToProductList">查看更多 <span aria-hidden="true">→</span></el-button>
+          </div>
+
+          <div class="product-grid">
+            <ProductCard
+              v-for="product in recommendProducts"
+              :key="product.productId"
+              :product="product"
+            />
           </div>
         </section>
 
@@ -217,7 +310,54 @@ onMounted(() => {
 .category-card__content strong { overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
 .category-card__content small { color: #6c7a74; font-size: 12px; }
 .category-card__arrow { color: #9aa9a3; font-size: 17px; }
-.product-grid { display: grid; align-items: stretch; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.category-area {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.category-children {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #fbfdfc;
+  border: 1px solid #e3e9e6;
+  border-radius: 14px;
+}
+
+.category-chip {
+  padding: 6px 14px;
+  color: #34443d;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #d5dfda;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.category-chip:hover {
+  color: #24735b;
+  border-color: #3e9b79;
+  background: #eef7f3;
+}
+
+.category-chip--all {
+  color: #24735b;
+  font-weight: 600;
+  border-color: #3e9b79;
+}
+
+.product-grid {
+  display: grid;
+  align-items: stretch;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
 .empty-state, .home-state { display: flex; min-height: 220px; align-items: center; justify-content: center; padding: 34px 20px; text-align: center; flex-direction: column; background: #fff; border: 1px solid #e3e9e6; border-radius: 18px; }
 .empty-state--compact { min-height: 176px; }
 .empty-state__icon, .home-state__icon { display: grid; width: 52px; height: 52px; margin-bottom: 14px; place-items: center; color: #24735b; background: #eaf4f0; border-radius: 16px; font-size: 24px; font-weight: 700; }

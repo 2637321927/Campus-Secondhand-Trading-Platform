@@ -15,6 +15,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const report = ref<WorkOrderDto | null>(null)
 const uploading = ref(false)
+const reportFileInput = ref<HTMLInputElement>()
 
 const statusTextMap: Record<string, string> = {
     waiting: '待处理',
@@ -100,6 +101,12 @@ async function handleUpload(file: File): Promise<void> {
         console.error('附件上传失败：', error)
     } finally {
         uploading.value = false
+    }
+}
+
+function openReportFileDialog(): void {
+    if (!uploading.value) {
+        reportFileInput.value?.click()
     }
 }
 
@@ -205,12 +212,21 @@ onMounted(() => {
                         <el-button type="danger" plain @click="handleCancel">
                             撤销举报
                         </el-button>
-                        <label class="upload-label">
-                            <input type="file" @change="onFileChange" :disabled="uploading" />
-                            <el-button type="primary" :loading="uploading">
+                        <div class="upload-control">
+                            <input
+                                ref="reportFileInput"
+                                type="file"
+                                @change="onFileChange"
+                                :disabled="uploading"
+                            />
+                            <el-button
+                                type="primary"
+                                :loading="uploading"
+                                @click="openReportFileDialog"
+                            >
                                 上传附件
                             </el-button>
-                        </label>
+                        </div>
                     </div>
                 </section>
             </template>
@@ -307,18 +323,13 @@ onMounted(() => {
     align-items: center;
 }
 
-.upload-label {
+.upload-control {
     position: relative;
-    cursor: pointer;
     display: inline-flex;
 }
 
-.upload-label input[type="file"] {
-    position: absolute;
-    width: 0;
-    height: 0;
-    opacity: 0;
-    overflow: hidden;
+.upload-control input[type="file"] {
+    display: none;
 }
 
 @media (max-width: 760px) {

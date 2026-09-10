@@ -1,10 +1,11 @@
 using Backend.Data;
-using Backend.Dtos.Communication;
+using Backend.Dtos.WorkOrder;
 using Backend.Models;
 using Backend.Models.Enums;
 using Backend.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Controllers;
@@ -133,20 +134,36 @@ public class ReportController : ControllerBase
     }
 
     /// <summary>
-    /// 为举报上传附件：文件存到文件服务，文件 ID/名 以文本形式追加到工单 Info 字段
+    /// 为举报绑定附件：上传走文件模块拿到 fileId 后，将文件 ID/名追加到工单 Info 字段；
+    /// 为兼容旧的直接上传方式，仍允许直接传 multipart 文件
     /// </summary>
     [HttpPost("reports/{reportId:long}/attachments")]
-    public async Task<ActionResult<WorkOrderDto>> Attachment(long reportId, IFormFile file)
+    public async Task<ActionResult<WorkOrderDto>> Attachment(
+        long reportId,
+        [FromForm] long? fileId = null,
+        IFormFile? file = null)
     {
         var w = await _orders.GetByIdAsync(reportId);
         if (w == null || w.Type != (int)WorkOrderType.Report || w.InitiatorId != Uid)
             return NotFound();
 
-        if (file == null || file.Length == 0)
+        if (fileId == null && (file == null || file.Length == 0))
             return BadRequest("附件不能为空");
 
-        var uploaded = await _files.UploadMultipleAsync(new List<IFormFile> { file }, Uid);
-        var f = uploaded.Single();
+        UpdatedFile f;
+        if (fileId.HasValue)
+        {
+            var meta = await _files.GetActiveByIdAsync(fileId.Value);
+            if (meta == null || meta.UploaderId != Uid)
+                return BadRequest("附件不存在或不是当前用户上传");
+
+            f = meta;
+        }
+        else
+        {
+            var uploaded = await _files.UploadMultipleAsync(new List<IFormFile> { file! }, Uid);
+            f = uploaded.Single();
+        }
 
         w.Info = ((w.Info ?? string.Empty) + $"\n[附件:{f.FileId}:{f.FileName}]").Trim();
         _orders.Update(w);
@@ -156,6 +173,30 @@ public class ReportController : ControllerBase
     }
 
     // ==================== 举报对象信息（供举报页回显） ====================
+
+    /// <summary>
+    /// 被举报评论的信息摘要（关联 ID 取评论发起者的用户 ID）
+    /// </summary>
+    [HttpGet("comments/{commentId:long}/report-info")]
+    public async Task<IActionResult> CommentInfo(long commentId)
+    {
+        var comment = await _db.ProductComments
+            .AsNoTracking()
+            .Where(x => x.CommentId == commentId)
+            .Select(x => new
+            {
+                x.CommentId,
+                x.ProductId,
+                x.UserId,
+                UserName = x.User!.UserName,
+                x.Content
+            })
+            .FirstOrDefaultAsync();
+
+        return comment == null
+            ? NotFound()
+            : Ok(comment);
+    }
 
     /// <summary>
     /// 被举报商品的信息摘要

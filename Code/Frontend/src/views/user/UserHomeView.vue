@@ -21,6 +21,7 @@ import type {
   ProductCardDto
 } from '../../types/api/product'
 import { useProductImages } from '../../composables/useProductImages'
+import { useAvatarImage } from '../../composables/useAvatarImage'
 import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
@@ -30,6 +31,14 @@ const authStore = useAuthStore()
 const user = ref<UserDto | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
+
+const genderText = computed<string>(() => {
+  if (user.value?.gender === 'male') return '男'
+  if (user.value?.gender === 'female') return '女'
+  return ''
+})
+
+const { avatarUrl, loadAvatar } = useAvatarImage()
 
 const activeTab = ref<string>('published')
 
@@ -172,6 +181,7 @@ async function loadUser(): Promise<void> {
     const response = await getUserById(userId.value)
 
     user.value = response.data
+    await loadAvatar(response.data.avatarFileId)
   } catch (error) {
     errorMessage.value = '用户主页加载失败，请稍后重试'
 
@@ -293,6 +303,7 @@ onMounted(() => {
           <el-avatar
             class="profile-avatar"
             :size="80"
+            :src="avatarUrl || undefined"
           >
             {{ user?.userName?.charAt(0) ?? '用' }}
           </el-avatar>
@@ -300,6 +311,16 @@ onMounted(() => {
           <div class="profile-info">
             <div class="profile-heading">
               <h1>{{ user?.userName ?? '未知用户' }}</h1>
+
+              <el-tag
+                v-if="genderText"
+                type="info"
+                effect="plain"
+                size="small"
+                class="gender-tag"
+              >
+                {{ genderText }}
+              </el-tag>
 
               <el-tag
                 v-if="isCurrentUser"
@@ -314,6 +335,12 @@ onMounted(() => {
             <div class="profile-meta">
               <span>用户编号：{{ user?.userId ?? '—' }}</span>
 
+              <span class="meta-divider">
+                ·
+              </span>
+
+              <span>信誉：{{ user?.credit ?? 0 }}</span>
+
               <span
                 v-if="user?.registerTime"
                 class="meta-divider"
@@ -325,6 +352,13 @@ onMounted(() => {
                 注册于 {{ formatRegisterTime(user?.registerTime) }}
               </span>
             </div>
+
+            <p
+              v-if="user?.profile"
+              class="profile-bio"
+            >
+              {{ user.profile }}
+            </p>
           </div>
 
           <el-button
@@ -611,6 +645,18 @@ onMounted(() => {
 
 .meta-divider {
   color: #c0c9c5;
+}
+
+.gender-tag {
+  margin-left: 4px;
+}
+
+.profile-bio {
+  margin: 14px 0 0;
+  color: #50605a;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 /* 商品列表 */

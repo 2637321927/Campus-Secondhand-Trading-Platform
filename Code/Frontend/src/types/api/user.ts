@@ -1,6 +1,7 @@
 export interface PublicUserDto {
     userId: number
     userName: string
+    avatarFileId?: number | null
 }
 
 export interface PublicUserApiResponse {
@@ -8,6 +9,7 @@ export interface PublicUserApiResponse {
     userName: string
     email?: string
     phoneNumber?: string | null
+    avatarFileId?: number | null
     registerTime?: string
 }
 
@@ -79,6 +81,10 @@ export interface UserDto {
     email: string
     phoneNumber: string | null
     userName: string
+    gender: string
+    profile: string | null
+    avatarFileId: number | null
+    credit: number
     registerTime: string
 }
 

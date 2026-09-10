@@ -26,6 +26,8 @@ import type {
   MessageDto
 } from '../../types/api/conversation'
 import { useProductImages } from '../../composables/useProductImages'
+import { useFileImages } from '../../composables/useFileImages'
+import UserAvatar from '../../components/common/UserAvatar.vue'
 import { getApiErrorMessage } from '../../utils/error'
 
 const route = useRoute()
@@ -40,6 +42,7 @@ const messages = ref<MessageDto[]>([])
 /** 对方用户名（后端会话接口不含用户信息，按对方 ID 单独请求） */
 const otherUserName = ref('')
 const otherUserId = ref<number | null>(null)
+const otherAvatarFileId = ref<number | null>(null)
 /** 商品价格与封面（后端会话接口不含，按商品 ID 单独请求） */
 const productPrice = ref<number | null>(null)
 const productCoverFileId = ref<number | null>(null)
@@ -54,9 +57,34 @@ const messagesContainer = ref<HTMLElement>()
 
 const { getProductImageUrl, loadProductImages } =
   useProductImages()
+/** 聊天图片附件走通用文件通道 /api/files/{id}（与商品图片不同） */
+const { getFileImageUrl, loadFileImages } =
+  useFileImages()
+
+/** 会话内全部图片附件的可预览 URL（按消息出现顺序），供 el-image 大图预览 */
+const attachmentPreviewUrls = computed(() =>
+  messages.value
+    .filter((message) => message.messageType === 1)
+    .map((message) => getFileImageUrl(message.fileId))
+    .filter((url) => url !== '')
+)
+
+function attachmentPreviewIndex(
+  fileId: number | null | undefined
+): number {
+  const url = getFileImageUrl(fileId)
+  const index = attachmentPreviewUrls.value.indexOf(url)
+
+  return index >= 0 ? index : 0
+}
 
 const currentUserId = computed(
   () => authStore.currentUser?.userId
+)
+
+/** 账号处于禁言状态时禁止发送消息 */
+const isMuted = computed(
+  () => authStore.currentUser?.accountStatus === 1
 )
 
 /** 对方 = 会话双方中不是当前用户的那一方 */
@@ -138,8 +166,16 @@ async function loadConversation(): Promise<void> {
         console.warn('消息记录加载失败：', messagesResult.reason)
       }
 
+      // 图片附件走通用文件通道，按 fileId 逐张加载为 Blob URL
+      void loadFileImages(
+        messages.value
+          .filter((message) => message.messageType === 1)
+          .map((message) => message.fileId)
+      )
+
       if (otherUserResult.status === 'fulfilled') {
         otherUserName.value = otherUserResult.value.data.userName
+        otherAvatarFileId.value = otherUserResult.value.data.avatarFileId ?? null
       } else {
         console.warn('对方用户信息加载失败：', otherUserResult.reason)
       }
@@ -176,7 +212,7 @@ async function loadConversation(): Promise<void> {
 async function handleSend(): Promise<void> {
   const content = inputText.value.trim()
 
-  if (!content || sending.value) {
+  if (isMuted.value || !content || sending.value) {
     return
   }
 
@@ -210,7 +246,7 @@ async function handleSend(): Promise<void> {
 async function handleUploadAttachment(
   options: UploadRequestOptions
 ): Promise<void> {
-  if (uploading.value) {
+  if (isMuted.value || uploading.value) {
     return
   }
 
@@ -225,6 +261,13 @@ async function handleUploadAttachment(
 
     if (sentMessage) {
       messages.value = [...messages.value, sentMessage]
+
+      if (
+        sentMessage.messageType === 1 &&
+        sentMessage.fileId
+      ) {
+        void loadFileImages([sentMessage.fileId])
+      }
     }
 
     ElMessage.success('附件已发送')
@@ -298,12 +341,12 @@ onMounted(() => {
           v-if="conversation"
           class="chat-partner"
         >
-          <el-avatar
+          <UserAvatar
             class="partner-avatar"
             :size="40"
-          >
-            {{ otherUserName?.charAt(0) ?? '对' }}
-          </el-avatar>
+            :name="otherUserName"
+            :file-id="otherAvatarFileId"
+          />
 
           <div class="partner-info">
             <span class="partner-name">
@@ -413,10 +456,16 @@ onMounted(() => {
                 v-else
                 class="message-attachment"
               >
-                <img
-                  v-if="getProductImageUrl(message.fileId)"
+                <el-image
+                  v-if="getFileImageUrl(message.fileId)"
                   class="message-image"
-                  :src="getProductImageUrl(message.fileId)"
+                  :src="getFileImageUrl(message.fileId)"
+                  :initial-index="
+                    attachmentPreviewIndex(message.fileId)
+                  "
+                  :preview-src-list="attachmentPreviewUrls"
+                  preview-teleported
+                  fit="contain"
                   alt="图片消息"
                 />
 
@@ -451,7 +500,7 @@ onMounted(() => {
             class="attachment-upload"
             :show-file-list="false"
             :http-request="handleUploadAttachment"
-            :disabled="uploading"
+            :disabled="uploading || isMuted"
           >
             <el-button
               text
@@ -468,7 +517,8 @@ onMounted(() => {
             type="textarea"
             :rows="2"
             maxlength="1000"
-            placeholder="输入消息，回车发送"
+            :disabled="isMuted"
+            :placeholder="isMuted ? '当前账号被禁言，无法发送消息' : '输入消息，回车发送'"
             @keydown.enter.exact.prevent="handleSend"
           />
 
@@ -476,7 +526,7 @@ onMounted(() => {
             class="send-button"
             type="primary"
             :loading="sending"
-            :disabled="!inputText.trim()"
+            :disabled="isMuted || !inputText.trim()"
             @click="handleSend"
           >
             发送
@@ -669,8 +719,19 @@ onMounted(() => {
 }
 
 .message-image {
+  display: block;
+  width: fit-content;
   max-width: 220px;
   max-height: 220px;
+  cursor: zoom-in;
+}
+
+.message-image :deep(.el-image__inner) {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 8px;
 }
 

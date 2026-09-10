@@ -26,6 +26,10 @@ import type {
 import type { ProductCommentDto } from '../../types/api/comment'
 import SellerProductActions from '../../components/product/SellerProductActions.vue'
 import { useProductImages } from '../../composables/useProductImages'
+import {
+  getProductStatusText,
+  getProductStatusTagType
+} from '../../utils/productStatus'
 
 const route = useRoute()
 const router = useRouter()
@@ -86,37 +90,13 @@ const commentCount = computed(() =>
 )
 
 function getStatusText(status: ProductStatus): string {
-  if (status === 0) {
-    return '在售'
-  }
-
-  if (status === 1) {
-    return '已售'
-  }
-
-  if (status === 2) {
-    return '已下架'
-  }
-
-  return '未知状态'
+  return getProductStatusText(status)
 }
 
 function getStatusType(
   status: ProductStatus
-): 'success' | 'warning' | 'info' | 'danger' {
-  if (status === 0) {
-    return 'success'
-  }
-
-  if (status === 1) {
-    return 'info'
-  }
-
-  if (status === 2) {
-    return 'danger'
-  }
-
-  return 'warning'
+): 'success' | 'warning' | 'info' | 'danger' | 'primary' {
+  return getProductStatusTagType(status)
 }
 
 function getShippingTypeLabel(
@@ -377,6 +357,19 @@ async function goToEdit(): Promise<void> {
   })
 }
 
+function goToReviews(): void {
+  if (!product.value) {
+    return
+  }
+
+  void router.push({
+    name: 'product-reviews',
+    params: {
+      productId: product.value.productId
+    }
+  })
+}
+
 function handleProductChanged(): void {
   const requestedProductId = productId.value
 
@@ -593,6 +586,29 @@ onBeforeUnmount(() => {
               <span>留言量</span>
             </div>
           </div>
+        </el-card>
+
+        <el-card
+          class="detail-card"
+          shadow="never"
+        >
+          <template #header>
+            <div class="section-header">
+              <h2>商品评价</h2>
+
+              <el-button
+                text
+                type="primary"
+                @click="goToReviews"
+              >
+                查看评价与回复
+              </el-button>
+            </div>
+          </template>
+
+          <p class="review-tip">
+            买家完成交易后可以对商品进行评价，你可以在这里查看并回复买家的评价。
+          </p>
         </el-card>
 
         <el-card
@@ -872,6 +888,13 @@ onBeforeUnmount(() => {
   line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.review-tip {
+  margin: 0;
+  color: #6c7a74;
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 .section-header {

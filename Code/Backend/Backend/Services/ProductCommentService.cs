@@ -1,5 +1,6 @@
 using Backend.Dtos.Product;
 using Backend.Models;
+using Backend.Models.Enums;
 using Backend.Repositories;
 
 namespace Backend.Services;
@@ -9,12 +10,17 @@ public class ProductCommentService : IProductCommentService
 
     private readonly IProductCommentRepository _commentRepo;
     private readonly IProductRepository _productRepo;
+    private readonly IBaseUserRepository _baseUserRepo;
 
-    public ProductCommentService(IProductCommentRepository commentRepo, IProductRepository productRepo)
+    public ProductCommentService(
+        IProductCommentRepository commentRepo,
+        IProductRepository productRepo,
+        IBaseUserRepository baseUserRepo)
     {
 
         _commentRepo = commentRepo;
         _productRepo = productRepo;
+        _baseUserRepo = baseUserRepo;
 
     }
 
@@ -43,6 +49,12 @@ public class ProductCommentService : IProductCommentService
 
     public async Task<ProductCommentDto> CreateAsync(long productId, int userId, CreateProductCommentDto dto)
     {
+
+        var user = await _baseUserRepo.GetByIdAsync(userId)
+            ?? throw new ArgumentException("用户不存在");
+
+        if (user.AccountStatus == AccountStatus.Muted)
+            throw new UnauthorizedAccessException("禁言用户无法发表评论");
 
         if (await _productRepo.GetByIdAsync(productId) == null)
             throw new ArgumentException("Product does not exist.");
@@ -101,6 +113,7 @@ public class ProductCommentService : IProductCommentService
         CommentId = c.CommentId,
         UserId = c.UserId,
         UserName = c.User?.UserName ?? "",
+        AvatarFileId = c.User?.BaseUser?.AvatarFileId,
         Content = c.Content,
         Index = c.Index,
         ResponseToId = c.ResponseToId,

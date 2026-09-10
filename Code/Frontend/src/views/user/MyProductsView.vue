@@ -15,6 +15,10 @@ import type {
 import { formatDate } from '../../utils/format'
 import SellerProductActions from '../../components/product/SellerProductActions.vue'
 import { useProductImages } from '../../composables/useProductImages'
+import {
+  getProductStatusText,
+  getProductStatusTagType
+} from '../../utils/productStatus'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -34,37 +38,13 @@ const selectedStatus = ref<'all' | ProductStatus>('all')
 let loadVersion = 0
 
 function getStatusText(status: ProductStatus): string {
-  if (status === 0) {
-    return '在售'
-  }
-
-  if (status === 1) {
-    return '已售'
-  }
-
-  if (status === 2) {
-    return '已下架'
-  }
-
-  return '未知状态'
+  return getProductStatusText(status)
 }
 
 function getStatusType(
   status: ProductStatus
-): 'success' | 'warning' | 'info' | 'danger' {
-  if (status === 0) {
-    return 'success'
-  }
-
-  if (status === 1) {
-    return 'info'
-  }
-
-  if (status === 2) {
-    return 'danger'
-  }
-
-  return 'warning'
+): 'success' | 'warning' | 'info' | 'danger' | 'primary' {
+  return getProductStatusTagType(status)
 }
 
 function getCoverUrl(product: ProductDto): string {
@@ -251,6 +231,7 @@ onBeforeUnmount(() => {
             <el-option label="在售" :value="0" />
             <el-option label="已售" :value="1" />
             <el-option label="已下架" :value="2" />
+            <el-option label="管理员下架" :value="6" />
           </el-select>
 
           <el-button

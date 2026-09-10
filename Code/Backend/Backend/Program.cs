@@ -57,6 +57,7 @@ builder.Services.AddScoped<IUpdatedFileService, UpdatedFileService>();
 builder.Services.AddScoped<IProdImageService, ProdImageService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IProductCommentService, ProductCommentService>();
+builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
@@ -66,6 +67,8 @@ builder.Services.AddScoped<IAddressService, AddressService>();
 builder.Services.AddScoped<IAdminUserManagementService, AdminUserManagementService>();
 builder.Services.AddScoped<IAdminProductManagementService, AdminProductManagementService>();
 builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
+builder.Services.AddScoped<IRecommendService, RecommendService>();
+builder.Services.AddScoped<IAdminOrderService, AdminOrderService>();
 
 // 搜索引擎 — 分词 + 词条图 + 搜索
 builder.Services.AddSingleton<ITermExtractionService, TermExtractionService>();
@@ -107,7 +110,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://localhost:3001")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());

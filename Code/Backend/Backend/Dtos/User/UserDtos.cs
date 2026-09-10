@@ -8,6 +8,12 @@ public class UserDto
     public string Email { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }
     public string UserName { get; set; } = string.Empty;
+    /// <summary>性别：male/female/unknown</summary>
+    public string Gender { get; set; } = "unknown";
+    /// <summary>个性签名（普通用户）</summary>
+    public string? Profile { get; set; }
+    public long? AvatarFileId { get; set; }
+    public int Credit { get; set; }
     public DateTime RegisterTime { get; set; }
 }
 

@@ -56,7 +56,9 @@ public class UserController : ControllerBase
         if (userId <= 0)
             return BadRequest(new { error = "userId must be greater than zero." });
 
-        var products = await _productService.GetProductsByUserIdAsync(userId);
+        var products = (await _productService.GetProductsByUserIdAsync(userId))
+            .Where(p => p.Status == Backend.Models.Enums.ProductStatus.Available)
+            .ToList();
         return Ok(products);
     }
 
@@ -176,7 +178,24 @@ public class UserController : ControllerBase
     public async Task<ActionResult<List<ProductDto>>> GetMyPublishedProducts()
     {
         var userId = int.Parse(User.FindFirst("userId")!.Value);
-        var products = await _productService.GetProductsByUserIdAsync(userId);
+        var products = (await _productService.GetProductsByUserIdAsync(userId))
+            .Where(p => p.Status == Backend.Models.Enums.ProductStatus.Available)
+            .ToList();
+        return Ok(products);
+    }
+
+    /// <summary>
+    /// 当前用户已下架的商品列表（用于商品下架申诉时选择关联商品）
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/removed-products")]
+    public async Task<ActionResult<List<ProductDto>>> GetMyRemovedProducts()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var products = (await _productService.GetProductsByUserIdAsync(userId))
+            .Where(p => p.Status == Backend.Models.Enums.ProductStatus.Removed ||
+                        p.Status == Backend.Models.Enums.ProductStatus.TakenDown)
+            .ToList();
         return Ok(products);
     }
 

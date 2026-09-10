@@ -71,6 +71,47 @@ public class PurchaseRepository : IPurchaseRepository
             .Include(p => p.Buyer)
             .ToListAsync();
 
+    public async Task<(List<Purchase> Items, int Total)> GetAdminPageAsync(
+        long? orderId,
+        string? status,
+        DateTime? startDate,
+        DateTime? endDate,
+        int page,
+        int pageSize)
+    {
+        var query = _context.Purchases
+            .Include(p => p.Product)
+                .ThenInclude(p => p!.Images)
+            .Include(p => p.Product)
+                .ThenInclude(p => p!.Seller)
+            .Include(p => p.Buyer)
+            .AsQueryable();
+
+        if (orderId.HasValue)
+            query = query.Where(p => p.PurchaseId == orderId.Value);
+
+        if (!string.IsNullOrEmpty(status))
+            query = query.Where(p => p.Status == status);
+
+        if (startDate.HasValue)
+            query = query.Where(p => p.CreateTime >= startDate.Value);
+
+        if (endDate.HasValue)
+        {
+            var end = endDate.Value.Date.AddDays(1);
+            query = query.Where(p => p.CreateTime < end);
+        }
+
+        var total = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(p => p.CreateTime)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, total);
+    }
+
     public IQueryable<Purchase> Query()
         => _context.Purchases.AsQueryable();
 

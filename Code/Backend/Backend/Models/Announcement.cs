@@ -18,12 +18,25 @@ public class Announcement
     [MaxLength(100)]
     public string Title { get; set; } = string.Empty;
 
-    [Column("info")]
-    [MaxLength(500)]
-    public string Info { get; set; } = string.Empty;
+    [Column("content", TypeName = "NVARCHAR2(2000)")]
+    [MaxLength(2000)]
+    public string Content { get; set; } = string.Empty;
+
+    [Column("is_pinned")]
+    public bool IsPinned { get; set; }
+
+    /// <summary>
+    /// 公告状态：draft=草稿，published=已发布，archived=已下架
+    /// </summary>
+    [Column("status")]
+    [MaxLength(20)]
+    public string Status { get; set; } = "published";
 
     [Column("release_time")]
     public DateTime ReleaseTime { get; set; } = DateTime.Now;
+
+    [Column("publish_time")]
+    public DateTime? PublishTime { get; set; }
 
     [Column("admin_id")]
     public int AdminId { get; set; }

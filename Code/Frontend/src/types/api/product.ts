@@ -3,8 +3,12 @@
  * 0 = 在售
  * 1 = 已售
  * 2 = 已下架
+ * 3 = 待审核
+ * 4 = 审核驳回
+ * 5 = 交易中
+ * 6 = 管理员强制下架（卖家不能自行重新上架）
  */
-export type ProductStatus = 0 | 1 | 2
+export type ProductStatus = 0 | 1 | 2 | 3 | 4 | 5 | 6
 export type ShippingType = 0 | 1 | 2 | 3
 
 export interface ProductCardDto{
@@ -20,6 +24,7 @@ export interface ProductCardDto{
 export interface SearchProductParams {
     keyword: string
     searchId?: string
+    categoryId?: number | null
     page?: number
     pageSize?: number
     sortBy?: 'relevance' | 'latest' | 'price_asc' | 'price_desc'
@@ -92,7 +97,6 @@ export interface UpdateProductRequest {
     price: number
     info?: string
     categoryId: number
-    status: ProductStatus
     newImages: File[] //本次编辑中新选择的图片文件。
 
     toRemoveImageIds: number[] //待删除图片的 imgFileId 列表。

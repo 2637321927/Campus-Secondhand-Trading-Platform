@@ -34,7 +34,6 @@ import type {
 import type {
   ProductDto,
   ProductImageDto,
-  ProductStatus,
   ShippingType,
   UpdateProductRequest
 } from '../../types/api/product'
@@ -45,7 +44,6 @@ interface ProductEditForm {
   price: number | null
   categoryId: number | null
   info: string
-  status: ProductStatus
   shippingType: ShippingType
   shippingFee: number | null
   allowPickup: boolean
@@ -71,7 +69,6 @@ const form = reactive<ProductEditForm>({
   price: null,
   categoryId: null,
   info: '',
-  status: 0,
   shippingType: 0,
   shippingFee: null,
   allowPickup: false
@@ -80,6 +77,67 @@ const form = reactive<ProductEditForm>({
 const categories = ref<CategoryDto[]>([])
 const categoriesLoading = ref(false)
 const categoriesErrorMessage = ref('')
+
+// 分类两级级联：先选大分类再选小分类，商品必须挂到小分类
+const categoryPath = ref<number[]>([])
+
+const categoryTree = computed(() => {
+  const roots = categories.value.filter(
+    (category) => category.parentId === null
+  )
+
+  return roots.map((root) => ({
+    value: root.categoryId,
+    label: root.categoryName,
+    children: categories.value
+      .filter((category) => category.parentId === root.categoryId)
+      .map((child) => ({
+        value: child.categoryId,
+        label: child.categoryName
+      }))
+  }))
+})
+
+watch(categoryPath, (path) => {
+  // 级联仅允许选到叶子（小分类）
+  form.categoryId =
+    path.length >= 2 ? Number(path[path.length - 1]) : null
+})
+
+watch(
+  () => form.categoryId,
+  () => syncCategoryPath()
+)
+
+watch(categories, () => syncCategoryPath())
+
+function syncCategoryPath(): void {
+  const id = form.categoryId
+
+  if (id === null) {
+    if (categoryPath.value.length > 0) {
+      categoryPath.value = []
+    }
+    return
+  }
+
+  const target = categories.value.find(
+    (category) => category.categoryId === id
+  )
+
+  const next =
+    target && target.parentId !== null
+      ? [target.parentId, id]
+      : [id]
+
+  const isSame =
+    next.length === categoryPath.value.length &&
+    next.every((value, index) => value === categoryPath.value[index])
+
+  if (!isSame) {
+    categoryPath.value = next
+  }
+}
 
 const existingImages = ref<ProductImageDto[]>([])
 const {
@@ -231,7 +289,6 @@ function applyProduct(product: ProductDto): void {
   form.price = product.price
   form.categoryId = product.categoryId
   form.info = product.info ?? ''
-  form.status = product.status
   form.shippingType = product.shippingType
   form.shippingFee = product.shippingFee ?? null
   form.allowPickup = product.allowPickup === 1
@@ -544,7 +601,6 @@ function createUpdateRequest(): UpdateProductRequest | null {
     price: form.price,
     info: form.info.trim(),
     categoryId: form.categoryId,
-    status: form.status,
     shippingType: form.shippingType,
     shippingFee: form.shippingFee,
     allowPickup: form.allowPickup ? 1 : 0,
@@ -562,8 +618,7 @@ function createUpdateRequest(): UpdateProductRequest | null {
 function productMatchesRequest(
   product: ProductDto,
   requestData: UpdateProductRequest,
-  expectedImageCount: number,
-  expectedStatus: ProductStatus
+  expectedImageCount: number
 ): boolean {
   const shippingMatches =
     product.shippingType === requestData.shippingType &&
@@ -576,7 +631,6 @@ function productMatchesRequest(
     Number(product.price) === requestData.price &&
     product.categoryId === requestData.categoryId &&
     (product.info ?? '') === (requestData.info ?? '') &&
-    product.status === expectedStatus &&
     shippingMatches &&
     (product.images ?? []).length === expectedImageCount
   )
@@ -612,7 +666,6 @@ async function saveProduct(): Promise<void> {
   }
 
   const expectedImageCount = totalImageCount.value
-  const requestedStatus = form.status
 
   saving.value = true
   let updateSucceeded = false
@@ -652,8 +705,7 @@ async function saveProduct(): Promise<void> {
       productMatchesRequest(
         refreshedProduct,
         requestData,
-        expectedImageCount,
-        requestedStatus
+        expectedImageCount
       )
 
     applyProduct(refreshedProduct)
@@ -764,7 +816,6 @@ watch(
     () => form.price,
     () => form.categoryId,
     () => form.info,
-    () => form.status,
     () => form.shippingType,
     () => form.shippingFee,
     () => form.allowPickup
@@ -912,19 +963,16 @@ onBeforeRouteLeave(async () => {
               label="商品分类"
               prop="categoryId"
             >
-              <el-select
-                v-model="form.categoryId"
-                filterable
+              <el-cascader
+                v-model="categoryPath"
+                :options="categoryTree"
                 :loading="categoriesLoading"
+                :disabled="categoriesLoading"
+                clearable
+                filterable
+                placeholder="先选大分类，再选小分类"
                 class="full-control"
-              >
-                <el-option
-                  v-for="category in categories"
-                  :key="category.categoryId"
-                  :label="category.categoryName"
-                  :value="category.categoryId"
-                />
-              </el-select>
+              />
 
               <div
                 v-if="categoriesErrorMessage"
@@ -940,20 +988,6 @@ onBeforeRouteLeave(async () => {
                   重试
                 </el-button>
               </div>
-            </el-form-item>
-
-            <el-form-item
-              label="商品状态"
-              prop="status"
-            >
-              <el-select
-                v-model="form.status"
-                class="full-control"
-              >
-                <el-option label="在售" :value="0" />
-                <el-option label="已售" :value="1" />
-                <el-option label="已下架" :value="2" />
-              </el-select>
             </el-form-item>
 
             <el-form-item

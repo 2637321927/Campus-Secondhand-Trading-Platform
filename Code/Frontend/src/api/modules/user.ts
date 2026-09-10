@@ -24,7 +24,8 @@ export async function getPublicUser(
 
     return {
         userId: response.data.userId,
-        userName: response.data.userName
+        userName: response.data.userName,
+        avatarFileId: response.data.avatarFileId ?? null
     }
 }
 
@@ -74,6 +75,15 @@ export function uploadAvatar(file: File) {
 export function getMyPublishedProducts() {
     return request.get<ProductDto[]>(
         '/api/users/me/published-products'
+    )
+}
+
+/**
+ * 当前用户已下架的商品列表（用于商品下架申诉）
+ */
+export function getMyRemovedProducts() {
+    return request.get<ProductDto[]>(
+        '/api/users/me/removed-products'
     )
 }
 

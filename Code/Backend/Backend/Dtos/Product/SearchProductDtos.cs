@@ -11,6 +11,8 @@ public class SearchRequestDto
     public string? SortBy { get; set; }
     /// <summary>可选，限定在某个用户发布的商品内搜索</summary>
     public int? UserId { get; set; }
+    /// <summary>可选，限定某个分类（含其子分类）下的商品</summary>
+    public long? CategoryId { get; set; }
 }
 
 public class SearchResultDto

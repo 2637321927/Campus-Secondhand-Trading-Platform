@@ -15,6 +15,14 @@ public class AnnouncementRepository : IAnnouncementRepository
     public async Task<List<Announcement>> GetAllAsync()
         => await _context.Announcements.Include(a => a.Admin).ToListAsync();
 
+    public async Task<List<Announcement>> GetPublishedAsync()
+        => await _context.Announcements
+            .Where(a => a.Status == "published")
+            .ToListAsync();
+
+    public IQueryable<Announcement> Query()
+        => _context.Announcements.AsQueryable();
+
     public async Task AddAsync(Announcement announcement)
         => await _context.Announcements.AddAsync(announcement);
 

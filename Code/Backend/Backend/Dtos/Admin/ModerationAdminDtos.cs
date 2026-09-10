@@ -8,11 +8,16 @@ namespace Backend.Dtos.Admin;
 public class AdminModerationWorkOrderDto
 {
     public long WorkOrderId { get; set; }
+    public long ReportId { get; set; }
+    public long AppealId { get; set; }
     public int Type { get; set; }
     public string? TargetType { get; set; }
     public long? TargetId { get; set; }
+    public string? TargetName { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string? Info { get; set; }
+    public string? Description { get; set; }
+    public string? Content { get; set; }
     public string Status { get; set; } = "waiting";
     public string? Result { get; set; }
     public string? HandleAction { get; set; }
@@ -21,6 +26,8 @@ public class AdminModerationWorkOrderDto
     public DateTime? ResponseTime { get; set; }
     public int InitiatorId { get; set; }
     public string InitiatorName { get; set; } = string.Empty;
+    public string ReporterName { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
     public int? AccusedId { get; set; }
     public string? AccusedName { get; set; }
     public long? ProductId { get; set; }
@@ -36,6 +43,16 @@ public class AdminModerationWorkOrderDto
 public class AdminModerationDetailDto : AdminModerationWorkOrderDto
 {
     public List<AdminWorkOrderTimelineDto> Timeline { get; set; } = new();
+    public List<AdminWorkOrderAttachmentDto> Attachments { get; set; } = new();
+}
+
+/// <summary>
+/// 管理员工单附件
+/// </summary>
+public class AdminWorkOrderAttachmentDto
+{
+    public long FileId { get; set; }
+    public string FileName { get; set; } = string.Empty;
 }
 
 public class AdminWorkOrderTimelineDto
@@ -65,7 +82,7 @@ public class AdminModerationPageDto
 public class HandleWorkOrderDto
 {
     /// <summary>
-    /// none/remove_product/ban_user/mute_user/restrict_publish/warn_user/restore_product/unban_user
+    /// none/remove_product/ban_user/mute_user/warn_user；申诉使用 approve，撤销原处理由后端内部执行
     /// </summary>
     [Required(ErrorMessage = "处理动作不能为空")]
     public string Action { get; set; } = string.Empty;
@@ -92,8 +109,17 @@ public class AdminModerationTasksDto
 {
     public int TotalPending { get; set; }
     public int WaitingCount { get; set; }
-    public int ProcessingCount { get; set; }
+    public int DoneCount { get; set; }
     public int ReportCount { get; set; }
     public int AppealCount { get; set; }
-    public List<AdminModerationWorkOrderDto> RecentTasks { get; set; } = new();
+    public List<AdminModerationTaskDto> RecentTasks { get; set; } = new();
+}
+
+public class AdminModerationTaskDto
+{
+    public long Id { get; set; }
+    public string Type { get; set; } = "report";
+    public string Title { get; set; } = string.Empty;
+    public string Status { get; set; } = "waiting";
+    public DateTime CreateTime { get; set; }
 }
