@@ -29,7 +29,7 @@ namespace Backend.Migrations.Generated
 
                     IF v_info_cnt > 0 AND v_content_cnt = 0 THEN
                         EXECUTE IMMEDIATE 'ALTER TABLE "announcement" RENAME COLUMN "info" TO "content"';
-                        EXECUTE IMMEDIATE 'ALTER TABLE "announcement" MODIFY ("content" NVARCHAR2(4000))';
+                        EXECUTE IMMEDIATE 'ALTER TABLE "announcement" MODIFY ("content" NVARCHAR2(2000))';
                     ELSIF v_info_cnt > 0 AND v_content_cnt > 0 THEN
                         EXECUTE IMMEDIATE 'UPDATE "announcement" SET "content" = "info" WHERE "content" IS NULL';
                         EXECUTE IMMEDIATE 'ALTER TABLE "announcement" DROP COLUMN "info"';

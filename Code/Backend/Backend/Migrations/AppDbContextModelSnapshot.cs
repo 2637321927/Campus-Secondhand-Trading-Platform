@@ -94,8 +94,8 @@ namespace Backend.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("NVARCHAR2(4000)")
+                        .HasMaxLength(2000)
+                        .HasColumnType("NVARCHAR2(2000)")
                         .HasColumnName("content");
 
                     b.Property<bool>("IsPinned")

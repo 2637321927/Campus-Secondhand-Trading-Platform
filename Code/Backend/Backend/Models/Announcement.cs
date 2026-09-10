@@ -18,8 +18,8 @@ public class Announcement
     [MaxLength(100)]
     public string Title { get; set; } = string.Empty;
 
-    [Column("content", TypeName = "NVARCHAR2(4000)")]
-    [MaxLength(4000)]
+    [Column("content", TypeName = "NVARCHAR2(2000)")]
+    [MaxLength(2000)]
     public string Content { get; set; } = string.Empty;
 
     [Column("is_pinned")]
