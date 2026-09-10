@@ -33,9 +33,20 @@ public class ProductCommentController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ProductCommentDto>> Create(long productId, [FromBody] CreateProductCommentDto dto)
     {
-        var userId = int.Parse(User.FindFirst("userId")!.Value);
-        var comment = await _commentService.CreateAsync(productId, userId, dto);
-        return CreatedAtAction(nameof(GetByProductId), new { productId }, comment);
+        try
+        {
+            var userId = int.Parse(User.FindFirst("userId")!.Value);
+            var comment = await _commentService.CreateAsync(productId, userId, dto);
+            return CreatedAtAction(nameof(GetByProductId), new { productId }, comment);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     /// <summary>
