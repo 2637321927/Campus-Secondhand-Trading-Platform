@@ -247,7 +247,7 @@ public class AdminModerationService : IAdminModerationService
         return new AdminModerationTasksDto
         {
             WaitingCount = await _workOrderRepo.Query().CountAsync(w => w.Status == "waiting"),
-            ProcessingCount = await _workOrderRepo.Query().CountAsync(w => w.Status == "processing"),
+            DoneCount = await _workOrderRepo.Query().CountAsync(w => w.Status == "done"),
             ReportCount = reports.Total,
             AppealCount = appeals.Total,
             TotalPending = await _workOrderRepo.Query().CountAsync(w => w.Status != "done"),

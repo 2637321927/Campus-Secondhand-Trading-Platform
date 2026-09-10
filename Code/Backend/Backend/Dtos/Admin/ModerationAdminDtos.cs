@@ -109,7 +109,7 @@ public class AdminModerationTasksDto
 {
     public int TotalPending { get; set; }
     public int WaitingCount { get; set; }
-    public int ProcessingCount { get; set; }
+    public int DoneCount { get; set; }
     public int ReportCount { get; set; }
     public int AppealCount { get; set; }
     public List<AdminModerationTaskDto> RecentTasks { get; set; } = new();

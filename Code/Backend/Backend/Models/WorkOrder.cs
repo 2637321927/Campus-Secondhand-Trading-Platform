@@ -32,7 +32,7 @@ public class WorkOrder
     public DateTime CreateTime { get; set; } = DateTime.Now;
 
     /// <summary>
-    /// 工单状态：waiting/processing/done
+    /// 工单状态：waiting/done
     /// </summary>
     [Column("status")]
     [MaxLength(15)]
