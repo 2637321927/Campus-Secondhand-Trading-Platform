@@ -42,7 +42,7 @@ public class ProductDto
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string? Info { get; set; }
-    public ProductStatus Status { get; set; } = ProductStatus.Available;
+    public ProductStatus Status { get; set; } = ProductStatus.PendingReview;
     public DateTime ReleaseDate { get; set; }
     public int UserId { get; set; }
     public long CategoryId { get; set; }
