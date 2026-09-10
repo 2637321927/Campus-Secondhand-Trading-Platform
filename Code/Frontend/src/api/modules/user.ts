@@ -79,6 +79,15 @@ export function getMyPublishedProducts() {
 }
 
 /**
+ * 当前用户已下架的商品列表（用于商品下架申诉）
+ */
+export function getMyRemovedProducts() {
+    return request.get<ProductDto[]>(
+        '/api/users/me/removed-products'
+    )
+}
+
+/**
  * 当前用户「我卖出」的订单列表
  */
 export function getMySoldOrders() {

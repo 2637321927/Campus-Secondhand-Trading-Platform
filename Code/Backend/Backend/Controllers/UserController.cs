@@ -185,6 +185,20 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
+    /// 当前用户已下架的商品列表（用于商品下架申诉时选择关联商品）
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/removed-products")]
+    public async Task<ActionResult<List<ProductDto>>> GetMyRemovedProducts()
+    {
+        var userId = int.Parse(User.FindFirst("userId")!.Value);
+        var products = (await _productService.GetProductsByUserIdAsync(userId))
+            .Where(p => p.Status == Backend.Models.Enums.ProductStatus.Removed)
+            .ToList();
+        return Ok(products);
+    }
+
+    /// <summary>
     /// 当前用户"我卖出"的订单列表
     /// </summary>
     [Authorize]

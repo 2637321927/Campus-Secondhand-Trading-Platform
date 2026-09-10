@@ -282,11 +282,8 @@
           <el-select v-model="processAction">
             <el-option label="仅记录处理结果" value="none" />
             <el-option label="下架商品" value="remove_product" />
-            <el-option label="恢复商品" value="restore_product" />
             <el-option label="封禁用户" value="ban_user" />
             <el-option label="禁言用户" value="mute_user" />
-            <el-option label="限制发布" value="restrict_publish" />
-            <el-option label="解除限制" value="unban_user" />
             <el-option label="发送警告" value="warn_user" />
           </el-select>
         </el-form-item>
@@ -372,11 +369,8 @@ const currentOrder = ref<AdminWorkOrder | null>(null)
 type AdminWorkOrderHandleAction =
   | 'none'
   | 'remove_product'
-  | 'restore_product'
   | 'ban_user'
   | 'mute_user'
-  | 'restrict_publish'
-  | 'unban_user'
   | 'warn_user'
   | 'approve'
 
