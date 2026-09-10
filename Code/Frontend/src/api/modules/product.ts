@@ -1,6 +1,7 @@
 import request from "../http";
 import type {
     ProductDto,
+    ProductStatus,
     CreateProductRequest,
     UpdateProductRequest,
     ProductImageDataDto,
@@ -24,9 +25,10 @@ export function getProductImages(fileIds: number[]) {
     )
 }
 
-export function getProducts(){
+export function getProducts(status?: number){
     return request.get<ProductDto[]>(
-        `/api/products`
+        `/api/products`,
+        { params: status !== undefined ? { status } : undefined }
     )
 }
 
@@ -76,7 +78,6 @@ export function updateProduct(
     formData.append('name', data.name)
     formData.append('price', String(data.price))
     formData.append('categoryId', String(data.categoryId))
-    formData.append('status', String(data.status))
 
     if (data.info !== undefined) {
         formData.append('info', data.info)
@@ -109,5 +110,15 @@ export function updateProduct(
 export function deleteProduct(productId:number){
     return request.delete<void>(
         `/api/products/${productId}`
+    )
+}
+
+export function updateProductStatus(
+    productId: number,
+    status: ProductStatus
+){
+    return request.patch<ProductDto>(
+        `/api/products/${productId}/status`,
+        { status }
     )
 }

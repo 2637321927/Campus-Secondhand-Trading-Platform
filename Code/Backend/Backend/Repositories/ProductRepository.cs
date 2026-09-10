@@ -19,8 +19,11 @@ public class ProductRepository : IProductRepository
             .FirstOrDefaultAsync(p => p.ProductId == productId);
 
     public async Task<List<Product>> GetAllAsync()
+        => await GetByStatusesAsync(new[] { ProductStatus.Available });
+
+    public async Task<List<Product>> GetByStatusesAsync(IEnumerable<ProductStatus> statuses)
         => await _context.Products
-            .Where(p => p.Status == ProductStatus.Available)
+            .Where(p => statuses.Contains(p.Status))
             .Include(p => p.Images)
             .Include(p => p.Category)
             .Include(p => p.Seller)

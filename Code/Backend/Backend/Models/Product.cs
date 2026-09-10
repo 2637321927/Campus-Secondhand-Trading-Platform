@@ -30,7 +30,7 @@ public class Product
     public DateTime ReleaseDate { get; set; } = DateTime.Now;
 
     /// <summary>
-    /// 商品状态：available/sold/removed
+    /// 商品状态：available/sold/removed/pendingReview/rejected/reserved
     /// </summary>
     [Column("status")]
     [MaxLength(10)]

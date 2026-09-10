@@ -48,6 +48,10 @@ public class SearchService : ISearchService
         if ((long)(request.Page - 1) * request.PageSize > int.MaxValue)
             throw new ArgumentException("页码超出支持范围");
 
+        // 用户主页内搜索
+        if (request.UserId.HasValue)
+            return await SearchWithinUserAsync(request);
+
         var cached = _cache.TryGet(request);
         if (cached != null)
             return await BuildCachedResultAsync(cached, request);
@@ -78,6 +82,55 @@ public class SearchService : ISearchService
         {
             return await SearchWithDbSort(filter, displayTerms, request);
         }
+    }
+
+    /// <summary>
+    /// 用户主页内搜索：对原始关键词整体模糊匹配（与收藏搜索一致），不走分词/词条/相似词扩展
+    /// </summary>
+    private async Task<SearchResultDto> SearchWithinUserAsync(SearchRequestDto request)
+    {
+        var keyword = (request.Keyword ?? "").Trim();
+        if (keyword.Length == 0)
+        {
+            return new SearchResultDto
+            {
+                SearchId = "",
+                Items = new(),
+                TotalCount = 0,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
+        }
+
+        var baseQuery = _db.Products.AsNoTracking()
+            .Where(p => p.UserId == request.UserId!.Value)
+            .Where(p => p.Status == ProductStatus.Available)
+            .Where(p => p.Name.Contains(keyword)
+                || (p.Info != null && p.Info.Contains(keyword)));
+
+        var orderedQuery = ApplySorting(baseQuery, request.SortBy ?? "latest");
+
+        var totalCount = await orderedQuery.CountAsync();
+        var products = await orderedQuery
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Include(p => p.Images)
+            .Include(p => p.Seller)
+            .ToListAsync();
+
+        var productIds = products.Select(p => p.ProductId).ToList();
+        var viewCounts = await _productViewRepo.GetViewCountsAsync(productIds);
+
+        return new SearchResultDto
+        {
+            SearchId = "",
+            Items = products
+                .Select(p => ProductService.ToProductCard(p, viewCounts.GetValueOrDefault(p.ProductId, 0)))
+                .ToList(),
+            TotalCount = totalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
     }
 
     public async Task NotifyProductCreatedAsync(long productId)

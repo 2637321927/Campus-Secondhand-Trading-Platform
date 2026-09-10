@@ -1,5 +1,6 @@
 using Backend.Dtos.Product;
 using Backend.Models;
+using Backend.Models.Enums;
 
 namespace Backend.Services;
 
@@ -12,8 +13,10 @@ public interface IProductService
 
     Task<ProductDto?> GetByIdAsync(long productId, int userId);
     Task<List<ProductDto>> GetAllAsync();
+    Task<List<ProductDto>> GetByStatusesAsync(IEnumerable<ProductStatus> statuses);
     Task<ProductDto?> CreateAsync(int userId, CreateProductDto dto);
     Task<ProductDto?> UpdateAsync(long productId, int userId, UpdateProductDto dto);
+    Task<ProductDto?> UpdateStatusAsync(long productId, int userId, ProductStatus target);
     Task<bool> DeleteAsync(long productId, int userId);
     Task RecordViewAsync(long productId, int userId);
     Task<List<long>> GetProductIdsByUserIdAsync(int userId);

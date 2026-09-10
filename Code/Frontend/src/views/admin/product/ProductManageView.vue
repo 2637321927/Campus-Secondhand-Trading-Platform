@@ -352,8 +352,8 @@ const resetSearch = () => {
 
 // ========== 查看详情 - 跳转到普通用户商品详情页 ==========
 const viewDetail = (row: any) => {
-  console.log('跳转到商品详情:', row.productId)
-  router.push(`/products/${row.productId}`)
+  console.log('跳转到管理员商品详情:', row.productId)
+  router.push(`/admin/products/${row.productId}`)
 }
 
 const handleApprove = async (row: any) => {

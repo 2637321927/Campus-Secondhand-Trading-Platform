@@ -26,10 +26,14 @@ public class UpdateProductDto
     public ShippingType ShippingType { get; set; } = ShippingType.Free;
     public decimal? ShippingFee { get; set; }
     public int AllowPickup { get; set; } = 0;
-    public ProductStatus Status { get; set; } = ProductStatus.Available;
     public List<IFormFile>? newImages { get; set; }
     public List<long>? toRemoveImageIds { get; set; } = new();
 
+}
+
+public class UpdateProductStatusDto
+{
+    public ProductStatus Status { get; set; }
 }
 
 public class ProductDto
