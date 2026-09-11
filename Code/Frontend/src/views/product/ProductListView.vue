@@ -12,7 +12,6 @@ import ProductListCard from '../../components/product/ProductListCard.vue'
 import { getCategoryProducts, getCategories } from '../../api/modules/category'
 import type { CategoryDto } from '../../types/api/category'
 import { Loading } from '@element-plus/icons-vue'
-import { useProductImages } from '../../composables/useProductImages'
 
 type SortOption =
   | 'default'
@@ -28,10 +27,6 @@ const selectedStatus = ref<-1 | 0 | 1>(0)
 const minPrice = ref<number | null>(null)
 const maxPrice = ref<number | null>(null)
 const sortOption = ref<SortOption>('default')
-const {
-  loadProductImages,
-  getProductImageUrl
-} = useProductImages()
 
 // 商品分类筛选（级联选择一级/二级分类）
 const categories = ref<CategoryDto[]>([])
@@ -173,11 +168,8 @@ async function loadProducts(): Promise<void> {
 
     products.value = nextProducts
 
-    await loadProductImages(
-      nextProducts.map(getCoverFileId)
-    ).catch((error) => {
-      console.error('商品封面加载失败：', error)
-    })
+    // 封面图由每个 ProductListCard 按自身 fileId 单独加载（与主页 ProductCard 一致），
+    // 不再整批请求，避免单张图片异常导致整页图片全部加载失败。
   } catch (error) {
     if (
       !isCurrentProductListLoad(
@@ -499,7 +491,7 @@ onBeforeUnmount(() => {
               v-for="product in displayedProducts"
               :key="product.productId"
               :product="product"
-              :image-url="getProductImageUrl(getCoverFileId(product))"
+              :file-id="getCoverFileId(product)"
             />
           </div>
 

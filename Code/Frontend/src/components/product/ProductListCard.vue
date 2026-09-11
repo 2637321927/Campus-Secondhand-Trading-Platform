@@ -1,15 +1,47 @@
 <script setup lang="ts">
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type {
   ProductListItemDto,
   ProductStatus
 } from '../../types/api/product'
 import { getProductStatusText } from '../../utils/productStatus'
+import { useProductImages } from '../../composables/useProductImages'
 
 const props = defineProps<{
   product: ProductListItemDto
   imageUrl?: string
+  // 封面文件 ID：卡片内部自行逐张请求图片，与主页 ProductCard 的加载方式保持一致
+  fileId?: number | null
 }>()
+
+const {
+  loadProductImages,
+  getProductImageUrl
+} = useProductImages()
+
+watch(
+  () => props.fileId,
+  (fileId) => {
+    if (!fileId) {
+      return
+    }
+
+    void loadProductImages([fileId]).catch((error) => {
+      console.error('商品封面加载失败：', error)
+    })
+  },
+  { immediate: true }
+)
+
+// 外部直接传入的 imageUrl 优先；否则按 fileId 从组件自己的缓存中取
+const coverUrl = computed(() => {
+  if (props.imageUrl) {
+    return props.imageUrl
+  }
+
+  return getProductImageUrl(props.fileId ?? undefined) || undefined
+})
 
 const router=useRouter()
 
@@ -33,9 +65,10 @@ function getStatusText(status:ProductStatus):string{
   >
     <div class="product-cover">
       <el-image
-        v-if="imageUrl"
-        :src="imageUrl"
+        v-if="coverUrl"
+        :src="coverUrl"
         fit="cover"
+        lazy
       />
 
       <div v-else class="image-placeholder">
