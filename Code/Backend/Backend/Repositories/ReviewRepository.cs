@@ -25,6 +25,11 @@ public class ReviewRepository : IReviewRepository
     public async Task<Review?> GetByPurchaseIdAsync(long purchaseId)
         => await _context.Reviews
             .Include(r => r.Images)
+            .Include(r => r.Purchase)
+                .ThenInclude(p => p!.Buyer)
+            .Include(r => r.Purchase)
+                .ThenInclude(p => p!.Product)
+                .ThenInclude(p => p!.Seller)
             .FirstOrDefaultAsync(r => r.PurchaseId == purchaseId);
 
     public async Task<List<Review>> GetByProductIdAsync(long productId)
@@ -32,6 +37,9 @@ public class ReviewRepository : IReviewRepository
             .Include(r => r.Images)
             .Include(r => r.Purchase)
                 .ThenInclude(p => p!.Buyer)
+            .Include(r => r.Purchase)
+                .ThenInclude(p => p!.Product)
+                .ThenInclude(p => p!.Seller)
             .Where(r => r.Purchase != null && r.Purchase.ProductId == productId)
             .OrderByDescending(r => r.ReviewTime)
             .ToListAsync();
