@@ -10,6 +10,7 @@ Thumbs.db
 *.scc
 Code/Backend/**/bin/
 Code/Backend/**/obj/
+tools/*
 Code/Backend/**/appsettings.Development.json
 Code/Backend/**/appsettings.Local.json
 Code/Backend/**/Uploads/
@@ -32,3 +33,4 @@ Uploads/
 Code/Backend/TermTest
 docs/
 .claude/
+database/

@@ -251,18 +251,17 @@ public class ProductService : IProductService
         if (!allowed)
             throw new InvalidOperationException("当前状态不允许该操作");
 
-        // 存在未取消订单的商品不能被手工改成已售；完成订单的商品也不能重新上架，
-        // 否则会造成同一商品被重复出售。
+        // 只有进行中的订单才会阻止卖家手工改变售卖状态。
+        // 已完成订单是历史记录，不应阻止商品开启新一轮售卖。
         if (target == ProductStatus.Sold ||
             (current == ProductStatus.Sold && target == ProductStatus.Available))
         {
             var orders = await _purchaseRepo.GetByProductIdAsync(productId);
-            if (target == ProductStatus.Sold &&
-                orders.Any(o => o.Status != "cancel"))
-                throw new InvalidOperationException("该商品已有订单，不能手工标记为已售");
-            if (current == ProductStatus.Sold && target == ProductStatus.Available &&
-                orders.Any(o => o.Status == "success"))
-                throw new InvalidOperationException("该商品已有完成订单，不能重新上架");
+            var hasActiveOrder = orders.Any(o =>
+                o.Status != "cancel" && o.Status != "success");
+
+            if (hasActiveOrder)
+                throw new InvalidOperationException("该商品存在进行中的订单，不能修改售卖状态");
         }
 
         // 重新上架前检查账号状态
