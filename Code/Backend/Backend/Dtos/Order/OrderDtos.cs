@@ -36,6 +36,10 @@ public class OrderDto
     public long PurchaseId { get; set; }
     public string Status { get; set; } = "pending";
     public DateTime CreateTime { get; set; }
+    /// <summary>
+    /// 订单自动取消的截止时间（仅待付款订单有值）
+    /// </summary>
+    public DateTime? ExpireTime { get; set; }
     public DateTime? CancelTime { get; set; }
     public DateTime? PayTime { get; set; }
     public DateTime? ShippingTime { get; set; }
@@ -71,6 +75,10 @@ public class OrderListItemDto
     public long PurchaseId { get; set; }
     public string Status { get; set; } = "pending";
     public DateTime CreateTime { get; set; }
+    /// <summary>
+    /// 订单自动取消的截止时间（仅待付款订单有值）
+    /// </summary>
+    public DateTime? ExpireTime { get; set; }
     public DateTime? PayTime { get; set; }
     public DateTime? CompleteTime { get; set; }
     public decimal ShippingFees { get; set; }

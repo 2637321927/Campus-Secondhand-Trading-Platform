@@ -31,6 +31,7 @@ export interface OrderDto {
     purchaseId: number
     status: string
     createTime: string
+    expireTime: string | null
     cancelTime: string | null
     payTime: string | null
     shippingTime: string | null
@@ -63,6 +64,7 @@ export interface OrderListItemDto {
     purchaseId: number
     status: string
     createTime: string
+    expireTime: string | null
     payTime: string | null
     completeTime: string | null
     shippingFees: number

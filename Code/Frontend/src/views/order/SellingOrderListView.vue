@@ -46,6 +46,18 @@ function formatDateTime(value: string | null): string {
     })
 }
 
+function formatShortTime(value: string | null): string {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ''
+    return date.toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    })
+}
+
 async function loadOrderImages(orders: OrderListItemDto[]): Promise<void> {
     const fileIds = orders
         .map(o => o.productCoverImageId)
@@ -175,6 +187,9 @@ onMounted(() => {
                         </p>
                         <p class="order-meta">
                             下单时间：{{ formatDateTime(order.createTime) }}
+                        </p>
+                        <p v-if="order.status === 'pending' && order.expireTime" class="order-expire-hint">
+                            买家待付款，{{ formatShortTime(order.expireTime) }} 后将自动取消
                         </p>
                     </div>
 
@@ -313,6 +328,13 @@ onMounted(() => {
     margin: 0 0 4px;
     color: #6c7a74;
     font-size: 13px;
+}
+
+.order-expire-hint {
+    margin: 6px 0 0;
+    color: #d97706;
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .order-card-right {

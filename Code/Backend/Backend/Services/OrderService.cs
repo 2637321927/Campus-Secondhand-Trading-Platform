@@ -12,19 +12,25 @@ public class OrderService : IOrderService
     private readonly IAddressRepository _addressRepo;
     private readonly IOrderTimelineRepository _timelineRepo;
     private readonly IReputationService _reputationService;
+    private readonly IPaymentRepository _paymentRepo;
+    private readonly int _expireMinutes;
 
     public OrderService(
         IPurchaseRepository purchaseRepo,
         IProductRepository productRepo,
         IAddressRepository addressRepo,
         IOrderTimelineRepository timelineRepo,
-        IReputationService reputationService)
+        IReputationService reputationService,
+        IPaymentRepository paymentRepo,
+        IConfiguration configuration)
     {
         _purchaseRepo = purchaseRepo;
         _productRepo = productRepo;
         _addressRepo = addressRepo;
         _timelineRepo = timelineRepo;
         _reputationService = reputationService;
+        _paymentRepo = paymentRepo;
+        _expireMinutes = configuration.GetValue("OrderAutoCancel:ExpireMinutes", 5);
     }
 
     public async Task<PurchaseCheckDto> PurchaseCheckAsync(long productId, int userId)
@@ -398,13 +404,63 @@ public class OrderService : IOrderService
         }).ToList();
     }
 
+    public async Task CancelExpiredOrdersAsync(TimeSpan expiration)
+    {
+        var cutoff = DateTime.Now - expiration;
+        var pendingOrders = await _purchaseRepo.GetByStatusAsync("pending");
+        var expired = pendingOrders.Where(o => o.CreateTime < cutoff).ToList();
+
+        foreach (var order in expired)
+        {
+            // 双重检查，避免并发场景下误取消
+            if (order.Status != "pending")
+                continue;
+
+            var oldStatus = order.Status;
+            order.Status = "cancel";
+            order.CancelTime = DateTime.Now;
+
+            // 恢复商品为在售
+            if (order.Product != null)
+            {
+                order.Product.Status = ProductStatus.Available;
+                _productRepo.Update(order.Product);
+            }
+
+            // 取消该订单的待支付记录，防止超时后支付回调误标记成功
+            var pendingPayment = await _paymentRepo.GetPendingByPurchaseIdAsync(order.PurchaseId);
+            if (pendingPayment != null)
+            {
+                pendingPayment.Status = PaymentStatus.Cancelled;
+                pendingPayment.CancelTime = DateTime.Now;
+                _paymentRepo.Update(pendingPayment);
+            }
+
+            _purchaseRepo.Update(order);
+
+            await _timelineRepo.AddAsync(new OrderTimeline
+            {
+                PurchaseId = order.PurchaseId,
+                OldStatus = oldStatus,
+                NewStatus = "cancel",
+                ChangeTime = DateTime.Now,
+                OperatorId = order.BuyerId,
+                Note = "系统自动取消：超时未付款"
+            });
+        }
+
+        await _purchaseRepo.SaveAsync();
+        await _timelineRepo.SaveAsync();
+    }
+
     // ==================== DTO 映射 ====================
 
-    private static OrderDto ToDto(Purchase p) => new()
+    private OrderDto ToDto(Purchase p) => new()
     {
         PurchaseId = p.PurchaseId,
         Status = p.Status,
         CreateTime = p.CreateTime,
+        ExpireTime = p.Status == "pending" ? p.CreateTime.AddMinutes(_expireMinutes) : null,
         CancelTime = p.CancelTime,
         PayTime = p.PayTime,
         ShippingTime = p.ShippingTime,
@@ -432,7 +488,7 @@ public class OrderService : IOrderService
         Rating = p.Review?.Rating
     };
 
-    private static OrderListItemDto ToListItem(Purchase p)
+    private OrderListItemDto ToListItem(Purchase p)
     {
         var sellerId = p.Product?.UserId ?? 0;
         var sellerName = p.Product?.Seller?.UserName ?? "";
@@ -441,6 +497,7 @@ public class OrderService : IOrderService
             PurchaseId = p.PurchaseId,
             Status = p.Status,
             CreateTime = p.CreateTime,
+            ExpireTime = p.Status == "pending" ? p.CreateTime.AddMinutes(_expireMinutes) : null,
             PayTime = p.PayTime,
             CompleteTime = p.CompleteTime,
             ShippingFees = p.ShippingFees,

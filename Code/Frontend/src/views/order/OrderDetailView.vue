@@ -86,6 +86,18 @@ function formatDateTime(value: string | null): string {
     })
 }
 
+function formatShortTime(value: string | null): string {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ''
+    return date.toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    })
+}
+
 async function loadProductImage(fileId: number | null): Promise<void> {
     if (!fileId || fileId <= 0) return
 
@@ -440,6 +452,19 @@ onMounted(() => {
                     </div>
                 </header>
 
+                <!-- 待付款超时提示 -->
+                <el-alert
+                    v-if="order.status === 'pending' && order.expireTime"
+                    class="expire-alert"
+                    type="warning"
+                    :closable="false"
+                    show-icon
+                >
+                    <template #title>
+                        请于 <strong>{{ formatShortTime(order.expireTime) }}</strong> 前完成支付，超时订单将被自动取消
+                    </template>
+                </el-alert>
+
                 <!-- 商品信息 -->
                 <section class="detail-panel">
                     <h2 class="panel-title">商品信息</h2>
@@ -765,6 +790,10 @@ onMounted(() => {
     color: #1e2a26;
     font-size: 28px;
     line-height: 1.25;
+}
+
+.expire-alert {
+    margin-bottom: 20px;
 }
 
 .detail-panel {

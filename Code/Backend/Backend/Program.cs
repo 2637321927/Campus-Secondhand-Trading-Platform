@@ -78,6 +78,7 @@ builder.Services.AddSingleton<ITermSimilarityStore, TermSimilarityStore>();
 builder.Services.AddSingleton<ITermSimilarityRefreshService, TermSimilarityRefreshService>();
 builder.Services.Configure<SearchSimilarityOptions>(builder.Configuration.GetSection("SearchSimilarity"));
 builder.Services.AddHostedService<TermSimilarityMaintenanceService>();
+builder.Services.AddHostedService<OrderAutoCancelService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<SearchResultCache>();
 builder.Services.AddScoped<ISearchService, SearchService>();

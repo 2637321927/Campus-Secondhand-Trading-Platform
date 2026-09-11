@@ -68,4 +68,9 @@ public interface IOrderService
     /// 获取订单状态流转记录
     /// </summary>
     Task<List<OrderTimelineDto>> GetTimelineAsync(long orderId);
+
+    /// <summary>
+    /// 自动取消超过指定时长仍未付款的订单（系统级，无用户校验）
+    /// </summary>
+    Task CancelExpiredOrdersAsync(TimeSpan expiration);
 }
