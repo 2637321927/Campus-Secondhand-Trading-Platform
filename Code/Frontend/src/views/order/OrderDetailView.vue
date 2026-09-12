@@ -187,10 +187,22 @@ async function handleCancelOrder(): Promise<void> {
 async function handleSellerConfirm(): Promise<void> {
     if (!order.value) return
 
+    if (order.value.isPickup) {
+        try {
+            await ElMessageBox.confirm(
+                '这是自提订单，确认后将直接完成（无需发货/收货环节），是否继续？',
+                '确认自提订单',
+                { type: 'warning', confirmButtonText: '确认完成', cancelButtonText: '再想想' }
+            )
+        } catch {
+            return
+        }
+    }
+
     operating.value = true
     try {
         await sellerConfirmOrder(order.value.purchaseId)
-        ElMessage.success('订单已确认')
+        ElMessage.success(order.value.isPickup ? '自提订单已完成' : '订单已确认')
         await loadOrder()
     } catch (error) {
         ElMessage.error(getApiErrorMessage(error, '确认订单失败'))

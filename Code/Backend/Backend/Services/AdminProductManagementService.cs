@@ -14,6 +14,7 @@ public class AdminProductManagementService : IAdminProductManagementService
     private readonly ICollectionRepository _collectionRepo;
     private readonly IProductCommentRepository _commentRepo;
     private readonly IProdImageService _prodImageService;
+    private readonly INotificationService _notifications;
 
     public AdminProductManagementService(
         IProductRepository productRepo,
@@ -21,7 +22,8 @@ public class AdminProductManagementService : IAdminProductManagementService
         IProductViewRepository viewRepo,
         ICollectionRepository collectionRepo,
         IProductCommentRepository commentRepo,
-        IProdImageService prodImageService)
+        IProdImageService prodImageService,
+        INotificationService notifications)
     {
         _productRepo = productRepo;
         _auditRepo = auditRepo;
@@ -29,6 +31,7 @@ public class AdminProductManagementService : IAdminProductManagementService
         _collectionRepo = collectionRepo;
         _commentRepo = commentRepo;
         _prodImageService = prodImageService;
+        _notifications = notifications;
     }
 
     public async Task<AdminProductPageDto> GetProductsAsync(
@@ -92,6 +95,14 @@ public class AdminProductManagementService : IAdminProductManagementService
         product.ReviewedAt = DateTime.Now;
 
         await SaveWithAuditAsync(product, "approve", oldStatus, null, adminId);
+
+        await _notifications.NotifyAsync(
+            product.UserId,
+            "商品审核通过",
+            $"您的商品《{product.Name}》已通过审核，现已发布",
+            "product",
+            product.ProductId);
+
         return await ToDetailAsync(product);
     }
 
@@ -113,6 +124,14 @@ public class AdminProductManagementService : IAdminProductManagementService
         product.ReviewedAt = DateTime.Now;
 
         await SaveWithAuditAsync(product, "reject", oldStatus, dto.Reason.Trim(), adminId);
+
+        await _notifications.NotifyAsync(
+            product.UserId,
+            "商品审核未通过",
+            $"您的商品《{product.Name}》审核未通过：{dto.Reason.Trim()}",
+            "product",
+            product.ProductId);
+
         return await ToDetailAsync(product);
     }
 
@@ -132,6 +151,14 @@ public class AdminProductManagementService : IAdminProductManagementService
         product.Status = ProductStatus.TakenDown;
 
         await SaveWithAuditAsync(product, "remove", oldStatus, dto.Reason.Trim(), adminId);
+
+        await _notifications.NotifyAsync(
+            product.UserId,
+            "商品已被下架",
+            $"您的商品《{product.Name}》已被平台下架：{dto.Reason.Trim()}",
+            "product",
+            product.ProductId);
+
         return await ToDetailAsync(product);
     }
 
@@ -147,6 +174,14 @@ public class AdminProductManagementService : IAdminProductManagementService
         product.Status = ProductStatus.Available;
 
         await SaveWithAuditAsync(product, "restore", oldStatus, null, adminId);
+
+        await _notifications.NotifyAsync(
+            product.UserId,
+            "商品已恢复上架",
+            $"您的商品《{product.Name}》已恢复上架",
+            "product",
+            product.ProductId);
+
         return await ToDetailAsync(product);
     }
 

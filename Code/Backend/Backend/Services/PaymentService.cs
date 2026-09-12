@@ -10,15 +10,18 @@ public class PaymentService : IPaymentService
     private readonly IPaymentRepository _paymentRepo;
     private readonly IPurchaseRepository _purchaseRepo;
     private readonly IOrderTimelineRepository _timelineRepo;
+    private readonly INotificationService _notifications;
 
     public PaymentService(
         IPaymentRepository paymentRepo,
         IPurchaseRepository purchaseRepo,
-        IOrderTimelineRepository timelineRepo)
+        IOrderTimelineRepository timelineRepo,
+        INotificationService notifications)
     {
         _paymentRepo = paymentRepo;
         _purchaseRepo = purchaseRepo;
         _timelineRepo = timelineRepo;
+        _notifications = notifications;
     }
 
     public List<PaymentMethodDto> GetPaymentMethods()
@@ -129,6 +132,22 @@ public class PaymentService : IPaymentService
                     Note = $"支付成功（{payment.PaymentMethod}），交易号：{dto.TransactionId}"
                 });
                 await _timelineRepo.SaveAsync();
+
+                // 通知买卖双方支付成功
+                var order = payment.Purchase;
+                await _notifications.NotifyAsync(
+                    order.BuyerId,
+                    "支付成功",
+                    $"您的订单《{order.Product?.Name}》支付成功",
+                    "order",
+                    order.PurchaseId);
+                if (order.Product != null)
+                    await _notifications.NotifyAsync(
+                        order.Product.UserId,
+                        "买家已付款",
+                        $"您的商品《{order.Product.Name}》买家已付款，请尽快确认订单",
+                        "order",
+                        order.PurchaseId);
             }
         }
         else

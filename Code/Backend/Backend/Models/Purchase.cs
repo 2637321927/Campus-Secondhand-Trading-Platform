@@ -54,8 +54,17 @@ public class Purchase
     [Column("product_id")]
     public long ProductId { get; set; }
 
+    /// <summary>
+    /// 收货地址 ID（自提订单可为空）
+    /// </summary>
     [Column("address_id")]
-    public int AddressId { get; set; }
+    public int? AddressId { get; set; }
+
+    /// <summary>
+    /// 是否为自提订单：0=否，1=是（自提订单免运费，卖家确认后直接完成）
+    /// </summary>
+    [Column("is_pickup")]
+    public int IsPickup { get; set; } = 0;
 
     /// <summary>
     /// 发货方式描述，例如"快递"、"自提"、"面交"

@@ -13,9 +13,14 @@ public class CreateOrderDto
     public long ProductId { get; set; }
 
     /// <summary>
-    /// 收货地址ID（从用户地址簿选择）
+    /// 收货地址ID（从用户地址簿选择；自提订单可不传）
     /// </summary>
     public int AddressId { get; set; }
+
+    /// <summary>
+    /// 是否选择自提：true=自提（免运费，卖家确认后直接完成）
+    /// </summary>
+    public bool IsPickup { get; set; }
 
     /// <summary>
     /// 发货方式，例如"快递"、"自提"、"面交"
@@ -59,8 +64,13 @@ public class OrderDto
     public string? ProductName { get; set; }
     public decimal ProductPrice { get; set; }
     public long? ProductCoverImageId { get; set; }
-    public int AddressId { get; set; }
+    public int? AddressId { get; set; }
     public string? AddressDetail { get; set; }
+
+    /// <summary>
+    /// 是否为自提订单
+    /// </summary>
+    public bool IsPickup { get; set; }
 
     // 评价信息
     public int? ReviewId { get; set; }

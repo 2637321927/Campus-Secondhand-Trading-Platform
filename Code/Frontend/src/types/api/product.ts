@@ -69,6 +69,8 @@ export interface ProductDto{
     shippingType: ShippingType;
     shippingFee?: number|null;
     allowPickup: 0 | 1;
+    /** 卖家展示地址（选填），为空表示卖家未展示地址 */
+    sellerAddress?: string | null;
 }
 
 export interface ProductImageDto{
@@ -93,6 +95,7 @@ export interface CreateProductRequest {
     shippingType: ShippingType
     shippingFee?: number | null
     allowPickup: 0 | 1
+    sellerAddress?: string | null
 }
 export interface UpdateProductRequest {
     name: string
@@ -106,4 +109,5 @@ export interface UpdateProductRequest {
     shippingType: ShippingType
     shippingFee?: number | null
     allowPickup: 0 | 1
+    sellerAddress?: string | null
 }

@@ -40,6 +40,7 @@ interface ProductPublishForm {
   shippingType: ShippingType | null
   shippingFee: number | null
   allowPickup: boolean
+  sellerAddress: string
 }
 
 interface ProductPublishDraft {
@@ -50,6 +51,7 @@ interface ProductPublishDraft {
   shippingType: ShippingType | null
   shippingFee: number | null
   allowPickup: boolean
+  sellerAddress: string
   activeStep: number
   updatedAt: string
 }
@@ -158,7 +160,8 @@ const form = reactive<ProductPublishForm>({
   images: [],
   shippingType: null,
   shippingFee: null,
-  allowPickup: false
+  allowPickup: false,
+  sellerAddress: ''
 })
 
 const MAX_IMAGE_COUNT = 9
@@ -658,6 +661,10 @@ function hasFormContent(): boolean {
     return true
   }
 
+  if (form.sellerAddress.trim() !== '') {
+    return true
+  }
+
   return false
 }
 
@@ -670,6 +677,7 @@ function createDraftData(): ProductPublishDraft {
     shippingType: form.shippingType,
     shippingFee: form.shippingFee,
     allowPickup: form.allowPickup,
+    sellerAddress: form.sellerAddress,
     activeStep: activeStep.value,
     updatedAt: new Date().toISOString()
   }
@@ -768,6 +776,10 @@ function restoreDraft(): void {
 
     if (typeof draft.allowPickup === 'boolean') {
       form.allowPickup = draft.allowPickup
+    }
+
+    if (typeof draft.sellerAddress === 'string') {
+      form.sellerAddress = draft.sellerAddress
     }
 
     if (
@@ -909,6 +921,12 @@ async function submitProduct(): Promise<void> {
     shippingType: form.shippingType,
     shippingFee: form.shippingFee,
     allowPickup: form.allowPickup ? 1 : 0
+  }
+
+  const trimmedAddress = form.sellerAddress.trim()
+
+  if (trimmedAddress) {
+    requestData.sellerAddress = trimmedAddress
   }
 
   const trimmedInfo = form.info.trim()
@@ -1457,6 +1475,17 @@ onBeforeRouteLeave(async () => {
                   v-model="form.allowPickup"
                   active-text="支持自提"
                   inactive-text="不支持自提"
+                />
+              </el-form-item>
+
+              <el-form-item label="卖家地址（选填）">
+                <el-input
+                  v-model="form.sellerAddress"
+                  type="textarea"
+                  :rows="2"
+                  maxlength="200"
+                  show-word-limit
+                  placeholder="填写交易/自提地址，买家将看到；留空则买家看到「卖家没有展示地址」"
                 />
               </el-form-item>
 

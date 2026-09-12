@@ -40,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<UserWarning> UserWarnings => Set<UserWarning>();
     public DbSet<ProductAuditLog> ProductAuditLogs => Set<ProductAuditLog>();
     public DbSet<WorkOrderTimeline> WorkOrderTimelines => Set<WorkOrderTimeline>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -79,5 +80,6 @@ public class AppDbContext : DbContext
         modelBuilder.ApplyConfiguration(new EntityConfigs.UserWarningConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.ProductAuditLogConfig());
         modelBuilder.ApplyConfiguration(new EntityConfigs.WorkOrderTimelineConfig());
+        modelBuilder.ApplyConfiguration(new EntityConfigs.NotificationConfig());
     }
 }

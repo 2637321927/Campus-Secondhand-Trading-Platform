@@ -60,6 +60,13 @@ public class Product
     [Column("allow_pickup")]
     public int AllowPickup { get; set; } = 0;
 
+    /// <summary>
+    /// 卖家展示地址（选填）：卖家自行填写的交易/自提地址，为空表示卖家未展示地址
+    /// </summary>
+    [Column("seller_address")]
+    [MaxLength(200)]
+    public string? SellerAddress { get; set; }
+
     [Column("reject_reason")]
     [MaxLength(500)]
     public string? RejectReason { get; set; }

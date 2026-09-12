@@ -1,5 +1,6 @@
 using Backend.Dtos.Communication;
 using Backend.Repositories;
+using Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,22 +8,24 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Controllers;
 
 /// <summary>
-/// 通知模块 — 展示系统公告和当前用户收到的警告
-/// 说明：通知的"已读"目前为只读假象（公告表和警告表均无已读字段），
-///       Read/ReadAll 仅校验存在性，实际未持久化已读状态
+/// 通知模块 — 展示系统公告、当前用户收到的警告，以及商品/订单动态等系统通知
+/// 说明：公告与警告本身无已读字段（仍是只读假象），系统通知的已读状态会持久化
 /// </summary>
 [ApiController, Authorize, Route("api/notifications")]
 public class NotificationController : ControllerBase
 {
     private readonly IAnnouncementRepository _announcements;
     private readonly IUserWarningRepository _warnings;
+    private readonly INotificationService _notifications;
 
     public NotificationController(
         IAnnouncementRepository announcements,
-        IUserWarningRepository warnings)
+        IUserWarningRepository warnings,
+        INotificationService notifications)
     {
         _announcements = announcements;
         _warnings = warnings;
+        _notifications = notifications;
     }
 
     private static NotificationDto MapAnnouncement(Models.Announcement a) => new()
@@ -68,9 +71,11 @@ public class NotificationController : ControllerBase
             .OrderByDescending(w => w.CreateTime)
             .ToListAsync();
         var announcements = await _announcements.GetPublishedAsync();
+        var system = await _notifications.GetByUserIdAsync(userId);
 
         var notifications = warnings.Select(MapWarning)
             .Concat(announcements.Select(MapAnnouncement))
+            .Concat(system)
             .OrderByDescending(n => n.CreateTime)
             .ToList();
 
@@ -114,18 +119,30 @@ public class NotificationController : ControllerBase
                 ? NotFound()
                 : NoContent();
 
-        var exists = (await _announcements.GetPublishedAsync())
-            .Any(x => x.AnnouncementId == notificationId);
-        if (!exists && await FindWarningAsync(notificationId) == null)
-            return NotFound();
-        return NoContent();
+        if (string.Equals(type, "announcement", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrEmpty(type))
+        {
+            var exists = (await _announcements.GetPublishedAsync())
+                .Any(x => x.AnnouncementId == notificationId);
+            if (!exists && await FindWarningAsync(notificationId) == null)
+                return NotFound();
+            return NoContent();
+        }
+
+        // 系统通知：真正持久化已读状态
+        var ok = await _notifications.MarkReadAsync(notificationId, CurrentUserId());
+        return ok ? NoContent() : NotFound();
     }
 
     /// <summary>
-    /// 全部标记为已读（空实现）
+    /// 全部标记为已读（目前持久化系统通知）
     /// </summary>
     [HttpPatch("read-all")]
-    public IActionResult ReadAll() => NoContent();
+    public async Task<IActionResult> ReadAll()
+    {
+        await _notifications.MarkAllReadAsync(CurrentUserId());
+        return NoContent();
+    }
 
     /// <summary>
     /// 删除通知
@@ -135,6 +152,8 @@ public class NotificationController : ControllerBase
         long notificationId,
         [FromQuery] string? type = null)
     {
+        var userId = CurrentUserId();
+
         if (string.Equals(type, "warning", StringComparison.OrdinalIgnoreCase))
         {
             var warning = await FindWarningAsync(notificationId);
@@ -142,17 +161,26 @@ public class NotificationController : ControllerBase
             return BadRequest(new { error = "警告记录不支持删除" });
         }
 
-        var a = (await _announcements.GetPublishedAsync())
-            .FirstOrDefault(x => x.AnnouncementId == notificationId);
-        if (a == null)
+        if (string.Equals(type, "announcement", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrEmpty(type))
         {
-            if (await FindWarningAsync(notificationId) != null)
-                return BadRequest(new { error = "警告记录不支持删除" });
-            return NotFound();
+            var a = (await _announcements.GetPublishedAsync())
+                .FirstOrDefault(x => x.AnnouncementId == notificationId);
+            if (a == null)
+            {
+                if (await FindWarningAsync(notificationId) != null)
+                    return BadRequest(new { error = "警告记录不支持删除" });
+                return NotFound();
+            }
+
+            _announcements.Delete(a);
+            await _announcements.SaveAsync();
+            return NoContent();
         }
 
-        _announcements.Delete(a);
-        await _announcements.SaveAsync();
-        return NoContent();
+        // 系统通知
+        if (await _notifications.DeleteAsync(notificationId, userId))
+            return NoContent();
+        return NotFound();
     }
 }

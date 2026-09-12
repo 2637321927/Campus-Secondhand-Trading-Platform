@@ -16,7 +16,8 @@ import {
 } from '../../api/modules/conversation'
 import {
   getNotifications,
-  deleteNotification
+  deleteNotification,
+  markAllNotificationsRead
 } from '../../api/modules/notification'
 import type { ConversationDto } from '../../types/api/conversation'
 import type { NotificationDto } from '../../types/api/notification'
@@ -106,6 +107,18 @@ async function loadNotifications(): Promise<void> {
     const response = await getNotifications()
 
     notifications.value = response.data ?? []
+
+    // 进入通知列表即视为已读：清除服务端未读标记，并刷新顶部小红点
+    await markAllNotificationsRead().catch((error) => {
+      console.warn('标记通知已读失败：', error)
+    })
+
+    notifications.value = notifications.value.map((item) => ({
+      ...item,
+      isRead: true
+    }))
+
+    await messageStore.loadUnreadCount()
   } catch (error) {
     notificationsError.value = '通知列表加载失败，请稍后重试'
 

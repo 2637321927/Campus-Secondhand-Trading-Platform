@@ -29,10 +29,14 @@ const note = ref('')
 
 const productId = computed(() => Number(route.params.productId))
 
+// 自提：仅商品支持自提时可选择，选自提后免运费、无需收货地址
+const isPickup = ref(false)
+const supportPickup = computed(() => product.value?.allowPickup === 1)
+
 const totalPrice = computed(() => {
     if (!product.value) return 0
     const base = product.value.price
-    const shipping = product.value.shippingFee ?? 0
+    const shipping = isPickup.value ? 0 : (product.value.shippingFee ?? 0)
     return base + shipping
 })
 
@@ -104,7 +108,7 @@ async function loadData(): Promise<void> {
 async function handleSubmitOrder(): Promise<void> {
     if (!product.value) return
 
-    if (!selectedAddressId.value) {
+    if (!isPickup.value && !selectedAddressId.value) {
         ElMessage.warning('请选择收货地址')
         return
     }
@@ -113,13 +117,14 @@ async function handleSubmitOrder(): Promise<void> {
     try {
         const response = await createOrder({
             productId: productId.value,
-            addressId: selectedAddressId.value,
+            addressId: isPickup.value ? 0 : selectedAddressId.value,
+            isPickup: isPickup.value,
             // 发货方式在商品发布时已确定，买家侧不再填写
-            shippingMethod: null,
+            shippingMethod: isPickup.value ? '自提' : null,
             note: note.value || null
         })
 
-        ElMessage.success('订单创建成功')
+        ElMessage.success(isPickup.value ? '自提订单创建成功' : '订单创建成功')
         router.push({
             name: 'order-detail',
             params: { orderId: response.data.purchaseId }
@@ -208,8 +213,17 @@ onMounted(() => {
                     </div>
                 </section>
 
-                <!-- 收货地址 -->
-                <section class="purchase-panel">
+                <!-- 配送方式（仅支持自提的商品可选） -->
+                <section v-if="supportPickup" class="purchase-panel">
+                    <h2 class="panel-title">配送方式</h2>
+                    <el-radio-group v-model="isPickup">
+                        <el-radio :value="false">快递配送</el-radio>
+                        <el-radio :value="true">自提（免运费）</el-radio>
+                    </el-radio-group>
+                </section>
+
+                <!-- 收货地址（自提时无需收货地址） -->
+                <section v-if="!isPickup" class="purchase-panel">
                     <h2 class="panel-title">收货地址</h2>
                     <div v-if="addressList.length === 0" class="no-address">
                         <span>暂无收货地址</span>
@@ -269,7 +283,8 @@ onMounted(() => {
                         </div>
                         <div class="price-row">
                             <span>运费</span>
-                            <span>¥{{ (product.shippingFee ?? 0).toFixed(2) }}</span>
+                            <span v-if="isPickup">¥0.00（自提免运费）</span>
+                            <span v-else>¥{{ (product.shippingFee ?? 0).toFixed(2) }}</span>
                         </div>
                         <div class="price-row total-row">
                             <span>合计</span>
@@ -284,7 +299,7 @@ onMounted(() => {
                         type="primary"
                         size="large"
                         :loading="submitting"
-                        :disabled="!selectedAddressId || (purchaseCheckResult !== null && !purchaseCheckResult.canPurchase)"
+                        :disabled="(!isPickup && !selectedAddressId) || (purchaseCheckResult !== null && !purchaseCheckResult.canPurchase)"
                         @click="handleSubmitOrder"
                     >
                         提交订单

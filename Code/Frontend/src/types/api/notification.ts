@@ -7,8 +7,8 @@ export interface NotificationDto {
     notificationId: number
     title: string
     content: string
-    /** 通知类型：公告或用户警告 */
-    type: 'announcement' | 'warning'
+    /** 通知类型：公告、用户警告或商品/订单动态 */
+    type: 'announcement' | 'warning' | 'product' | 'order' | 'system'
     createTime: string
     /** 关联对象 ID（如订单、商品），无则 null */
     relatedId: number | null

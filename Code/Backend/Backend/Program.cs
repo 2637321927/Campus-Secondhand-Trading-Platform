@@ -47,6 +47,7 @@ builder.Services.AddScoped<IProductViewService, ProductViewService>();
 builder.Services.AddScoped<IProductCommentRepository, ProductCommentRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IOrderTimelineRepository, OrderTimelineRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 //Service层注册
 builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -64,6 +65,7 @@ builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IReputationService, ReputationService>();
 builder.Services.AddScoped<IAddressService, AddressService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IAdminUserManagementService, AdminUserManagementService>();
 builder.Services.AddScoped<IAdminProductManagementService, AdminProductManagementService>();
 builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();

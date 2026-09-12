@@ -13,6 +13,7 @@ public class CreateProductDto
     public ShippingType ShippingType { get; set; } = ShippingType.Free;
     public decimal? ShippingFee { get; set; }
     public int AllowPickup { get; set; } = 0;
+    public string? SellerAddress { get; set; }
 
 }
 
@@ -26,6 +27,7 @@ public class UpdateProductDto
     public ShippingType ShippingType { get; set; } = ShippingType.Free;
     public decimal? ShippingFee { get; set; }
     public int AllowPickup { get; set; } = 0;
+    public string? SellerAddress { get; set; }
     public List<IFormFile>? newImages { get; set; }
     public List<long>? toRemoveImageIds { get; set; } = new();
 
@@ -53,6 +55,7 @@ public class ProductDto
     public ShippingType ShippingType { get; set; }
     public decimal? ShippingFee { get; set; }
     public int AllowPickup { get; set; }
+    public string? SellerAddress { get; set; }
     public List<ProductImageDto> Images { get; set; } = new();
 }
 

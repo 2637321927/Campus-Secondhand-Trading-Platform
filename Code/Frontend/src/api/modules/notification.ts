@@ -31,3 +31,21 @@ export function deleteNotification(notificationId: number, type?: string) {
         { params: { type } }
     )
 }
+
+/**
+ * 标记单条通知为已读
+ */
+export function markNotificationRead(notificationId: number, type?: string) {
+    return request.patch<void>(
+        `/api/notifications/${notificationId}/read`,
+        null,
+        { params: { type } }
+    )
+}
+
+/**
+ * 全部通知标记为已读
+ */
+export function markAllNotificationsRead() {
+    return request.patch<void>('/api/notifications/read-all')
+}

@@ -13,6 +13,7 @@ public class PaymentRepository : IPaymentRepository
     public async Task<Payment?> GetByIdAsync(long paymentId)
         => await _context.Payments
             .Include(p => p.Purchase)
+                .ThenInclude(p => p!.Product)
             .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
 
     public async Task<List<Payment>> GetByPurchaseIdAsync(long purchaseId)

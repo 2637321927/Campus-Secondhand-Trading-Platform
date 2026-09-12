@@ -20,6 +20,8 @@ export type ShippingType = 0 | 1 | 2 | 3
 export interface CreateOrderDto {
     productId: number
     addressId: number
+    /** 是否选择自提（支持自提的商品可选；自提免运费） */
+    isPickup?: boolean
     shippingMethod?: string | null
     note?: string | null
 }
@@ -50,8 +52,11 @@ export interface OrderDto {
     productName: string | null
     productPrice: number
     productCoverImageId: number | null
-    addressId: number
+    addressId: number | null
     addressDetail: string | null
+
+    /** 是否为自提订单 */
+    isPickup: boolean
 
     reviewId: number | null
     rating: number | null

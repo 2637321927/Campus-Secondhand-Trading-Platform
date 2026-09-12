@@ -13,6 +13,7 @@ public class OrderService : IOrderService
     private readonly IOrderTimelineRepository _timelineRepo;
     private readonly IReputationService _reputationService;
     private readonly IPaymentRepository _paymentRepo;
+    private readonly INotificationService _notifications;
     private readonly int _expireMinutes;
 
     public OrderService(
@@ -22,6 +23,7 @@ public class OrderService : IOrderService
         IOrderTimelineRepository timelineRepo,
         IReputationService reputationService,
         IPaymentRepository paymentRepo,
+        INotificationService notifications,
         IConfiguration configuration)
     {
         _purchaseRepo = purchaseRepo;
@@ -30,6 +32,7 @@ public class OrderService : IOrderService
         _timelineRepo = timelineRepo;
         _reputationService = reputationService;
         _paymentRepo = paymentRepo;
+        _notifications = notifications;
         _expireMinutes = configuration.GetValue("OrderAutoCancel:ExpireMinutes", 5);
     }
 
@@ -77,9 +80,14 @@ public class OrderService : IOrderService
         if (product.UserId == userId)
             throw new InvalidOperationException("不能购买自己发布的商品");
 
-        var address = await _addressRepo.GetByIdAsync(dto.AddressId);
-        if (address == null || address.UserId != userId)
-            throw new ArgumentException("收货地址无效");
+        var isPickup = dto.IsPickup && product.AllowPickup == 1;
+
+        if (!isPickup)
+        {
+            var address = await _addressRepo.GetByIdAsync(dto.AddressId);
+            if (address == null || address.UserId != userId)
+                throw new ArgumentException("收货地址无效");
+        }
 
         // 检查是否有进行中的订单
         var existingOrders = await _purchaseRepo.GetByProductIdAsync(dto.ProductId);
@@ -92,10 +100,11 @@ public class OrderService : IOrderService
             CreateTime = DateTime.Now,
             BuyerId = userId,
             ProductId = dto.ProductId,
-            AddressId = dto.AddressId,
-            ShippingMethod = dto.ShippingMethod,
-            ShippingFees = product.ShippingFee ?? 0,
-            ResponsibleForShip = product.ShippingType == ShippingType.Free ? 0 : 1
+            AddressId = isPickup ? null : dto.AddressId,
+            IsPickup = isPickup ? 1 : 0,
+            ShippingMethod = isPickup ? "自提" : dto.ShippingMethod,
+            ShippingFees = isPickup ? 0 : (product.ShippingFee ?? 0),
+            ResponsibleForShip = isPickup ? 0 : (product.ShippingType == ShippingType.Free ? 0 : 1)
         };
 
         // 下单即锁定商品，防止他人重复购买（交易中）
@@ -113,9 +122,17 @@ public class OrderService : IOrderService
             NewStatus = "pending",
             ChangeTime = DateTime.Now,
             OperatorId = userId,
-            Note = "创建订单"
+            Note = isPickup ? "创建自提订单" : "创建订单"
         });
         await _timelineRepo.SaveAsync();
+
+        // 通知卖家商品被购买
+        await _notifications.NotifyAsync(
+            product.UserId,
+            "商品被购买",
+            $"您的商品《{product.Name}》已被下单购买，请及时处理",
+            "order",
+            order.PurchaseId);
 
         return ToDto(order);
     }
@@ -189,6 +206,55 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("只有已付款状态的订单可以确认");
 
         var oldStatus = order.Status;
+
+        // 自提订单：卖家确认后直接完成，无需发货/收货环节
+        if (order.IsPickup == 1)
+        {
+            order.Status = "success";
+            order.DeliveryTime = DateTime.Now;
+            order.CompleteTime = DateTime.Now;
+
+            if (order.Product != null)
+            {
+                order.Product.Status = ProductStatus.Sold;
+                _productRepo.Update(order.Product);
+            }
+
+            _purchaseRepo.Update(order);
+            await _purchaseRepo.SaveAsync();
+
+            if (order.Product != null)
+                await _reputationService.ChangeCreditAsync(order.Product.UserId, CreditRules.OrderCompleted);
+
+            await _timelineRepo.AddAsync(new OrderTimeline
+            {
+                PurchaseId = orderId,
+                OldStatus = oldStatus,
+                NewStatus = "success",
+                ChangeTime = DateTime.Now,
+                OperatorId = userId,
+                Note = "卖家确认自提订单，订单完成"
+            });
+            await _timelineRepo.SaveAsync();
+
+            // 通知双方
+            await _notifications.NotifyAsync(
+                order.BuyerId,
+                "自提订单已完成",
+                $"您的自提订单《{order.Product?.Name}》已完成，请及时与卖家约定取货",
+                "order",
+                orderId);
+            if (order.Product != null)
+                await _notifications.NotifyAsync(
+                    order.Product.UserId,
+                    "自提订单已完成",
+                    $"您的商品《{order.Product.Name}》自提订单已完成",
+                    "order",
+                    orderId);
+
+            return ToDto(order);
+        }
+
         order.Status = "confirmed";
         _purchaseRepo.Update(order);
         await _purchaseRepo.SaveAsync();
@@ -302,6 +368,14 @@ public class OrderService : IOrderService
         });
         await _timelineRepo.SaveAsync();
 
+        // 通知买家已发货
+        await _notifications.NotifyAsync(
+            order.BuyerId,
+            "订单已发货",
+            $"您的订单《{order.Product?.Name}》已发货" + (dto.TrackingNumber != null ? $"，物流单号：{dto.TrackingNumber}" : ""),
+            "order",
+            orderId);
+
         return ToDto(order);
     }
 
@@ -344,6 +418,15 @@ public class OrderService : IOrderService
             Note = "买家确认收货，订单完成"
         });
         await _timelineRepo.SaveAsync();
+
+        // 通知卖家买家已收货
+        if (order.Product != null)
+            await _notifications.NotifyAsync(
+                order.Product.UserId,
+                "买家已确认收货",
+                $"您的商品《{order.Product.Name}》买家已确认收货，订单完成",
+                "order",
+                orderId);
 
         return ToDto(order);
     }
@@ -484,6 +567,7 @@ public class OrderService : IOrderService
         AddressDetail = p.Address != null
             ? $"{p.Address.Name} {p.Address.DetailAddress} {p.Address.PhoneNumber}"
             : null,
+        IsPickup = p.IsPickup == 1,
         ReviewId = p.Review?.ReviewId,
         Rating = p.Review?.Rating
     };

@@ -20,6 +20,11 @@ public class NotificationDto
     public string Content { get; set; } = string.Empty;
     public DateTime CreateTime { get; set; }
     public bool IsRead { get; set; }
+
+    /// <summary>
+    /// 关联对象 ID（如商品 ID、订单 ID），无则 null
+    /// </summary>
+    public long? RelatedId { get; set; }
 }
 
 /// <summary>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useMessageStore } from '../../stores/message'
 import { ElMessage } from 'element-plus'
@@ -13,6 +13,7 @@ import {
 
 const keyword = ref('')
 const router = useRouter()
+const route = useRoute()
 const authStore=useAuthStore()
 const messageStore=useMessageStore()
 
@@ -111,11 +112,47 @@ async function handleLogout(): Promise<void> {
   await router.push('/')
 }
 
-onMounted(() => {
+function refreshUnread(): void {
   if (authStore.isLoggedIn) {
     void messageStore.loadUnreadCount()
   }
+}
+
+let unreadTimer: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => {
+  refreshUnread()
+
+  // 定时轮询：让别人触发的通知（如商品被购买）也能自动点亮小红点
+  unreadTimer = setInterval(refreshUnread, 60000)
 })
+
+onBeforeUnmount(() => {
+  if (unreadTimer !== null) {
+    clearInterval(unreadTimer)
+    unreadTimer = null
+  }
+})
+
+// 登录后立即拉取未读数，退出后清零
+watch(
+  () => authStore.isLoggedIn,
+  (isLoggedIn) => {
+    if (isLoggedIn) {
+      refreshUnread()
+    } else {
+      messageStore.unreadCount = 0
+    }
+  }
+)
+
+// 导航后刷新，保证从消息页返回时小红点及时消失
+watch(
+  () => route.fullPath,
+  () => {
+    refreshUnread()
+  }
+)
 </script>
 
 <template>

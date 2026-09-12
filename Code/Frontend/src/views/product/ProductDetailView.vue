@@ -1132,6 +1132,13 @@ onBeforeUnmount(() => {
                 {{ product.allowPickup === 1 ? '支持' : '不支持' }}
               </span>
             </div>
+
+            <div class="meta-item">
+              <span class="meta-label">卖家地址</span>
+              <span class="meta-value">
+                {{ product.sellerAddress?.trim() || '卖家没有展示地址' }}
+              </span>
+            </div>
           </div>
 
           <!-- 商品操作 -->
